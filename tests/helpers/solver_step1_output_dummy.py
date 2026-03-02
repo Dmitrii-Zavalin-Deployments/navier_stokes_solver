@@ -8,7 +8,7 @@ def make_step1_output_dummy(nx=4, ny=4, nz=4):
     
     # --- MANDATORY HYDRATION STEP ---
     # Initialize the internal dictionaries so the ValidatedContainer allows access
-    state.config._simulation_parameters = {}
+    state.config._simulation_parameters = {'time_step': 0.001, 'total_time': 1.0, 'output_interval': 1, 'g': 9.81}
     state.config._fluid_properties = {}
     state.config._external_forces = {}
     state.config._initial_conditions = {}
@@ -31,9 +31,12 @@ def make_step1_output_dummy(nx=4, ny=4, nz=4):
     state.config.initial_conditions["pressure"] = 0.0
     
     state.config._boundary_conditions = [
-        {"location": "x_min", "type": "no-slip", "values": {"u": 0.0, "v": 0.0, "w": 0.0}},
-        {"location": "x_max", "type": "outflow", "values": {"p": 0.0}}
-    ]
+        {'location': 'x_min', 'type': 'no-slip', 'values': {'u': 0.0, 'v': 0.0, 'w': 0.0}},
+        {'location': 'x_max', 'type': 'outflow', 'values': {'p': 0.0}},
+        {'location': 'y_min', 'type': 'no-slip', 'values': {'u': 0.0, 'v': 0.0, 'w': 0.0}},
+        {'location': 'y_max', 'type': 'no-slip', 'values': {'u': 0.0, 'v': 0.0, 'w': 0.0}},
+        {'location': 'z_min', 'type': 'no-slip', 'values': {'u': 0.0, 'v': 0.0, 'w': 0.0}},
+        {'location': 'z_max', 'type': 'no-slip', 'values': {'u': 0.0, 'v': 0.0, 'w': 0.0}}]
 
     # Standard Grid/Field Setup
     state.grid.nx, state.grid.ny, state.grid.nz = nx, ny, nz

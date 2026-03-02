@@ -31,7 +31,7 @@ def solve_pressure(state: SolverState) -> str:
         state.ppe._A, 
         rhs.ravel(), 
         x0=state.fields.P.ravel(),
-        tol=state.config.simulation_parameters.get("ppe_tolerance", 1e-6),
+        rtol=state.config.simulation_parameters.get("ppe_tolerance", 1e-6),
         atol=state.config.simulation_parameters.get("ppe_atol", 1e-8),
         maxiter=state.config.simulation_parameters.get("ppe_max_iter", 1000)
     )
