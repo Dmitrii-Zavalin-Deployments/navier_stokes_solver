@@ -5,12 +5,14 @@ from src.solver_state import SolverState
 
 def record_snapshot(state: SolverState) -> None:
     """
-    Point 2: Create artifacts and update the Manifest.
-    Rule 5: Explicit or Error. Directory is derived from config.
+    Step 5.1: Archivist. Writes physical artifacts to disk.
     """
-    out_dir = state.config.output_directory
+    # Safeguard: Pull output_directory or default to case_name
+    out_dir = getattr(state.config, 'output_directory', 'output')
+    if out_dir == 'output' and hasattr(state.config, 'case_name'):
+        out_dir = os.path.join('output', state.config.case_name)
     
-    # Ensure directory exists (Point 2: Create folder)
+    # Ensure directory exists
     if not os.path.exists(out_dir):
         os.makedirs(out_dir, exist_ok=True)
     
@@ -18,13 +20,17 @@ def record_snapshot(state: SolverState) -> None:
     snap_name = f"snapshot_{state.iteration:04d}.vtk"
     snap_path = os.path.join(out_dir, snap_name)
     
-    # Point 2: Write "Artifacts" (Placeholder for real VTK export)
+    # Write Artifacts (Placeholder for real VTK export)
     with open(snap_path, "w") as f:
         f.write(f"Step: {state.iteration}\nTime: {state.time}")
 
-    # Point 3: Update Manifest Safe
+    # Update Manifest
     state.manifest.output_directory = out_dir
-    if snap_path not in state.manifest.saved_snapshots:
-        state.manifest.saved_snapshots.append(snap_path)
+    
+    # Handle list persistence safely
+    current_snapshots = list(state.manifest.saved_snapshots)
+    if snap_path not in current_snapshots:
+        current_snapshots.append(snap_path)
+        state.manifest.saved_snapshots = current_snapshots
     
     state.manifest.log_file = os.path.join(out_dir, "solver_convergence.log")
