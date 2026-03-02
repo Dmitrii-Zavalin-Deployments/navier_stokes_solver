@@ -19,12 +19,12 @@ def make_step1_output_dummy(nx=4, ny=4, nz=4):
     state.fluid._mu = 0.001
     
     state.config.case_name = "dummy_verification"
-    state.config.simulation_parameters.time_step = 0.001
-    state.config.simulation_parameters.total_time = 1.0
-    state.config.simulation_parameters.output_interval = 1
+    state.config.simulation_parameters["time_step"] = 0.001
+    state.config.simulation_parameters["total_time"] = 1.0
+    state.config.simulation_parameters["output_interval"] = 1
     
-    state.config.fluid_properties.density = 1000.0
-    state.config.fluid_properties.viscosity = 0.001
+    state.config.fluid_properties["density"] = 1000.0
+    state.config.fluid_properties["viscosity"] = 0.001
     
     state.config.external_forces.force_vector = [0.0, 0.0, -9.81]
     state.config.initial_conditions.velocity = [0.0, 0.0, 0.0]
