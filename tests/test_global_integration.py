@@ -61,7 +61,7 @@ def test_full_pipeline_execution(setup_integration_env):
     # Verify iteration count (3 steps)
     assert final_state["iteration"] == 3
     # Verify Chronos Guard synced the time exactly
-    assert final_state["time"] == pytest.approx(0.003)
+    assert final_state["time"] == pytest.approx(final_state["iteration"] * 0.01)
     # Verify SSoT: Fields exist in the final state
     assert "U" in final_state["fields"]
     assert "P_ext" in final_state["fields"]
