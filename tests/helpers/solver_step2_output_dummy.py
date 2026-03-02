@@ -1,3 +1,5 @@
+# tests/helpers/solver_step2_output_dummy.py
+
 import numpy as np
 from scipy.sparse import csr_matrix
 from tests.helpers.solver_step1_output_dummy import make_step1_output_dummy

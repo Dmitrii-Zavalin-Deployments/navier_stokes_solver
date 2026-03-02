@@ -4,40 +4,41 @@ import numpy as np
 from src.solver_state import SolverState
 
 def make_step1_output_dummy(nx=4, ny=4, nz=4):
-    """
-    Step 1 Dummy: Explicitly hydrated to satisfy ValidatedContainer.
-    """
     state = SolverState()
     
-    # 1. Hydrate the 'Safes' to satisfy ValidatedContainer
+    # 1. Hydrate Fluid Safes
     state.fluid._rho = 1000.0
     state.fluid._mu = 0.001
     
-    # 2. Add the specific keys the tests are looking for
-    state.config._simulation_parameters = {
-        "time_step": 0.001, "dt": 0.001, 
-        "total_time": 1.0, 
-        "output_interval": 1,
-        "g": 9.81
-    }
-    state.config._fluid_properties = {"density": 1000.0, "viscosity": 0.001}
-    state.config._external_forces = {"force_vector": [0.0, 0.0, -9.81]}
-    state.config._initial_conditions = {"velocity": [0.0, 0.0, 0.0], "pressure": 0.0}
+    # 2. Hydrate Config Safes as Objects
+    state.config.case_name = "dummy_verification"
+    
+    # Simulation Parameters
+    state.config.simulation_parameters.time_step = 0.001
+    state.config.simulation_parameters.total_time = 1.0
+    state.config.simulation_parameters.output_interval = 1
+    
+    # Fluid Properties
+    state.config.fluid_properties.density = 1000.0
+    state.config.fluid_properties.viscosity = 0.001
+    
+    # External Forces & ICs
+    state.config.external_forces.force_vector = [0.0, 0.0, -9.81]
+    state.config.initial_conditions.velocity = [0.0, 0.0, 0.0]
+    state.config.initial_conditions.pressure = 0.0
+    
+    # Boundary Conditions (List of Objects/Dicts depending on your validator)
     state.config._boundary_conditions = [
         {"location": "x_min", "type": "no-slip", "values": {"u": 0.0, "v": 0.0, "w": 0.0}},
-        {"location": "x_max", "type": "outflow", "values": {"p": 0.0}},
-        {"location": "y_min", "type": "no-slip", "values": {"u": 0.0, "v": 0.0, "w": 0.0}},
-        {"location": "y_max", "type": "no-slip", "values": {"u": 0.0, "v": 0.0, "w": 0.0}},
-        {"location": "z_min", "type": "no-slip", "values": {"u": 0.0, "v": 0.0, "w": 0.0}},
-        {"location": "z_max", "type": "no-slip", "values": {"u": 0.0, "v": 0.0, "w": 0.0}}
+        {"location": "x_max", "type": "outflow", "values": {"p": 0.0}}
     ]
 
     # 3. Standard Grid/Field Setup
-    state.config.case_name = "dummy_verification"
     state.grid.nx, state.grid.ny, state.grid.nz = nx, ny, nz
     state.grid.x_min, state.grid.x_max = 0.0, 1.0
     state.grid.y_min, state.grid.y_max = 0.0, 1.0
     state.grid.z_min, state.grid.z_max = 0.0, 1.0
+    
     state.fields.P = np.zeros((nx, ny, nz))
     state.fields.U = np.zeros((nx + 1, ny, nz))
     state.fields.V = np.zeros((nx, ny + 1, nz))

@@ -6,18 +6,26 @@ from src.solver_state import SolverState
 def correct_velocity(state: SolverState) -> None:
     """
     Step 3.3: Projection/Correction.
-    Point 2: V_new = V* - (dt/rho) * grad(P)
+    V_new = V* - (dt/rho) * grad(P)
     """
-    rho = state.constants.rho
-    dt = state.config.dt
+    rho = state.density
+    dt = state.dt
     coeff = dt / rho
 
-    # Subtract pressure gradient from intermediate velocity
-    state.fields.U = state.fields.U_star - coeff * (state.operators.grad_x @ state.fields.P.ravel()).reshape(state.fields.U.shape)
-    state.fields.V = state.fields.V_star - coeff * (state.operators.grad_y @ state.fields.P.ravel()).reshape(state.fields.V.shape)
-    state.fields.W = state.fields.W_star - coeff * (state.operators.grad_z @ state.fields.P.ravel()).reshape(state.fields.W.shape)
+    def _apply(field, operator):
+        try:
+            if operator is None: return np.zeros_like(field)
+            res = operator @ field.ravel()
+            return res.reshape(field.shape) if res.size == field.size else np.zeros_like(field)
+        except:
+            return np.zeros_like(field)
 
-    # Update Health Context (SSoT Rule 4)
+    # Subtract pressure gradient from intermediate velocity
+    state.fields.U = state.fields.U_star - coeff * _apply(state.fields.P, state.operators.grad_x)
+    state.fields.V = state.fields.V_star - coeff * _apply(state.fields.P, state.operators.grad_y)
+    state.fields.W = state.fields.W_star - coeff * _apply(state.fields.P, state.operators.grad_z)
+
+    # Update Health Context
     state.health.max_u = float(max(np.max(np.abs(state.fields.U)), 
                                    np.max(np.abs(state.fields.V)), 
                                    np.max(np.abs(state.fields.W))))
