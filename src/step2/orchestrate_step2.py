@@ -45,6 +45,6 @@ def orchestrate_step2(state: SolverState) -> SolverState:
     state.health.is_stable = True
     state.health.post_correction_divergence_norm = 0.0
 
-    state.ready_for_time_loop = False 
+    state.ready_for_time_loop = True 
     
     return state
