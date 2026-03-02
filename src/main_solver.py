@@ -47,7 +47,7 @@ def run_solver_from_file(input_path: str) -> str:
             # ---------------------------------
             
             # THE CHRONOS GUARD: Prevent Infinite Loops
-            if float(state.time) >= float(state.config.total_time):
+            if float(state.time) >= float(state.config.total_time) - 1e-9:
                 state.ready_for_time_loop = False
             
             if state.iteration % 10 == 0:
