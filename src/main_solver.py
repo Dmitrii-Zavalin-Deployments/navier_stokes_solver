@@ -66,7 +66,7 @@ def archive_simulation_artifacts(state: SolverState) -> str:
         shutil.rmtree(source_dir)
     source_dir.mkdir(parents=True, exist_ok=True)
     for snapshot in getattr(state.manifest, "saved_snapshots", []):
-        shutil.copy2(snapshot, source_dir)
+        if os.path.exists(snapshot): shutil.copy2(snapshot, source_dir)
     
     state_json_path = source_dir / "final_state_snapshot.json"
     with open(state_json_path, "w") as f:

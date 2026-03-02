@@ -15,7 +15,7 @@ def make_step1_output_dummy(nx=4, ny=4, nz=4):
     
     # 2. Add the specific keys the tests are looking for
     state.config._simulation_parameters = {
-        "time_step": 0.001, 
+        "time_step": 0.001, "dt": 0.001, 
         "total_time": 1.0, 
         "output_interval": 1,
         "g": 9.81
