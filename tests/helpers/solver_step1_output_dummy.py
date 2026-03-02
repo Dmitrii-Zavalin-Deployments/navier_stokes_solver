@@ -26,9 +26,9 @@ def make_step1_output_dummy(nx=4, ny=4, nz=4):
     state.config.fluid_properties["density"] = 1000.0
     state.config.fluid_properties["viscosity"] = 0.001
     
-    state.config.external_forces.force_vector = [0.0, 0.0, -9.81]
-    state.config.initial_conditions.velocity = [0.0, 0.0, 0.0]
-    state.config.initial_conditions.pressure = 0.0
+    state.config.external_forces["force_vector"] = [0.0, 0.0, -9.81]
+    state.config.initial_conditions["velocity"] = [0.0, 0.0, 0.0]
+    state.config.initial_conditions["pressure"] = 0.0
     
     state.config._boundary_conditions = [
         {"location": "x_min", "type": "no-slip", "values": {"u": 0.0, "v": 0.0, "w": 0.0}},

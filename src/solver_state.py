@@ -63,7 +63,7 @@ class SolverConfig(ValidatedContainer):
     # --- Tactical Shortcuts (Facade) ---
     @property
     def dt(self) -> float: 
-        return float(self.simulation_parameters["time_step"])
+        return float(self.simulation_parameters["time_step"] if isinstance(self.simulation_parameters, dict) else self.simulation_parameters.time_step)
 
     @property
     def time_step(self) -> float:
@@ -72,11 +72,11 @@ class SolverConfig(ValidatedContainer):
 
     @property
     def total_time(self) -> float:
-        return float(self.simulation_parameters["total_time"])
+        return float(self.simulation_parameters["total_time"] if isinstance(self.simulation_parameters, dict) else self.simulation_parameters.total_time)
 
     @property
     def output_interval(self) -> int:
-        return int(self.simulation_parameters["output_interval"])
+        return int(self.simulation_parameters["output_interval"] if isinstance(self.simulation_parameters, dict) else self.simulation_parameters.output_interval)
 
     # --- Boundary Property Group ---
     @property
@@ -122,12 +122,12 @@ class SolverConfig(ValidatedContainer):
     @property
     def density(self) -> float:
         """Direct access to fluid density (rho)."""
-        return float(self.fluid_properties["density"])
+        return float(self.fluid_properties["density"] if isinstance(self.fluid_properties, dict) else self.fluid_properties.density)
 
     @property
     def viscosity(self) -> float:
         """Direct access to dynamic viscosity (mu)."""
-        return float(self.fluid_properties["viscosity"])
+        return float(self.fluid_properties["viscosity"] if isinstance(self.fluid_properties, dict) else self.fluid_properties.viscosity)
 
 @dataclass
 class GridContext(ValidatedContainer):
