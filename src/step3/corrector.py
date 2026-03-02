@@ -17,7 +17,7 @@ def correct_velocity(state: SolverState) -> None:
             if operator is None: return np.zeros(target_shape)
             res = operator @ field.ravel()
             return res.reshape(target_shape)
-        except Exception as e:
+        except Exception:
             return np.zeros(target_shape)
 
     # Subtract pressure gradient from intermediate velocity
