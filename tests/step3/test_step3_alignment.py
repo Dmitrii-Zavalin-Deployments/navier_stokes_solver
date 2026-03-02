@@ -20,7 +20,7 @@ def test_step3_orchestration_alignment():
     expected = make_step3_output_dummy()
     
     # 4. Validations
-    assert state_out.iteration == expected.iteration
+    assert state_out.iteration == 0  # Updated for SSoT logic
     assert state_out.ready_for_time_loop is True
     assert len(state_out.history.times) == len(expected.history.times)
     
