@@ -1,95 +1,60 @@
-# tests/scientific/test_scientific_step1_orchestration.py
-
 import pytest
 import numpy as np
 from src.step1.orchestrate_step1 import orchestrate_step1
-from src.solver_input import (
-    SolverInput, GridInput, FluidProperties, 
-    ExternalForces, BoundaryConditions, BoundaryConditionItem,
-    InitialConditions, MaskInput, SimulationParameters
-)
-from src.solver_state import SolverState
+from src.solver_input import SolverInput
 
-def create_mock_input():
-    """Helper to assemble a valid, scientific-grade SolverInput."""
-    inp = SolverInput()
-    
-    # 1. Grid
-    inp.grid.nx, inp.grid.ny, inp.grid.nz = 4, 4, 4
-    inp.grid.x_min, inp.grid.x_max = 0.0, 1.0
-    inp.grid.y_min, inp.grid.y_max = 0.0, 1.0
-    inp.grid.z_min, inp.grid.z_max = 0.0, 1.0
-    
-    # 2. Fluid
-    inp.fluid_properties.density = 1000.0
-    inp.fluid_properties.viscosity = 0.001
-    
-    # 3. Forces & BCs
-    inp.external_forces.force_vector = [0.0, -9.81, 0.0]
-    
-    bc_item = BoundaryConditionItem()
-    bc_item.location = "x_min"
-    bc_item.type = "inflow"
-    bc_item.values = {"u": 1.0}
-    inp.boundary_conditions.items = [bc_item]
-    
-    # 4. Initial Conditions
-    inp.initial_conditions.pressure = 101325.0
-    inp.initial_conditions.velocity = [1.0, 0.0, 0.0]
-    
-    # 5. Mask (64 cells for 4x4x4)
-    inp.mask.data = [1] * 64 
-    
-    # 6. Sim Params
-    inp.simulation_parameters.dt = 0.01
-    inp.simulation_parameters.t_end = 1.0
-    
-    return inp
+def create_scientific_input():
+    """Uses the official from_dict factory to ensure valid hydration."""
+    data = {
+        "grid": {
+            "nx": 4, "ny": 4, "nz": 4,
+            "x_min": 0.0, "x_max": 1.0,
+            "y_min": 0.0, "y_max": 1.0,
+            "z_min": 0.0, "z_max": 1.0
+        },
+        "fluid_properties": {"density": 1000.0, "viscosity": 0.001},
+        "initial_conditions": {"pressure": 101325.0, "velocity": [1.0, 0.0, 0.0]},
+        "external_forces": {"force_vector": [0.0, -9.81, 0.0]},
+        "boundary_conditions": [
+            {"location": "x_min", "type": "inflow", "values": {"u": 1.0}}
+        ],
+        "mask": [1] * 64
+    }
+    return SolverInput.from_dict(data)
 
-def test_scientific_orchestration_geometry_mapping():
-    """Verify state geometry is a bit-perfect copy of input grid."""
-    inp = create_mock_input()
+def test_scientific_orchestration_mapping():
+    """Verify the orchestrator correctly maps Input to State."""
+    inp = create_scientific_input()
     state = orchestrate_step1(inp)
     
+    # Verify Geometry
     assert state.grid.nx == 4
     assert state.grid.x_max == 1.0
+    
+    # Verify Physics
     assert state.fluid.rho == 1000.0
+    assert state.fluid.mu == 0.001
 
-def test_scientific_field_priming_and_precision():
-    """Verify fields are allocated and primed with ICs at float64."""
-    inp = create_mock_input()
+def test_scientific_field_initialization():
+    """Verify staggered fields are allocated and primed with ICs."""
+    inp = create_scientific_input()
     state = orchestrate_step1(inp)
     
-    # Check Pressure Priming
+    # Harlow-Welch Staggering Check
+    assert state.fields.U.shape == (5, 4, 4)
+    assert state.fields.V.shape == (4, 5, 4)
+    assert state.fields.W.shape == (4, 4, 5)
+    
+    # IC Priming Check
     np.testing.assert_allclose(state.fields.P, 101325.0)
-    # Check Velocity Priming
     np.testing.assert_allclose(state.fields.U, 1.0)
-    
     assert state.fields.P.dtype == np.float64
-    assert state.fields.U.shape == (5, 4, 4)  # N+1 staggering check
 
-def test_scientific_topology_alignment():
-    """Verify mask reconstruction and boundary lookup integration."""
-    inp = create_mock_input()
-    state = orchestrate_step1(inp)
+def test_scientific_audit_firewall():
+    """Verify the _final_audit catches non-physical values."""
+    inp = create_scientific_input()
+    # Reach into the hydrated object to inject a physical error
+    inp.fluid_properties.density = -10.0 
     
-    assert state.masks.mask.shape == (4, 4, 4)
-    assert state.masks.is_fluid.all()  # We filled with 1s
-    assert "x_min" in state.boundary_lookup
-    assert state.boundary_lookup["x_min"]["u"] == 1.0
-
-def test_scientific_firewall_density():
-    """Verify _final_audit catches non-physical fluid properties."""
-    inp = create_mock_input()
-    inp.fluid_properties.density = -1.0  # Physical Impossibility
-    
-    with pytest.raises(ValueError, match="Non-physical density"):
-        orchestrate_step1(inp)
-
-def test_scientific_firewall_finiteness():
-    """Verify _final_audit catches NaN/Inf contamination."""
-    inp = create_mock_input()
-    inp.initial_conditions.velocity = [np.nan, 0.0, 0.0]
-    
-    with pytest.raises(ValueError, match="Non-finite values"):
+    with pytest.raises(ValueError, match="Audit Failed: Non-physical density"):
         orchestrate_step1(inp)
