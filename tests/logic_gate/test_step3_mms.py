@@ -9,33 +9,29 @@ from tests.helpers.solver_step1_output_dummy import make_step1_output_dummy
 def test_logic_gate_3_divergence_pulse():
     """
     LOGIC GATE 3: Divergence Pulse.
-    Input: u(x,y,z) = (x, 0, 0) -> ∇·u = 1.0
-    Analytical Truth: ||∇·u_new|| < 10⁻¹² after projection.
+    Analytical Truth: ||∇·u_new|| < 10⁻¹²
     """
     nx, ny, nz = 4, 4, 4
     state = make_step1_output_dummy(nx=nx, ny=ny, nz=nz)
     state = orchestrate_step2(state)
     
-    # Setup Mass Leak: u = x
     dx = state.grid.dx
     U = np.zeros((nx+1, ny, nz), order='F')
-    for i in range(nx+1):
-        U[i, :, :] = i * dx
-    state.fields["U"] = U.flatten(order='F')
+    for i in range(nx+1): U[i, :, :] = i * dx
     
-    # Action: Pressure Projection
+    # CONSTITUTIONAL ALIGNMENT: Ensure fields are flat
+    state.fields.U = U.flatten(order='F')
+    state.fields.V = np.zeros_like(state.fields.V).flatten()
+    state.fields.W = np.zeros_like(state.fields.W).flatten()
+    
     state_out = orchestrate_step3(state)
     
-    # Verification: Calculate Final Divergence
     D = state.operators.divergence
-    
-    # FIX: Ensure all arrays are 1D before concatenation
-    u_f = state_out.fields["U"].flatten()
-    v_f = state_out.fields["V"].flatten()
-    w_f = state_out.fields["W"].flatten()
-    
-    v_total = np.concatenate([u_f, v_f, w_f])
+    v_total = np.concatenate([
+        state_out.fields.U.flatten(), 
+        state_out.fields.V.flatten(), 
+        state_out.fields.W.flatten()
+    ])
     div_norm = np.linalg.norm(D.dot(v_total), np.inf)
     
-    # Relaxed tolerance slightly for iterative PPE solvers (1e-10)
-    assert div_norm < 1e-10, f"Logic Gate 3 Failure: Mass balance not restored. Div Norm: {div_norm}"
+    assert div_norm < 1e-10
