@@ -18,7 +18,7 @@ def state_corrector():
     state.grid.z_min, state.grid.z_max = 0.0, 0.3
     
     # Physics
-    state.config.density = 1000.0
+    state.config.fluid_properties.density = 1000.0
     state.dt = 0.01 # coeff = 1e-5
     
     # Initialize operators
