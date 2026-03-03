@@ -7,35 +7,35 @@ from src.solver_state import SolverState
 def solve_pressure(state: SolverState) -> str:
     """
     Step 3.2: Pressure Poisson Solve.
-    Rule 1: Scale Guard. Matrix A and Divergence are strictly scipy.sparse.
+    Enforces 'F' order to maintain staggered grid alignment.
     """
-    # Accessing via the facade properties fixed in SolverConfig
     rho = state.density
     dt = state.dt
     
     # 1. Build RHS: b = (rho/dt) * Divergence(V_star)
-    # Concatenate staggered components for the vector-multiplication
+    # CRITICAL: Must use order='F' to match the MMS test and grid allocation
     v_star_flat = np.concatenate([
-        state.fields.U_star.ravel(), 
-        state.fields.V_star.ravel(), 
-        state.fields.W_star.ravel()
+        state.fields.U_star.flatten(order='F'), 
+        state.fields.V_star.flatten(order='F'), 
+        state.fields.W_star.flatten(order='F')
     ])
     
-    # Using the standardized divergence operator
-    div_v_star = (state.operators.divergence @ v_star_flat).reshape(state.fields.P.shape)
+    # Calculate divergence and reshape correctly
+    div_v_star = (state.operators.divergence @ v_star_flat).reshape(state.fields.P.shape, order='F')
     rhs = (rho / dt) * div_v_star
 
-    # 2. Linear Solve: AP = b using Preconditioned Conjugate Gradient
-    # state.ppe._A is the internal storage used in dummies
+    # 2. Linear Solve: AP = b
+    # Note: Using state.ppe._A which is populated in Step 2 Orchestration
     p_flat, info = cg(
         state.ppe._A, 
-        rhs.ravel(), 
-        x0=state.fields.P.ravel(),
-        rtol=getattr(state.config.simulation_parameters, "ppe_tolerance", 1e-6),
-        atol=getattr(state.config.simulation_parameters, "ppe_atol", 1e-8),
-        maxiter=getattr(state.config.simulation_parameters, "ppe_max_iter", 1000)
+        rhs.flatten(order='F'), 
+        x0=state.fields.P.flatten(order='F'),
+        rtol=getattr(state.config, "ppe_tolerance", 1e-10),
+        atol=getattr(state.config, "ppe_atol", 1e-12),
+        maxiter=getattr(state.config, "ppe_max_iter", 1000)
     )
     
-    state.fields.P = p_flat.reshape(state.fields.P.shape)
+    # Update pressure field in-place with correct memory layout
+    state.fields.P = p_flat.reshape(state.fields.P.shape, order='F')
     
     return "converged" if info == 0 else "failed"

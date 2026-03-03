@@ -10,7 +10,7 @@ def orchestrate_step2(state: SolverState) -> SolverState:
     Step 2 Orchestrator: Mathematical Readiness.
     
     Rule 5: Explicit or Error. No defaults/fallbacks. 
-    We use try-except to provide clear error reporting for missing runner config.
+    Ensures SSoT for solver configuration and operator hydration.
     """
     
     # --- Point 2: Calculate & Prepare ---
@@ -21,22 +21,31 @@ def orchestrate_step2(state: SolverState) -> SolverState:
         settings = external_config["solver_settings"]
         
         # Explicit mapping: No .get() allowed per Phase C mandate.
+        # These must exist in config.json or the solver will (rightfully) crash.
         state.config.ppe_atol = settings["ppe_atol"]
         state.config.ppe_max_iter = settings["ppe_max_iter"]
         
     except FileNotFoundError:
-        raise FileNotFoundError("Critical Error: 'config.json' not found in root directory.")
+        raise FileNotFoundError(
+            "Critical Error: 'config.json' not found. "
+            "A valid configuration is required to initialize solver tolerances."
+        )
     except KeyError as e:
-        raise KeyError(f"Critical Error: Missing required solver setting {e} in 'config.json'.")
+        raise KeyError(
+            f"Critical Error: Missing required solver setting {e} in 'config.json'. "
+            "Verify ppe_atol and ppe_max_iter are defined."
+        )
     except json.JSONDecodeError:
-        raise ValueError("Critical Error: 'config.json' is not a valid JSON file.")
+        raise ValueError("Critical Error: 'config.json' contains invalid JSON syntax.")
 
     # Delegate math to worker files
     build_numerical_operators(state)
     build_advection_stencils(state)
 
-    # --- Point 3: Insertion & State Baseline ---
-    state.ppe.A = state.operators.laplacian
+    # --- Point 3: Insertion & State Baseline (THE HANDSHAKE) ---
+    # CONSTITUTIONAL ALIGNMENT: 
+    # Assign to '_A' to match the attribute expected by Step 3's solve_pressure.
+    state.ppe._A = state.operators.laplacian
     state.ppe.preconditioner = None 
 
     # Initialize Health Vitals (Baseline Reset)
