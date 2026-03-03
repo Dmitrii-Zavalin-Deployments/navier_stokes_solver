@@ -1,7 +1,6 @@
 # src/step5/archivist.py
 
 import os
-import numpy as np
 from src.solver_state import SolverState
 
 # Global Debug Toggle
