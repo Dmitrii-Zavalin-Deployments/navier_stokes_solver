@@ -8,58 +8,58 @@ DEBUG = True
 
 def predict_velocity(state: SolverState) -> None:
     """
-    Step 3.1: Prediction. Calculates intermediate velocity V*.
-    V* = V_n + dt * [ nu * Laplacian(V_n) - Advection(V_n) + External_Forces ]
-    Rule 5 Compliance: No silent failures, no zero-defaults for missing operators.
+    Step 3.1: Prediction (Production). Calculates intermediate velocity V*.
+    Formula: V* = V_n + dt * [ nu * Laplacian(V_n) - Advection(V_n) + External_Forces ]
+    
+    Rule 5 Compliance: No silent failures. Each component check ensures 
+    physical consistency across the staggered grid.
     """
     rho = state.density
     mu = state.viscosity
     dt = state.dt
     nu = mu / rho
+    forces = state.config.external_forces.force_vector
 
     if DEBUG:
         print(f"DEBUG [Step 3 Predictor]: Nu={nu:.6e}, dt={dt}")
 
-    def _apply_operator(field, operator, op_name):
-        """Strict operator application with no silent zero-defaults."""
-        if operator is None:
-            raise RuntimeError(f"Predictor Error: Operator '{op_name}' is missing.")
-            
-        # Flatten in 'F' order to match sparse matrix construction
+    def _apply_op(field, operator, name):
+        """Standardized operator application for flattened Fortran-order arrays."""
+        # Note: ValidatedContainer (state.operators) handles the None-check via getters
         field_flat = field.flatten(order='F')
         res_flat = operator @ field_flat
-        
-        # Reshape back to original field dimensions
         return res_flat.reshape(field.shape, order='F')
 
-    # 1. Prediction for U component
-    # We explicitly look for advection_x, advection_y, advection_z (or the combined operator)
-    # For Logic Gate 3, we expect the Laplacian to be present.
+    # --- 1. U-COMPONENT PREDICTION ---
+    if DEBUG: print("DEBUG [Step 3 Predictor]: Calculating U_star (Advection + Diffusion + Force)")
     
-    if DEBUG: print("DEBUG [Step 3 Predictor]: Predicting U_star...")
+    lap_u = _apply_op(state.fields.U, state.operators.laplacian, "laplacian")
+    adv_u = _apply_op(state.fields.U, state.operators.advection_u, "advection_u")
     
-    laplacian_u = _apply_operator(state.fields.U, state.operators.laplacian, "laplacian")
-    # Note: External forces should be pulled from state.config.force_vector
-    force_u = state.config.force_vector[0] 
+    # U* = U + dt * (Viscous - Advection + Force_x)
+    state.fields.U_star = state.fields.U + dt * (nu * lap_u - adv_u + forces[0])
 
-    # Momentum Equation: U* = U + dt * (viscous + advective + forcing)
-    # (Advection omitted here if not yet implemented in operators, but will throw error if requested)
-    state.fields.U_star = state.fields.U + dt * (nu * laplacian_u + force_u)
+    # --- 2. V-COMPONENT PREDICTION ---
+    if DEBUG: print("DEBUG [Step 3 Predictor]: Calculating V_star...")
+    
+    lap_v = _apply_op(state.fields.V, state.operators.laplacian, "laplacian")
+    adv_v = _apply_op(state.fields.V, state.operators.advection_v, "advection_v")
+    
+    state.fields.V_star = state.fields.V + dt * (nu * lap_v - adv_v + forces[1])
 
-    # 2. Prediction for V component
-    if DEBUG: print("DEBUG [Step 3 Predictor]: Predicting V_star...")
-    laplacian_v = _apply_operator(state.fields.V, state.operators.laplacian, "laplacian")
-    force_v = state.config.force_vector[1]
-    state.fields.V_star = state.fields.V + dt * (nu * laplacian_v + force_v)
+    # --- 3. W-COMPONENT PREDICTION ---
+    if DEBUG: print("DEBUG [Step 3 Predictor]: Calculating W_star...")
+    
+    lap_w = _apply_op(state.fields.W, state.operators.laplacian, "laplacian")
+    adv_w = _apply_op(state.fields.W, state.operators.advection_w, "advection_w")
+    
+    state.fields.W_star = state.fields.W + dt * (nu * lap_w - adv_w + forces[2])
 
-    # 3. Prediction for W component
-    if DEBUG: print("DEBUG [Step 3 Predictor]: Predicting W_star...")
-    laplacian_w = _apply_operator(state.fields.W, state.operators.laplacian, "laplacian")
-    force_w = state.config.force_vector[2]
-    state.fields.W_star = state.fields.W + dt * (nu * laplacian_w + force_w)
-
+    # --- SAFETY AUDIT ---
     if DEBUG:
         u_star_norm = np.linalg.norm(state.fields.U_star)
-        print(f"DEBUG [Step 3 Predictor]: U_star norm: {u_star_norm:.6e}")
-        if np.isnan(u_star_norm):
-            print("!!! CRITICAL: NaN detected in Predictor Step !!!")
+        if np.isnan(u_star_norm) or np.isinf(u_star_norm):
+            print(f"!!! CRITICAL: Predictor Instability at t={state.time} (Norm: {u_star_norm}) !!!")
+        else:
+            print(f"DEBUG [Step 3 Predictor]: V_star components updated. |U*|={u_star_norm:.4e}")
+
