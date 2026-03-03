@@ -53,16 +53,16 @@ def test_scientific_mask_validation_error():
 def test_scientific_bc_lookup_mapping():
     """Rule 1.3: BC table must map locations and handle missing velocity components."""
     item = BoundaryConditionItem()
-    item.location = "west"
-    item.type = "inlet"
+    item.location = "x_min"
+    item.type = "inflow"
     item.values = {"u": 5.0, "p": 101325.0}
     bc_map = parse_bc_lookup([item])
     
-    assert "west" in bc_map
-    assert bc_map["west"]["u"] == 5.0
-    assert bc_map["west"]["v"] == 0.0, "Missing values must default to 0.0"
-    assert bc_map["west"]["p"] == 101325.0
-    assert bc_map["west"]["type"] == "inlet"
+    assert "x_min" in bc_map
+    assert bc_map["x_min"]["u"] == 5.0
+    assert bc_map["x_min"]["v"] == 0.0, "Missing values must default to 0.0"
+    assert bc_map["x_min"]["p"] == 101325.0
+    assert bc_map["x_min"]["type"] == "inflow"
 
 def test_scientific_staggered_memory_zeroed(sts_tolerance):
     """Zero-Debt Check: Memory must be pre-zeroed to machine precision."""
