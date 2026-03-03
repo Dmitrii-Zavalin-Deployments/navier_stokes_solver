@@ -94,4 +94,4 @@ def test_scientific_ppe_handshake(mock_config, fresh_state):
     
     # Check that the PPE solver's matrix is the same as the numerical operator
     assert state.ppe._A is state.operators.laplacian
-    assert state.ppe.preconditioner is None
+    assert state.ppe._preconditioner is None
