@@ -1,7 +1,6 @@
 # src/step2/operators.py
 
 import scipy.sparse as sp
-import numpy as np
 from src.solver_state import SolverState
 
 # Global Debug Toggle
