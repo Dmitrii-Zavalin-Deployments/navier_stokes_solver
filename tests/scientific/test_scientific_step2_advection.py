@@ -73,3 +73,25 @@ def test_scientific_advection_buffer_integrity():
     build_advection_stencils(state)
     # If weights weren't correctly filled, they should be exactly 0.0 from allocation
     np.testing.assert_array_equal(state.advection.weights, 0.0)
+# --- NEW SCIENTIFIC APPENDS: DEBUG & PRECISION ---
+
+def test_scientific_advection_full_debug_cycle(state_3d_small, capsys):
+    """Rule 2.1: Verify specific sequence in DEBUG prints (U, V, W)."""
+    build_advection_stencils(state_3d_small)
+    captured = capsys.readouterr().out
+    
+    # Check for the explicit mapping sequence
+    assert "Mapping 36 DOFs (U:12, V:12, W:12)" in captured
+    # Check for the Clamping/MinMax debug line
+    assert "Indices Min/Max: 0/7" in captured
+    # Check for the Mass Conservation debug line
+    assert "Weights check sum: 1.0000" in captured
+
+def test_scientific_advection_high_precision_ssot(state_3d_small):
+    """Rule 2.5: Verify SSoT preserves 15 decimal places (float64)."""
+    high_precision_val = 0.123456789012345
+    state_3d_small.config.advection_weight_base = high_precision_val
+    build_advection_stencils(state_3d_small)
+    
+    # Assert that no truncation occurred during the fill process
+    assert state_3d_small.advection.weights[0, 0] == high_precision_val
