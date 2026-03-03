@@ -14,11 +14,11 @@ class AttributeDict(dict):
 def state_predictor():
     """
     Fixture to set up a valid state for full predictor physics.
-    Uses AttributeDict to pass the 'isinstance(dict)' check while supporting dot access.
+    Ensures naming convention matches src/step3/predictor.py requirements.
     """
     state = SolverState()
     
-    # 1. Physics Setup - Satisfies isinstance(value, dict) in base_container.py
+    # 1. Physics Setup - Using AttributeDict to bypass strict dict checks while allowing dot access
     state.config.fluid_properties = AttributeDict({
         "density": 1000.0,
         "viscosity": 1.0
@@ -37,12 +37,22 @@ def state_predictor():
     state.fields._V = np.zeros((3, 4, 3))
     state.fields._W = np.zeros((3, 3, 4))
     
-    # 3. Operator Mocking
+    # 3. Operator Mocking - Crucial: Names must match predictor.py calls
     eye36 = sparse.eye(36, 36)
+    
+    # We attach these directly to state.operators so the 'advection_u' getter works
     state.operators._laplacian = eye36
     state.operators._advection_u = eye36
     state.operators._advection_v = eye36
     state.operators._advection_w = eye36
+    
+    # Some implementations of ValidatedContainer might require explicit attribute setting 
+    # if the internal __getattr__ logic isn't catching the private underscore versions.
+    # To be safe, we ensure the public names are also reachable:
+    setattr(state.operators, 'advection_u', eye36)
+    setattr(state.operators, 'advection_v', eye36)
+    setattr(state.operators, 'advection_w', eye36)
+    setattr(state.operators, 'laplacian', eye36)
     
     return state
 
@@ -53,11 +63,16 @@ def state_predictor():
 def test_predict_velocity_full_physics(state_predictor):
     from src.step3.predictor import predict_velocity
     predict_velocity(state_predictor)
+    # Expected: 1.0 + 0.1 * (0.001 * 1.0 - 1.0 + 1.0) = 1.0001
     assert np.allclose(state_predictor.fields.U_star, 1.0001)
 
 def test_predict_velocity_missing_operator(state_predictor):
     from src.step3.predictor import predict_velocity
+    # To trigger the 'Security Guard' RuntimeError, we must clear both public and private mocks
     state_predictor.operators._advection_u = None
+    if hasattr(state_predictor.operators, 'advection_u'):
+        delattr(state_predictor.operators, 'advection_u')
+        
     with pytest.raises(RuntimeError):
         predict_velocity(state_predictor)
 
