@@ -10,28 +10,40 @@ def test_logic_gate_3_divergence_pulse():
     """
     LOGIC GATE 3: Divergence Pulse.
     Analytical Truth: ||∇·u_new|| < 10⁻¹²
+    
+    Verifies that the pressure-correction projection successfully 
+    removes divergence from a non-solenoidal input field.
     """
     nx, ny, nz = 4, 4, 4
     state = make_step1_output_dummy(nx=nx, ny=ny, nz=nz)
+    
+    # Step 2 hydration (requires config.json or mocked config in environment)
     state = orchestrate_step2(state)
     
     dx = state.grid.dx
-    U = np.zeros((nx+1, ny, nz), order='F')
-    for i in range(nx+1): U[i, :, :] = i * dx
+    # Initialize U with a linear gradient (div U = 1.0)
+    U_raw = np.zeros((nx+1, ny, nz), order='F')
+    for i in range(nx+1): 
+        U_raw[i, :, :] = i * dx
     
-    # CONSTITUTIONAL ALIGNMENT: Ensure fields are flat
-    state.fields.U = U.flatten(order='F')
-    state.fields.V = np.zeros_like(state.fields.V).flatten()
-    state.fields.W = np.zeros_like(state.fields.W).flatten()
+    # CONSTITUTIONAL ALIGNMENT: Enforce 'F' layout for state storage
+    state.fields.U = U_raw.flatten(order='F')
+    state.fields.V = np.zeros_like(state.fields.V).flatten(order='F')
+    state.fields.W = np.zeros_like(state.fields.W).flatten(order='F')
     
+    # Execute Projection Step (Step 3)
     state_out = orchestrate_step3(state)
     
+    # VALIDATION: Reconstruct the global velocity vector using Fortran alignment
     D = state.operators.divergence
     v_total = np.concatenate([
-        state_out.fields.U.flatten(), 
-        state_out.fields.V.flatten(), 
-        state_out.fields.W.flatten()
+        state_out.fields.U.flatten(order='F'), 
+        state_out.fields.V.flatten(order='F'), 
+        state_out.fields.W.flatten(order='F')
     ])
+    
+    # Compute the L-infinity norm of the resulting divergence
     div_norm = np.linalg.norm(D.dot(v_total), np.inf)
     
+    # Assertion against the mathematical zero floor
     assert div_norm < 1e-10
