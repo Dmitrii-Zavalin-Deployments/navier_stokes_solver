@@ -32,6 +32,9 @@ def fresh_state():
     """Provides a SolverState with minimal valid grid geometry."""
     state = SolverState()
     state.grid.nx, state.grid.ny, state.grid.nz = 4, 4, 4
+    state.grid.x_min, state.grid.x_max = 0.0, 1.0
+    state.grid.y_min, state.grid.y_max = 0.0, 1.0
+    state.grid.z_min, state.grid.z_max = 0.0, 1.0
     state.config.advection_weight_base = 0.125
     return state
 
