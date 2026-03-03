@@ -83,3 +83,67 @@ def test_orchestrate_step3_zero_debt_history(state_orchestrator):
         # Should raise RuntimeError from the ValidatedContainer 'Security Guard'
         with pytest.raises(RuntimeError, match="Access Error: 'max_u'"):
             orchestrate_step3(state_orchestrator)
+
+## =========================================================
+## ADDITIONAL LOGIC & STATE INTEGRITY CHECKS
+## =========================================================
+
+def test_orchestrate_step3_state_identity(state_orchestrator):
+    """
+    Verify that the orchestrator returns the same state object (Referential Integrity).
+    """
+    from src.step3.orchestrate_step3 import orchestrate_step3
+    
+    with patch('src.step3.orchestrate_step3.predict_velocity'), \
+         patch('src.step3.orchestrate_step3.solve_pressure', return_value="converged"), \
+         patch('src.step3.orchestrate_step3.correct_velocity'):
+        
+        returned_state = orchestrate_step3(state_orchestrator)
+        assert returned_state is state_orchestrator
+
+def test_orchestrate_step3_ready_flag_integrity(state_orchestrator):
+    """
+    Verify that the 'ready_for_time_loop' flag is ONLY flipped after success.
+    """
+    from src.step3.orchestrate_step3 import orchestrate_step3
+    
+    # Initially False
+    state_orchestrator.ready_for_time_loop = False
+    
+    # Case 1: Failure - Flag should stay False
+    with patch('src.step3.orchestrate_step3.predict_velocity'), \
+         patch('src.step3.orchestrate_step3.solve_pressure', return_value="failed"):
+        
+        with pytest.raises(RuntimeError):
+            orchestrate_step3(state_orchestrator)
+        assert state_orchestrator.ready_for_time_loop is False
+    
+    # Case 2: Success - Flag should flip to True
+    with patch('src.step3.orchestrate_step3.predict_velocity'), \
+         patch('src.step3.orchestrate_step3.solve_pressure', return_value="converged"), \
+         patch('src.step3.orchestrate_step3.correct_velocity'):
+        
+        orchestrate_step3(state_orchestrator)
+        assert state_orchestrator.ready_for_time_loop is True
+
+def test_orchestrate_step3_history_matching_vitals(state_orchestrator):
+    """
+    Formula Check: Ensure values in history exactly match the health values at the time of recording.
+    Formula: state.history.div_norms[-1] == state.health.divergence_norm
+    """
+    from src.step3.orchestrate_step3 import orchestrate_step3
+    
+    # Set specific "vitals"
+    test_div = 5.67e-4
+    test_u_max = 12.34
+    state_orchestrator.health.divergence_norm = test_div
+    state_orchestrator.health.max_u = test_u_max
+    
+    with patch('src.step3.orchestrate_step3.predict_velocity'), \
+         patch('src.step3.orchestrate_step3.solve_pressure', return_value="converged"), \
+         patch('src.step3.orchestrate_step3.correct_velocity'):
+        
+        orchestrate_step3(state_orchestrator)
+        
+        assert state_orchestrator.history.divergence_norms[-1] == test_div
+        assert state_orchestrator.history.max_velocity_history[-1] == test_u_max
