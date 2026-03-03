@@ -1,4 +1,3 @@
-import os
 # src/main_solver.py
 
 import shutil
@@ -16,12 +15,15 @@ from src.step3.orchestrate_step3 import orchestrate_step3
 from src.step4.orchestrate_step4 import orchestrate_step4
 from src.step5.orchestrate_step5 import orchestrate_step5
 
-# Configure logging to stderr so it doesn't interfere with stdout path capture
+# Global Debug Toggle
+DEBUG = True
+
+# Configure logging
 logging.basicConfig(level=logging.INFO, stream=sys.stderr)
 logger = logging.getLogger(__name__)
 
 def run_solver_from_file(input_path: str) -> str:
-    """The Master Controller with Error Triage and Chronos Guard."""
+    """Master Controller: Orchestrates the pipeline with strict logic separation."""
     if not os.path.exists(input_path):
         raise FileNotFoundError(f"Input file missing at {input_path}")
 
@@ -29,67 +31,62 @@ def run_solver_from_file(input_path: str) -> str:
         with open(input_path, 'r') as f:
             raw_data = json.load(f)
         
+        # 1. INITIALIZATION
         input_container = SolverInput.from_dict(raw_data)
         state = orchestrate_step1(input_container)
         state = orchestrate_step2(state)
 
-        logger.info(f"🚀 Starting Simulation: Target Time = {state.config.total_time}s")
+        if DEBUG:
+            logger.info(f"🚀 Starting Simulation: {state.config.case_name}")
         
+        # 2. MAIN EXECUTION LOOP
         while state.ready_for_time_loop:
-            # Physics, Boundaries, and Export
+            # A. Physics & Boundaries (Steps 3 & 4)
             state = orchestrate_step3(state)
             state = orchestrate_step4(state)
-            state = orchestrate_step5(state)
             
-            # --- MANDATORY ODOMETER UPDATE ---
+            # B. ODOMETER UPDATE (Authority check happens after this)
             state.iteration += 1
             state.time += state.dt
-            # ---------------------------------
             
-            # THE CHRONOS GUARD: Prevent Infinite Loops
-            if float(state.time) >= float(state.config.total_time) - 1e-9:
-                state.ready_for_time_loop = False
+            # C. FINALIZATION & GUARD (Step 5)
+            # Step 5 now decides if state.ready_for_time_loop remains True
+            state = orchestrate_step5(state)
             
-            if state.iteration % 10 == 0:
-                logger.info(f"Iteration {state.iteration}: Time = {state.time:.4f}s")
+            if DEBUG and state.iteration % 10 == 0:
+                logger.info(f"Iter {state.iteration}: t={state.time:.4f}s | Div={state.health.divergence_norm:.2e}")
 
+        if DEBUG:
+            logger.info("DEBUG [Main]: Loop exit detected. Finalizing artifacts.")
+        
         return archive_simulation_artifacts(state)
 
-    except (json.JSONDecodeError, ValueError, KeyError) as e:
-        if isinstance(e, json.JSONDecodeError):
-            raise ValueError(f"Failed to parse input JSON: {str(e)}")
-        raise ValueError(f"Input data failed triage: {str(e)}")
     except Exception as e:
-        if "IO Error" in str(e): raise RuntimeError("ARCHIVE FAILURE")
-        if "Permission Denied" in str(e): raise RuntimeError("Unexpected error reading input file")
+        logger.error(f"FATAL PIPELINE ERROR: {str(e)}")
         raise RuntimeError(f"Solver Pipeline crashed: {str(e)}")
 
 def archive_simulation_artifacts(state: SolverState) -> str:
-    """Rule 4: SSoT Archiving. Creates a ZIP of all snapshots."""
+    """Rule 4: SSoT Archiving. Moves manifest snapshots into a single ZIP."""
     base_dir = Path(".")
-    zip_base_name = base_dir / "navier_stokes_output"
-    source_dir = Path(getattr(state.manifest, "output_directory", "output"))
-    if source_dir.exists():
-        shutil.rmtree(source_dir)
-    source_dir.mkdir(parents=True, exist_ok=True)
-    for snapshot in getattr(state.manifest, "saved_snapshots", []):
-        if os.path.exists(snapshot): shutil.copy2(snapshot, source_dir)
-    
+    zip_base_name = base_dir / f"navier_stokes_{state.config.case_name}_output"
+    source_dir = Path(state.manifest.output_directory)
+
+    # Final metadata capture
     state_json_path = source_dir / "final_state_snapshot.json"
     with open(state_json_path, "w") as f:
-        json.dump(state.to_json_safe(), f, default=lambda x: "<unserializable object>")
+        json.dump(state.to_json_safe(), f, indent=4)
     
-    return shutil.make_archive(str(zip_base_name), 'zip', str(source_dir))
+    result_path = shutil.make_archive(str(zip_base_name), 'zip', str(source_dir))
+    
+    if DEBUG:
+        logger.info(f"DEBUG [Main]: Artifact created: {result_path}")
+    
+    return result_path
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python src/main_solver.py <input_json_path>")
         sys.exit(1)
-    
     try:
-        # We print the result (ZIP path or Triage/Pipeline Failure message)
-        result = run_solver_from_file(sys.argv[1])
-        print(result) 
-    except Exception as e:
-        logger.error(f"FATAL PIPELINE ERROR: {str(e)}")
+        print(run_solver_from_file(sys.argv[1])) 
+    except Exception:
         sys.exit(1)

@@ -1,25 +1,30 @@
-# src/step5/orchestrate_step5_state.py
+# src/step5/orchestrate_step5.py
 
 from src.solver_state import SolverState
 from .archivist import record_snapshot
 from .chronos_guard import synchronize_terminal_state
 
+DEBUG = True
+
 def orchestrate_step5(state: SolverState) -> SolverState:
     """
     Step 5 Orchestrator: Finalization & I/O.
-    Point 1: Take Step 4 output.
-    Point 2: Run Archivist (I/O) and Chronos Guard (Sync).
-    Point 3: Return the "Gold Standard" state.
+    Ensures iteration data is saved and terminal conditions are evaluated.
     """
-    
-    # 1. Trigger I/O (Snapshots and Manifest)
-    # Only write if we hit the interval or the simulation is finished
+    if DEBUG and state.iteration % 10 == 0:
+        print(f"DEBUG [Step 5 Orchestrator]: Syncing Iteration {state.iteration}")
+
+    # 1. Record artifacts
     record_snapshot(state)
     
-    # 2. Check for simulation completion
+    # 2. Evaluate termination criteria (SSoT for time)
     synchronize_terminal_state(state)
     
-    # 3. Final Checkpoint naming
-    state.manifest.final_checkpoint = f"checkpoint_final_{state.iteration}.npy"
+    # 3. Dynamic Checkpoint naming
+    case_prefix = state.config.case_name
+    state.manifest.final_checkpoint = f"{case_prefix}_iter_{state.iteration}.npy"
     
+    if not state.ready_for_time_loop and DEBUG:
+        print("DEBUG [Step 5 Orchestrator]: >>> SIGNALING SIMULATION COMPLETION <<<")
+        
     return state
