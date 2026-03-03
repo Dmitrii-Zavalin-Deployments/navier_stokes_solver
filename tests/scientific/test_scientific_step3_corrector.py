@@ -13,6 +13,8 @@ def state_corrector():
     state = SolverState()
     from src.solver_input import FluidInput
     state.config._fluid_properties = FluidInput()
+    from src.solver_input import SimParamsInput
+    state.config._simulation_parameters = SimParamsInput()
     # 3x3x3 Grid
     state.grid.nx, state.grid.ny, state.grid.nz = 3, 3, 3
     state.grid.x_min, state.grid.x_max = 0.0, 0.3
@@ -21,7 +23,7 @@ def state_corrector():
     
     # Physics
     state.config.fluid_properties.density = 1000.0
-    state.dt = 0.01 # coeff = 1e-5
+    state.config.simulation_parameters.time_step = 0.01 # coeff = 1e-5
     
     # Initialize operators
     build_numerical_operators(state)
