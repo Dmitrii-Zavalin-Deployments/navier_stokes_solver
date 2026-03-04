@@ -13,6 +13,12 @@ class AttributeDict(dict):
 @pytest.fixture
 def state_solver():
     state = SolverState()
+    state.config._ppe_tolerance = 1e-6
+    state.config._ppe_atol = 1e-8
+    state.config._ppe_max_iter = 1000
+    return state
+    pass
+    state = SolverState()
     
     # 1. Config Setup (PPE Parameters)
     state.config.fluid_properties = AttributeDict({"density": 1000.0, "viscosity": 1.0})
@@ -90,6 +96,9 @@ def test_solver_cg_failure(state_solver, capsys):
     
     # Force CG failure by making A singular (all zeros)
     state_solver.ppe._A = sparse.csr_matrix((27, 27))
+    state_solver.config._ppe_tolerance = 1e-6
+    state_solver.config._ppe_atol = 1e-8
+    state_solver.config._ppe_max_iter = 1000
     
     status = solve_pressure(state_solver)
     

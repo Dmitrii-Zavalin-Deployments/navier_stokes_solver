@@ -27,14 +27,18 @@ def solve_pressure(state: SolverState) -> str:
     ])
     
     divergence = getattr(state.operators, "divergence", getattr(state.operators, "_divergence", None))
-    if divergence is None: raise RuntimeError("Access Error: divergence is uninitialized.")
+    if divergence is None: 
+        raise RuntimeError("Access Error: divergence is uninitialized.")
+    
     rhs = (rho / dt) * (divergence @ v_star_flat)
 
     # 2. DYNAMIC ANCHORING (No hardcoded index 0)
     # Find the first fluid cell index using the mask (1 = fluid)
     # We flatten the mask in 'F' order to match the operator indexing
     mask = getattr(state, "mask", getattr(state, "_mask", None))
-    if mask is None: raise RuntimeError("Access Error: Mask is uninitialized.")
+    if mask is None: 
+        raise RuntimeError("Access Error: Mask is uninitialized.")
+    
     mask_flat = mask.flatten(order="F")
     fluid_indices = np.where(mask_flat == 1)[0]
     
@@ -43,10 +47,15 @@ def solve_pressure(state: SolverState) -> str:
         return "failed"
     
     anchor_idx = fluid_indices[0] # Use the first real fluid cell found
-    ref_p = getattr(state.config, "initial_pressure", state.config._simulation_parameters.get("initial_pressure", 0.0)) 
+    
+    # Safely retrieve initial pressure without triggering property crashes
+    ref_p = getattr(state.config, "initial_pressure", 
+                    state.config._simulation_parameters.get("initial_pressure", 0.0)) 
     
     ppe_matrix = getattr(state.ppe, "_A", None)
-    if ppe_matrix is None: raise RuntimeError("Access Error: PPE matrix _A is uninitialized.")
+    if ppe_matrix is None: 
+        raise RuntimeError("Access Error: PPE matrix _A is uninitialized.")
+    
     A_pinned = ppe_matrix.copy()
     
     # Identify the row in the CSR matrix for the anchor index
@@ -59,6 +68,15 @@ def solve_pressure(state: SolverState) -> str:
 
     if DEBUG:
         print(f"DEBUG [Step 3 Solver]: Pressure anchored at Index {anchor_idx} (Fluid) with P={ref_p}")
+
+    # --- Numerical Parameter Retrieval ---
+    # Retrieve numerical parameters directly from private slots to avoid property-based crashes
+    ppe_tol = getattr(state.config, "_ppe_tolerance", None)
+    ppe_atol = getattr(state.config, "_ppe_atol", None)
+    ppe_max = getattr(state.config, "_ppe_max_iter", None)
+
+    if ppe_tol is None or ppe_atol is None or ppe_max is None:
+        raise RuntimeError("Access Error: PPE numerical parameters (tolerance/atol/max_iter) are uninitialized.")
 
     # 3. Linear Solve: AP = b
     p_flat, info = cg(
