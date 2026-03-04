@@ -11,22 +11,17 @@ class AttributeDict(dict):
 
 @pytest.fixture
 def state_audit():
-    """Fixture to mock a state with grid, health, and config for auditing."""
+    """Fixture to mock a state with a fully initialized grid for auditing."""
     state = SolverState()
     
-    # 1. Grid Mocking (10x10x10)
-    # Use private slots if properties lack setters
-    state.grid.nx, state.grid.ny, state.grid.nz = 10, 10, 10
+    # 1. Grid Mocking: Initialize private slots so properties can calculate dx/dy/dz
+    # To get dx = 0.1 with nx = 10, we need x_max - x_min = 1.0
+    state.grid._nx, state.grid._ny, state.grid._nz = 10, 10, 10
+    state.grid._x_min, state.grid._x_max = 0.0, 1.0
+    state.grid._y_min, state.grid._y_max = 0.0, 1.0
+    state.grid._z_min, state.grid._z_max = 0.0, 1.0
     
-    # Bypassing the 'no setter' error by targeting the private backing variable
-    if hasattr(state.grid, '_dx'):
-        state.grid._dx = 0.1
-    else:
-        # If no _dx slot exists, we mock the property via the instance __dict__ 
-        # or just ensure dx returns 0.1 via L/nx if those exist.
-        state.grid.L = 1.0 # dx = 1.0 / 10 = 0.1
-    
-    # 2. Config & Physics (Bypassing _get_safe)
+    # 2. Config & Physics (Bypassing _get_safe for solver_state logic)
     state.config._fluid_properties = AttributeDict({
         "density": 1000.0,
         "viscosity": 1.0
@@ -38,9 +33,11 @@ def state_audit():
     # 3. Health/Dynamics (Max velocity)
     state.health.max_u = 2.0
     
-    # 4. Diagnostics initialization
-    # If state.diagnostics is a frozen container, we replace the slot
+    # 4. Initialize diagnostics container as a mutable dict for the audit to write to
     state.diagnostics = AttributeDict()
+    
+    # Initialize the time step slot directly used by audit if max_u is 0
+    state._dt = 0.001
     
     return state
 
@@ -50,8 +47,8 @@ def test_audit_memory_calculation(state_audit):
     
     run_preflight_audit(state_audit)
     
-    # Expected: (12 * 12 * 12) * 8 * 8 / 1e9
-    # 1728 * 64 / 1e9 = 0.000110592
+    # Expected: (12 * 12 * 12) * 64 / 1e9
+    # 1728 * 64 / 1e9 = 0.110592 MB -> 0.000110592 GB
     expected_gb = (12 * 12 * 12 * 64) / 1e9
     assert pytest.approx(state_audit.diagnostics.memory_footprint_gb) == expected_gb
 
@@ -59,7 +56,9 @@ def test_audit_cfl_formula(state_audit):
     """Verifies CFL Stability: dt_limit = 0.5 * dx / max_u."""
     from src.step4.audit_diagnostics import run_preflight_audit
     
-    # dx=0.1, max_u=2.0 -> limit = 0.5 * 0.1 / 2.0 = 0.025
+    # dx = (1.0 - 0.0) / 10 = 0.1
+    # max_u = 2.0
+    # limit = 0.5 * 0.1 / 2.0 = 0.025
     run_preflight_audit(state_audit)
     
     assert state_audit.diagnostics.initial_cfl_dt == 0.025
@@ -76,7 +75,7 @@ def test_audit_diffusion_limit_logic(state_audit, capsys):
     assert "Diffusion dt Limit: 5.000000e+00" in captured
 
 def test_audit_fluid_at_rest(state_audit):
-    """Verifies that if max_u is 0, CFL defaults to the configured dt."""
+    """Verifies that if max_u is 0, CFL defaults to the state's current dt."""
     from src.step4.audit_diagnostics import run_preflight_audit
     
     state_audit.health.max_u = 0.0
@@ -89,13 +88,13 @@ def test_audit_warning_trigger(state_audit, capsys):
     """Ensures the warning prints if configured dt exceeds stability limits."""
     from src.step4.audit_diagnostics import run_preflight_audit
     
-    # Set dt = 1.0, which is > CFL limit (0.025)
-    state_audit.config._simulation_parameters.time_step = 1.0
+    # Modify state.dt to be dangerous
+    state._dt = 1.0 
     
     run_preflight_audit(state_audit)
     
     captured = capsys.readouterr().out
-    assert "WARNING: Configured dt (1.0) exceeds CFL limit" in captured
+    assert "!!! WARNING: Configured dt (1.0) exceeds CFL limit !!!" in captured
 
 def test_audit_debug_formatting(state_audit, capsys):
     """Checks for Rule 5 compliance in debug string output."""
@@ -104,5 +103,5 @@ def test_audit_debug_formatting(state_audit, capsys):
     run_preflight_audit(state_audit)
     captured = capsys.readouterr().out
     
-    assert "Auditing 10x10x10 grid" in captured
+    assert "DEBUG [Step 4 Audit]: Auditing 10x10x10 grid." in captured
     assert "Memory Footprint:" in captured
