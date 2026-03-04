@@ -43,7 +43,7 @@ def solve_pressure(state: SolverState) -> str:
         return "failed"
     
     anchor_idx = fluid_indices[0] # Use the first real fluid cell found
-    ref_p = state.config.initial_pressure 
+    ref_p = getattr(state.config, "initial_pressure", state.config._simulation_parameters.get("initial_pressure", 0.0)) 
     
     ppe_matrix = getattr(state.ppe, "_A", None)
     if ppe_matrix is None: raise RuntimeError("Access Error: PPE matrix _A is uninitialized.")
