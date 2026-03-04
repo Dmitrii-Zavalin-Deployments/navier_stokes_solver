@@ -26,7 +26,9 @@ def solve_pressure(state: SolverState) -> str:
         state.fields.W_star.flatten(order='F')
     ])
     
-    rhs = (rho / dt) * (state.operators.divergence @ v_star_flat)
+    divergence = getattr(state.operators, "divergence", getattr(state.operators, "_divergence", None))
+    if divergence is None: raise RuntimeError("Access Error: divergence is uninitialized.")
+    rhs = (rho / dt) * (divergence @ v_star_flat)
 
     # 2. DYNAMIC ANCHORING (No hardcoded index 0)
     # Find the first fluid cell index using the mask (1 = fluid)
@@ -41,7 +43,9 @@ def solve_pressure(state: SolverState) -> str:
     anchor_idx = fluid_indices[0] # Use the first real fluid cell found
     ref_p = state.config.initial_pressure 
     
-    A_pinned = state.ppe._A.copy()
+    ppe_matrix = getattr(state.ppe, "_A", None)
+    if ppe_matrix is None: raise RuntimeError("Access Error: PPE matrix _A is uninitialized.")
+    A_pinned = ppe_matrix.copy()
     
     # Identify the row in the CSR matrix for the anchor index
     r_start, r_end = A_pinned.indptr[anchor_idx], A_pinned.indptr[anchor_idx + 1]
