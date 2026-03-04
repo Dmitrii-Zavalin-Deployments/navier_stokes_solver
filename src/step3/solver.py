@@ -33,7 +33,7 @@ def solve_pressure(state: SolverState) -> str:
     # 2. DYNAMIC ANCHORING (No hardcoded index 0)
     # Find the first fluid cell index using the mask (1 = fluid)
     # We flatten the mask in 'F' order to match the operator indexing
-        mask = getattr(state, "mask", getattr(state, "_mask", None))
+    mask = getattr(state, "mask", getattr(state, "_mask", None))
     if mask is None: raise RuntimeError("Access Error: Mask is uninitialized.")
     mask_flat = mask.flatten(order="F")
     fluid_indices = np.where(mask_flat == 1)[0]
