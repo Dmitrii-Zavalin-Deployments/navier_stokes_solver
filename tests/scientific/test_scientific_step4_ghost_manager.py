@@ -104,3 +104,25 @@ def test_ghost_memory_order_consistency(state_internal_fields):
     
     assert np.isfortran(state_internal_fields.fields.P_ext)
     assert np.isfortran(state_internal_fields.fields.U_ext)
+
+def test_staggered_face_alignment(state_internal_fields):
+    """
+    Scientific check: Verifies that the (N+1)th face of the staggered 
+    velocity grid is correctly mapped to the second-to-last index of 
+    the (N+3) extended field.
+    """
+    from src.step4.ghost_manager import initialize_ghost_fields
+    
+    nx = state_internal_fields.grid.nx
+    # Mark the very last face of the interior U-velocity
+    # In a 4x4x4 grid, U has 5 faces on the X-axis (index 0 to 4)
+    state_internal_fields.fields.U[nx, 0, 0] = 8.88 
+    
+    initialize_ghost_fields(state_internal_fields)
+    U_ext = state_internal_fields.fields.U_ext
+    
+    # In U_ext (shape 7), the mapping 1:-1 covers indices 1, 2, 3, 4, 5.
+    # The value 8.88 should be at index nx+1 (which is index 5)
+    assert U_ext[nx + 1, 1, 1] == 8.88
+    # The final ghost index (nx + 2, which is index 6) should be 0.0
+    assert U_ext[nx + 2, 1, 1] == 0.0
