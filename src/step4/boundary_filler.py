@@ -24,6 +24,7 @@ def fill_ghost_boundaries(state: SolverState) -> None:
             raise RuntimeError(f"Boundary Error: No configuration found for face {face_name}")
 
         bc_type = config["type"]
+        if DEBUG: print(f"DEBUG [Step 4 Boundary]: Applying {bc_type} to {face_name}")
         
         # Pressure logic for the current axis
         if bc_type == "pressure":
