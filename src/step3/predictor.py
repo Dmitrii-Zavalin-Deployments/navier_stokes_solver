@@ -25,42 +25,44 @@ def predict_velocity(state: SolverState) -> None:
 
     def _apply_op(field, operator, name):
         """Standardized operator application for flattened Fortran-order arrays."""
-        # Note: ValidatedContainer (state.operators) handles the None-check via getters
         field_flat = field.flatten(order='F')
-        if operator is None: raise RuntimeError(f"Access Error: {name} is uninitialized.")
+        if operator is None: 
+            raise RuntimeError(f"Access Error: {name} is uninitialized.")
         res_flat = operator @ field_flat
         return res_flat.reshape(field.shape, order='F')
 
-    # --- 1. U-COMPONENT PREDICTION ---
-    if DEBUG: print("DEBUG [Step 3 Predictor]: Calculating U_star (Advection + Diffusion + Force)")
-    
-    lap_u = _apply_op(state.fields.U, getattr(state.operators, "laplacian", getattr(state.operators, "_laplacian", None)), "laplacian")
-    adv_u = _apply_op(state.fields.U, getattr(state.operators, "advection_u", getattr(state.operators, "_advection_u", None)), "advection_u")
-    
-    # U* = U + dt * (Viscous - Advection + Force_x)
-    state.fields.U_star = state.fields.U + dt * (nu * lap_u - adv_u + forces[0])
+    # Wrap the entire physics block to handle expected NaNs during instability tests
+    with np.errstate(invalid="ignore", over="ignore"):
+        # --- 1. U-COMPONENT PREDICTION ---
+        if DEBUG: print("DEBUG [Step 3 Predictor]: Calculating U_star (Advection + Diffusion + Force)")
+        
+        lap_u = _apply_op(state.fields.U, getattr(state.operators, "laplacian", getattr(state.operators, "_laplacian", None)), "laplacian")
+        adv_u = _apply_op(state.fields.U, getattr(state.operators, "advection_u", getattr(state.operators, "_advection_u", None)), "advection_u")
+        
+        # U* = U + dt * (Viscous - Advection + Force_x)
+        state.fields.U_star = state.fields.U + dt * (nu * lap_u - adv_u + forces[0])
 
-    # --- 2. V-COMPONENT PREDICTION ---
-    if DEBUG: print("DEBUG [Step 3 Predictor]: Calculating V_star...")
-    
-    lap_v = _apply_op(state.fields.V, getattr(state.operators, "laplacian", getattr(state.operators, "_laplacian", None)), "laplacian")
-    adv_v = _apply_op(state.fields.V, getattr(state.operators, "advection_v", getattr(state.operators, "_advection_v", None)), "advection_v")
-    
-    state.fields.V_star = state.fields.V + dt * (nu * lap_v - adv_v + forces[1])
+        # --- 2. V-COMPONENT PREDICTION ---
+        if DEBUG: print("DEBUG [Step 3 Predictor]: Calculating V_star...")
+        
+        lap_v = _apply_op(state.fields.V, getattr(state.operators, "laplacian", getattr(state.operators, "_laplacian", None)), "laplacian")
+        adv_v = _apply_op(state.fields.V, getattr(state.operators, "advection_v", getattr(state.operators, "_advection_v", None)), "advection_v")
+        
+        state.fields.V_star = state.fields.V + dt * (nu * lap_v - adv_v + forces[1])
 
-    # --- 3. W-COMPONENT PREDICTION ---
-    if DEBUG: print("DEBUG [Step 3 Predictor]: Calculating W_star...")
-    
-    lap_w = _apply_op(state.fields.W, getattr(state.operators, "laplacian", getattr(state.operators, "_laplacian", None)), "laplacian")
-    adv_w = _apply_op(state.fields.W, getattr(state.operators, "advection_w", getattr(state.operators, "_advection_w", None)), "advection_w")
-    
-    state.fields.W_star = state.fields.W + dt * (nu * lap_w - adv_w + forces[2])
+        # --- 3. W-COMPONENT PREDICTION ---
+        if DEBUG: print("DEBUG [Step 3 Predictor]: Calculating W_star...")
+        
+        lap_w = _apply_op(state.fields.W, getattr(state.operators, "laplacian", getattr(state.operators, "_laplacian", None)), "laplacian")
+        adv_w = _apply_op(state.fields.W, getattr(state.operators, "advection_w", getattr(state.operators, "_advection_w", None)), "advection_w")
+        
+        state.fields.W_star = state.fields.W + dt * (nu * lap_w - adv_w + forces[2])
 
     # --- SAFETY AUDIT ---
     if DEBUG:
+        # We calculate the norm after the protected 'with' block to trigger our own logging
         u_star_norm = np.linalg.norm(state.fields.U_star)
         if np.isnan(u_star_norm) or np.isinf(u_star_norm):
             print(f"!!! CRITICAL: Predictor Instability at t={state.time} (Norm: {u_star_norm}) !!!")
         else:
             print(f"DEBUG [Step 3 Predictor]: V_star components updated. |U*|={u_star_norm:.4e}")
-
