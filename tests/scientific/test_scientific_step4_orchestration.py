@@ -12,29 +12,35 @@ class MockDiagnostics(dict):
 
 @pytest.fixture
 def state_pre_orchestration():
-    """Sets up a fully-dimensioned state for orchestration testing."""
+    """Sets up a fully-dimensioned and physically-defined state."""
     state = SolverState()
     
-    # 1. Initialize Grid (Required for dx/dy/dz calculations)
+    # 1. Initialize Grid (for dx/dy/dz)
     state.grid._nx, state.grid._ny, state.grid._nz = 3, 3, 3
     state.grid._x_min, state.grid._x_max = 0.0, 1.0
     state.grid._y_min, state.grid._y_max = 0.0, 1.0
     state.grid._z_min, state.grid._z_max = 0.0, 1.0
     
-    # 2. Initialize Health (Required for CFL audit)
-    # We set a max_u of 1.0 so the CFL calculation is 1/3 (approx 0.33)
+    # 2. Initialize Health (for max_u)
     state.health._max_u = 1.0
     state.health._is_stable = True
     
+    # 3. Initialize Fluid Properties (for Diffusion/Viscosity audit)
+    # This prevents the 'fluid_properties' Access Error
+    state.config._fluid_properties = {
+        "viscosity": 0.01,
+        "density": 1.0
+    }
+    
     state.time = 0.5
     
-    # 3. Initialize interior fields (Required for Ghost Mapping)
+    # 4. Initialize interior fields
     state.fields.P = np.ones((3, 3, 3))
     state.fields.U = np.ones((4, 3, 3))
     state.fields.V = np.ones((3, 4, 3))
     state.fields.W = np.ones((3, 3, 4))
     
-    # 4. Setup BC Lookup
+    # 5. Setup BC Lookup
     state.bc_lookup = {
         "x_min": {"type": "wall"}, "x_max": {"type": "wall"},
         "y_min": {"type": "wall"}, "y_max": {"type": "wall"},
