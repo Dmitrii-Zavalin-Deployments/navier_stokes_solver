@@ -7,16 +7,7 @@ from src.solver_state import SolverState
 
 @pytest.fixture
 def state_3d_small():
-    state = SolverState()
-    state.grid.nx, state.grid.ny, state.grid.nz = 2, 2, 2
-    # Full hydration following the no-default policy
-    state.config.simulation_parameters = {
-        "time_step": 0.01,
-        "total_time": 1.0,
-        "output_interval": 10,
-        "advection_weight_base": 0.125
-    }
-    return state
+    return make_step1_output_dummy(nx=2, ny=2, nz=2)
 
 def test_scientific_advection_dof_handshake(state_3d_small, capsys):
     """Rule 2.1: Verify total DOF count and Debug Handshake prints."""
@@ -134,19 +125,27 @@ def test_scientific_advection_ssot_propagation(state_3d_small):
     Rule 2.6: Verify exact propagation of the weight value from 
     SolverState.config into AdvectionStructure weights.
     """
-    # Define a specific non-default weight to avoid ambiguity
+    # 1. Define the test value
     test_val = 0.0625
-    state_3d_small.config.advection_weight_base = test_val
     
-    # Execute the build logic
+    # 2. Re-hydrate the full configuration to ensure all required fields are present
+    # This satisfies the 'No-Default' policy and avoids needing a setter
+    state_3d_small.config.simulation_parameters = {
+        "time_step": 0.01,
+        "total_time": 1.0,
+        "output_interval": 10,
+        "advection_weight_base": test_val
+    }
+    
+    # 3. Execute the build logic
     build_advection_stencils(state_3d_small)
     
-    # Assert that the weights buffer contains exactly the value 
+    # 4. Assert that the weights buffer contains exactly the value 
     # stored in the config facade
     actual_weights = state_3d_small.advection.weights
     
     assert np.allclose(actual_weights, test_val), \
         f"Weight mismatch! Expected {test_val}, got {actual_weights[0, 0]}"
     
-    # Verify the handshake: the facade is indeed returning what we set
+    # 5. Verify the handshake: the facade is indeed returning what we set
     assert state_3d_small.config.advection_weight_base == test_val
