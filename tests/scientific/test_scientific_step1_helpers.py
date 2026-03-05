@@ -75,3 +75,29 @@ def test_scientific_staggered_memory_zeroed(sts_tolerance):
             rtol=sts_tolerance["rtol"],
             err_msg=f"Field {name} has residual garbage data"
         )
+
+def test_scientific_bc_lookup_3d_completeness():
+    """Rule 1.3 Ext: Verify W-component and full float conversion."""
+    item = BoundaryConditionItem()
+    item.location = "z_max"
+    item.type = "moving_wall"
+    item.values = {"w": -1.5} # Testing negative velocity and W-axis
+    bc_map = parse_bc_lookup([item])
+    
+    assert bc_map["z_max"]["w"] == -1.5
+    assert isinstance(bc_map["z_max"]["w"], float)
+
+def test_scientific_mask_multi_value_preservation():
+    """Verify that the int8 mask preserves non-binary markers (e.g., obstacles)."""
+    grid = create_scientific_grid(2, 1, 1)
+    # 0 = Void, 1 = Fluid, -1 = Boundary, 2 = Inflow/Outflow marker
+    data = [1, 2] 
+    mask_3d, _, _ = generate_3d_masks(data, grid)
+    assert mask_3d[1, 0, 0] == 2, "Mask value '2' was corrupted during reconstruction"
+
+def test_scientific_step1_debug_handshake(capsys):
+    """Verify the shape handshake in the debug logs."""
+    grid = create_scientific_grid(2, 3, 4)
+    allocate_staggered_fields(grid)
+    captured = capsys.readouterr().out
+    assert "U-Face (East-West):   (3, 3, 4)" in captured # nx+1 = 3
