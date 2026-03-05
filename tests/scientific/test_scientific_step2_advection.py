@@ -95,3 +95,19 @@ def test_scientific_advection_high_precision_ssot(state_3d_small):
     
     # Assert that no truncation occurred during the fill process
     assert state_3d_small.advection.weights[0, 0] == high_precision_val
+
+def test_scientific_advection_internal_stencil_uniqueness(state_3d_small):
+    """
+    Scientific check: For an internal node, the stencil must point to 
+    8 distinct neighbors (no collapsed corners).
+    """
+    # Use 3x3x3 to ensure we have a true "internal" cell at (1,1,1)
+    state_3d_small.grid.nx, state_3d_small.grid.ny, state_3d_small.grid.nz = 3, 3, 3
+    build_advection_stencils(state_3d_small)
+    
+    # Locate a U-node that is far from boundaries
+    # Calculation: find an index in the middle of the U-range
+    indices = state_3d_small.advection.indices
+    internal_u_stencil = indices[14] # Purely internal sample
+    
+    assert len(np.unique(internal_u_stencil)) == 8, "Internal stencil has collapsed indices!"
