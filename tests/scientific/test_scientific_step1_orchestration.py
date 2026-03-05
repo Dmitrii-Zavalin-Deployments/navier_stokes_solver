@@ -7,7 +7,7 @@ from src.step1.orchestrate_step1 import orchestrate_step1
 def test_scientific_orchestration_mapping(base_input):
     base_input.grid.nx, base_input.grid.ny, base_input.grid.nz = 4, 4, 4
     # Manually update the mask to match the new volume
-    base_input.mask = [1] * 64 
+    base_input.mask.data = [1] * 64
     state = orchestrate_step1(base_input)
     
     # Verify Geometry
