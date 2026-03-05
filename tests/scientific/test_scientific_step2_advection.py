@@ -7,11 +7,15 @@ from src.solver_state import SolverState
 
 @pytest.fixture
 def state_3d_small():
-    """Setup a minimal 2x2x2 grid for exact index tracking."""
     state = SolverState()
     state.grid.nx, state.grid.ny, state.grid.nz = 2, 2, 2
-    # Standard trilinear interpolation usually sums to 1.0 or uses base weights
-    state.config.advection_weight_base = 0.125 
+    # Full hydration following the no-default policy
+    state.config.simulation_parameters = {
+        "time_step": 0.01,
+        "total_time": 1.0,
+        "output_interval": 10,
+        "advection_weight_base": 0.125
+    }
     return state
 
 def test_scientific_advection_dof_handshake(state_3d_small, capsys):
