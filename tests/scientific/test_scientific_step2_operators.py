@@ -113,3 +113,27 @@ def test_scientific_operator_orthogonality(state_3d_small):
     # idx_w = i + j*nx + k*nx*ny = 1 + 1*3 + 1*9 = 13
     assert Gz[13, 13] == pytest.approx(10.0) # P(1,1,1)
     assert Gz[13, 4] == pytest.approx(-10.0) # P(1,1,0)
+
+def test_scientific_laplacian_symmetry(state_3d_small):
+    """Rule 2.8: Verify L is symmetric (essential for CG solvers)."""
+    build_numerical_operators(state_3d_small)
+    L = state_3d_small.operators.laplacian
+    
+    # Check a few off-diagonal elements
+    # If L[i, j] exists, L[j, i] must be identical
+    diff = (L - L.T)
+    # Check the norm of the difference
+    assert diff.nnz == 0 or np.allclose(diff.data, 0, atol=1e-10), "Laplacian is not symmetric!"
+
+def test_scientific_laplacian_conservation(state_3d_small):
+    """Rule 2.9: Every row of L must sum to 0 (Compatibility Condition)."""
+    build_numerical_operators(state_3d_small)
+    L = state_3d_small.operators.laplacian
+    
+    # Sum across columns for each row
+    row_sums = np.array(L.sum(axis=1)).flatten()
+    
+    # In a pure Neumann setup, all rows sum to 0.
+    # Note: If you have a Dirichlet point for pressure, one row will be different.
+    # For now, we check if the internal nodes follow conservation.
+    assert np.allclose(row_sums, 0, atol=1e-10), f"Laplacian rows do not sum to zero: {row_sums}"
