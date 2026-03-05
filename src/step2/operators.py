@@ -1,6 +1,7 @@
 # src/step2/operators.py
 
 import scipy.sparse as sp
+import numpy as np
 from src.solver_state import SolverState
 
 # Global Debug Toggle
@@ -72,23 +73,27 @@ def build_numerical_operators(state: SolverState) -> None:
     if DEBUG:
         print(f"DEBUG [Step 2]: Divergence matrix built. Shape: {D.shape}, nnz: {D.nnz}")
 
-    # --- 3. BUILD COMPOSITE LAPLACIAN (L = D * G) ---
+    # --- 3. COMPOSITE & CONSTRAIN ---
     state.operators.grad_x = Gx.tocsr()
     state.operators.grad_y = Gy.tocsr()
     state.operators.grad_z = Gz.tocsr()
     state.operators.divergence = D.tocsr()
 
     G_total = sp.vstack([state.operators.grad_x, state.operators.grad_y, state.operators.grad_z])
-    
     if DEBUG:
         print(f"DEBUG [Step 2]: Global Gradient V-Stack shape: {G_total.shape}")
-
-    state.operators.laplacian = state.operators.divergence @ G_total
     
-    if DEBUG:
-        nnz_L = state.operators.laplacian.nnz
-        print(f"DEBUG [Step 2]: Laplacian (D@G) nnz: {nnz_L}")
-        if nnz_L == 0:
-            print("!!! CRITICAL: Laplacian is empty. Check DOF mapping !!!")
+    # L = D @ G
+    L_raw = state.operators.divergence @ G_total
 
+    # CRITICAL: Pin p[0,0,0] to 0 to remove the Neumann nullspace singularity.
+    # Without this, the pressure level can drift to infinity.
+    L_fixed = L_raw.tolil()
+    L_fixed[0, :] = 0
+    L_fixed[0, 0] = 1.0
+    
+    state.operators.laplacian = L_fixed.tocsr()
     state.ppe._A = state.operators.laplacian
+
+    if DEBUG:
+        print(f"DEBUG [Step 2]: Laplacian nnz: {state.operators.laplacian.nnz}")
