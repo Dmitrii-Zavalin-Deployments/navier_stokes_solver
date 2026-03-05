@@ -1,46 +1,31 @@
-# # tests/scientific/test_scientific_step1_orchestration.py
+# tests/scientific/test_scientific_step1_orchestration.py
 
 import pytest
 import numpy as np
 from src.step1.orchestrate_step1 import orchestrate_step1
-from src.solver_input import SolverInput
 
-def create_scientific_input():
-    """Uses the official from_dict factory to ensure valid hydration."""
-    data = {
-        "grid": {
-            "nx": 4, "ny": 4, "nz": 4,
-            "x_min": 0.0, "x_max": 1.0,
-            "y_min": 0.0, "y_max": 1.0,
-            "z_min": 0.0, "z_max": 1.0
-        },
-        "fluid_properties": {"density": 1000.0, "viscosity": 0.001},
-        "initial_conditions": {"pressure": 101325.0, "velocity": [1.0, 0.0, 0.0]},
-        "external_forces": {"force_vector": [0.0, -9.81, 0.0]},
-        "boundary_conditions": [
-            {"location": "x_min", "type": "inflow", "values": {"u": 1.0}}
-        ],
-        "mask": [1] * 64
-    }
-    return SolverInput.from_dict(data)
-
-def test_scientific_orchestration_mapping():
+def test_scientific_orchestration_mapping(base_input):
     """Verify the orchestrator correctly maps Input to State."""
-    inp = create_scientific_input()
-    state = orchestrate_step1(inp)
+    # Use base_input and override specific test requirements
+    base_input.grid.nx, base_input.grid.ny, base_input.grid.nz = 4, 4, 4
+    
+    state = orchestrate_step1(base_input)
     
     # Verify Geometry
     assert state.grid.nx == 4
     assert state.grid.x_max == 1.0
     
-    # Verify Physics
-    assert state.fluid.rho == 1000.0
-    assert state.fluid.mu == 0.001
+    # Verify Physics (Accessing attributes via state object)
+    assert state.fluid.rho == base_input.fluid_properties.density
+    assert state.fluid.mu == base_input.fluid_properties.viscosity
 
-def test_scientific_field_initialization():
+def test_scientific_field_initialization(base_input):
     """Verify staggered fields are allocated and primed with ICs."""
-    inp = create_scientific_input()
-    state = orchestrate_step1(inp)
+    base_input.grid.nx, base_input.grid.ny, base_input.grid.nz = 4, 4, 4
+    base_input.initial_conditions.pressure = 101325.0
+    base_input.initial_conditions.velocity = [1.0, 0.0, 0.0]
+    
+    state = orchestrate_step1(base_input)
     
     # Harlow-Welch Staggering Check
     assert state.fields.U.shape == (5, 4, 4)
@@ -52,39 +37,35 @@ def test_scientific_field_initialization():
     np.testing.assert_allclose(state.fields.U, 1.0)
     assert state.fields.P.dtype == np.float64
 
-def test_scientific_audit_firewall():
+def test_scientific_audit_firewall(base_input):
     """Verify the _final_audit catches non-physical values."""
-    inp = create_scientific_input()
-    # Reach into the hydrated object to inject a physical error
-    inp.initial_conditions.velocity = [np.nan, 0.0, 0.0] 
+    base_input.initial_conditions.velocity = [np.nan, 0.0, 0.0] 
     
     with pytest.raises(ValueError, match="Audit Failed: Non-finite values"):
-        orchestrate_step1(inp)
+        orchestrate_step1(base_input)
 
-def test_scientific_restart_metadata():
+def test_scientific_restart_metadata(base_input):
     """Verify that kwargs correctly override default time/iteration for restarts."""
-    inp = create_scientific_input()
-    state = orchestrate_step1(inp, iteration=50, time=0.123)
+    state = orchestrate_step1(base_input, iteration=50, time=0.123)
     
     assert state.iteration == 50
     assert state.time == 0.123
 
-def test_scientific_mask_integrity():
+def test_scientific_mask_integrity(base_input):
     """Verify that the topology masks are correctly derived and typed."""
-    inp = create_scientific_input()
-    state = orchestrate_step1(inp)
+    base_input.grid.nx, base_input.grid.ny, base_input.grid.nz = 4, 4, 4
+    state = orchestrate_step1(base_input)
     
     # Shape check
     assert state.masks.is_fluid.shape == (4, 4, 4)
-    # Type check (Should be boolean for efficient masking)
+    # Type check
     assert state.masks.is_fluid.dtype == bool
-    # Content check (Assuming [1]*64 in create_scientific_input)
     assert np.all(state.masks.is_fluid)
 
-def test_scientific_audit_rho_guard():
+def test_scientific_audit_rho_guard(base_input):
     """Verify the firewall catches non-physical fluid properties."""
-    inp = create_scientific_input()
-    inp.fluid_properties._density = -5.0
+    # Assuming internal access or public setter for validation tests
+    base_input.fluid_properties.density = -5.0
     
     with pytest.raises(ValueError, match="Audit Failed: Non-physical density"):
-        orchestrate_step1(inp)
+        orchestrate_step1(base_input)
