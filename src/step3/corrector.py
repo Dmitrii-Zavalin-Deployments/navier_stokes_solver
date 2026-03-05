@@ -10,8 +10,8 @@ def correct_velocity(state: SolverState) -> None:
     """
     Step 3.3: Projection/Correction.
     V_new = V* - (dt/rho) * grad(P)
-    Rule 5 Compliance: Explicit calculation, no silent failures, no defaults.
     """
+    # These use the Facade properties in SolverState (self.config.dt / self.config.density)
     rho = state.density
     dt = state.dt
     coeff = dt / rho
@@ -19,13 +19,13 @@ def correct_velocity(state: SolverState) -> None:
     if DEBUG:
         print(f"DEBUG [Step 3 Corrector]: Applying correction with coeff (dt/rho)={coeff:.6e}")
 
-    # Ensure pressure is flattened in Fortran order for matrix-vector product
+    # Rule 5: Fortran-style flattening for matrix-vector compatibility
     p_flat = state.fields.P.flatten(order='F')
 
     # 1. APPLY CORRECTION
-    # grad_p components must be reshaped back to staggered grid dimensions in 'F' order
+    # grad_p components reshaped back to staggered grid in 'F' order
     
-    # Update U
+    # Update U (Uses state.operators.grad_x)
     grad_p_x_flat = state.operators.grad_x @ p_flat
     state.fields.U = state.fields.U_star - coeff * grad_p_x_flat.reshape(state.fields.U.shape, order='F')
 
@@ -38,20 +38,21 @@ def correct_velocity(state: SolverState) -> None:
     state.fields.W = state.fields.W_star - coeff * grad_p_z_flat.reshape(state.fields.W.shape, order='F')
 
     if DEBUG:
-        print(f"DEBUG [Step 3 Corrector]: Max Grad P: {np.max(np.abs(grad_p_x_flat)):.4e}")
+        max_grad = max(np.max(np.abs(grad_p_x_flat)), 
+                       np.max(np.abs(grad_p_y_flat)), 
+                       np.max(np.abs(grad_p_z_flat)))
+        print(f"DEBUG [Step 3 Corrector]: Max Grad P: {max_grad:.4e}")
 
     # 2. UPDATE HEALTH VITALS
-    # Global velocity vector concatenation in 'F' order
     v_new_flat = np.concatenate([
         state.fields.U.flatten(order='F'), 
         state.fields.V.flatten(order='F'), 
         state.fields.W.flatten(order='F')
     ])
     
-    # Calculate residual divergence: D @ V_new
     div_new = state.operators.divergence @ v_new_flat
     
-    # Final metrics calculation
+    # Update health metrics via the ValidatedContainer setters
     state.health.divergence_norm = float(np.linalg.norm(div_new, np.inf))
     state.health.post_correction_divergence_norm = state.health.divergence_norm
     
