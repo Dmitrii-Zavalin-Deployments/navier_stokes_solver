@@ -26,99 +26,185 @@
         "nz"
       ],
       "properties": {
-        "x_min": { "type": "number" },
-        "x_max": { "type": "number" },
-        "y_min": { "type": "number" },
-        "y_max": { "type": "number" },
-        "z_min": { "type": "number" },
-        "z_max": { "type": "number" },
-        "nx": { "type": "integer", "minimum": 1 },
-        "ny": { "type": "integer", "minimum": 1 },
-        "nz": { "type": "integer", "minimum": 1 }
+        "x_min": {
+          "type": "number"
+        },
+        "x_max": {
+          "type": "number"
+        },
+        "y_min": {
+          "type": "number"
+        },
+        "y_max": {
+          "type": "number"
+        },
+        "z_min": {
+          "type": "number"
+        },
+        "z_max": {
+          "type": "number"
+        },
+        "nx": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "ny": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "nz": {
+          "type": "integer",
+          "minimum": 1
+        }
       }
     },
-
     "fluid_properties": {
       "type": "object",
-      "required": ["density", "viscosity"],
+      "required": [
+        "density",
+        "viscosity"
+      ],
       "properties": {
-        "density": { "type": "number", "exclusiveMinimum": 0 },
-        "viscosity": { "type": "number", "minimum": 0 }
+        "density": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "viscosity": {
+          "type": "number",
+          "minimum": 0
+        }
       }
     },
-
     "initial_conditions": {
       "type": "object",
-      "required": ["velocity", "pressure"],
+      "required": [
+        "velocity",
+        "pressure"
+      ],
       "properties": {
         "velocity": {
           "type": "array",
-          "items": { "type": "number" },
+          "items": {
+            "type": "number"
+          },
           "minItems": 3,
           "maxItems": 3
         },
-        "pressure": { "type": "number" }
+        "pressure": {
+          "type": "number"
+        }
       }
     },
-
     "simulation_parameters": {
       "type": "object",
-      "required": ["time_step", "total_time", "output_interval"],
+      "required": [
+        "time_step",
+        "total_time",
+        "output_interval"
+      ],
       "properties": {
-        "time_step": { "type": "number", "exclusiveMinimum": 0 },
-        "total_time": { "type": "number", "exclusiveMinimum": 0 },
-        "output_interval": { "type": "integer", "minimum": 1 }
+        "time_step": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "total_time": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "output_interval": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "advection_weight_base": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Interpolation bias: 0.125 = Standard Central Differencing (2nd order, oscillatory); 1.0 = Pure Upwind/Node-injection (1st order, highly diffusive/stable); 0.0 = Nullified advection (used for pure diffusion or static field tests)."
+        }
       }
     },
-
     "boundary_conditions": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["location", "type"],
+        "required": [
+          "location",
+          "type"
+        ],
         "properties": {
           "location": {
             "type": "string",
-            "enum": ["x_min", "x_max", "y_min", "y_max", "z_min", "z_max"]
+            "enum": [
+              "x_min",
+              "x_max",
+              "y_min",
+              "y_max",
+              "z_min",
+              "z_max"
+            ]
           },
           "type": {
             "type": "string",
-            "enum": ["no-slip", "free-slip", "inflow", "outflow", "pressure"]
+            "enum": [
+              "no-slip",
+              "free-slip",
+              "inflow",
+              "outflow",
+              "pressure"
+            ]
           },
           "values": {
             "type": "object",
             "properties": {
-              "u": { "type": "number" },
-              "v": { "type": "number" },
-              "w": { "type": "number" },
-              "p": { "type": "number" }
+              "u": {
+                "type": "number"
+              },
+              "v": {
+                "type": "number"
+              },
+              "w": {
+                "type": "number"
+              },
+              "p": {
+                "type": "number"
+              }
             }
           },
-          "comment": { "type": "string" }
+          "comment": {
+            "type": "string"
+          }
         }
       }
     },
-
     "mask": {
       "type": "array",
       "description": "Flat mask of length nx*ny*nz using canonical flattening: i + nx*(j + ny*k). Values: 1 = fluid, 0 = solid, -1 = boundary-fluid.",
       "items": {
         "type": "integer",
-        "enum": [-1, 0, 1]
+        "enum": [
+          -1,
+          0,
+          1
+        ]
       }
     },
-
     "external_forces": {
       "type": "object",
-      "required": ["force_vector"],
+      "required": [
+        "force_vector"
+      ],
       "properties": {
         "force_vector": {
           "type": "array",
-          "items": { "type": "number" },
+          "items": {
+            "type": "number"
+          },
           "minItems": 3,
           "maxItems": 3
         },
-        "comment": { "type": "string" }
+        "comment": {
+          "type": "string"
+        }
       }
     }
   }
