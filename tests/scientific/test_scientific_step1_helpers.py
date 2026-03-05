@@ -80,7 +80,7 @@ def test_scientific_bc_lookup_3d_completeness():
     """Rule 1.3 Ext: Verify W-component and full float conversion."""
     item = BoundaryConditionItem()
     item.location = "z_max"
-    item.type = "moving_wall"
+    item.type = "no-slip"
     item.values = {"w": -1.5} # Testing negative velocity and W-axis
     bc_map = parse_bc_lookup([item])
     
