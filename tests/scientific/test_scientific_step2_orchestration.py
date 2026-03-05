@@ -6,6 +6,7 @@ import os
 import numpy as np
 from src.step2.orchestrate_step2 import orchestrate_step2
 from src.solver_state import SolverState
+from tests.helpers.solver_step1_output_dummy import make_step1_output_dummy
 
 @pytest.fixture
 def mock_config(tmp_path):
@@ -29,14 +30,9 @@ def mock_config(tmp_path):
 
 @pytest.fixture
 def fresh_state():
-    """Provides a SolverState with minimal valid grid geometry."""
-    state = SolverState()
-    state.grid.nx, state.grid.ny, state.grid.nz = 4, 4, 4
-    state.grid.x_min, state.grid.x_max = 0.0, 1.0
-    state.grid.y_min, state.grid.y_max = 0.0, 1.0
-    state.grid.z_min, state.grid.z_max = 0.0, 1.0
-    state.config.advection_weight_base = 0.125
-    return state
+    """Provides a fully hydrated SolverState using the centralized dummy factory."""
+    # nx=4, ny=4, nz=4 matches the requirements of your orchestration tests
+    return make_step1_output_dummy(nx=4, ny=4, nz=4)
 
 def test_scientific_orchestration_io_success(mock_config, fresh_state):
     """Rule 2.1: Verify config.json hydration and state transition."""
