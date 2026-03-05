@@ -82,3 +82,32 @@ def test_archivist_debug_handshake(state_for_archiving, capsys):
         assert "DEBUG [Step 5 Archivist]: Preparing output" in captured
         assert "DEBUG [Step 5 Archivist]: Created directory" in captured
         assert "DEBUG [Step 5 Archivist]: Snapshot saved" in captured
+
+def test_archivist_iteration_padding(state_for_archiving):
+    """Scientific check: Verifies that snapshot filenames use 4-digit zero padding."""
+    state, tmp_base = state_for_archiving
+    state.iteration = 7  # Single digit
+    
+    with patch("src.solver_state.SolverConfig.output_directory", new_callable=PropertyMock) as mock_dir:
+        mock_dir.return_value = tmp_base
+        record_snapshot(state)
+        
+        filename = os.path.basename(state.manifest.saved_snapshots[0])
+        assert filename == "snapshot_0007.vtk", f"Padding failed: got {filename}"
+
+def test_archivist_manifest_accumulation(state_for_archiving):
+    """Scientific check: Verifies that the manifest keeps a running history of snapshots."""
+    state, tmp_base = state_for_archiving
+    
+    with patch("src.solver_state.SolverConfig.output_directory", new_callable=PropertyMock) as mock_dir:
+        mock_dir.return_value = tmp_base
+        
+        # Record two snapshots
+        state.iteration = 1
+        record_snapshot(state)
+        state.iteration = 2
+        record_snapshot(state)
+        
+        assert len(state.manifest.saved_snapshots) == 2
+        assert "snapshot_0001.vtk" in state.manifest.saved_snapshots[0]
+        assert "snapshot_0002.vtk" in state.manifest.saved_snapshots[1]
