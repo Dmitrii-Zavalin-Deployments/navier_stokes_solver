@@ -14,7 +14,13 @@ class MockDiagnostics(dict):
 def state_pre_orchestration():
     """Sets up a state that is NOT yet ready for the time loop."""
     state = SolverState()
+    
+    # Initialize physical grid bounds (Required for audit calculations)
     state.grid._nx, state.grid._ny, state.grid._nz = 3, 3, 3
+    state.grid._x_min, state.grid._x_max = 0.0, 1.0
+    state.grid._y_min, state.grid._y_max = 0.0, 1.0
+    state.grid._z_min, state.grid._z_max = 0.0, 1.0
+    
     state.time = 0.5
     
     # Initialize basic interior fields
