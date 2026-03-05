@@ -84,7 +84,7 @@ def test_scientific_mask_integrity():
 def test_scientific_audit_rho_guard():
     """Verify the firewall catches non-physical fluid properties."""
     inp = create_scientific_input()
-    inp.fluid_properties.density = -5.0
+    inp.fluid_properties._density = -5.0
     
-    with pytest.raises(ValueError, match="Non-physical density"):
+    with pytest.raises(ValueError, match="Audit Failed: Non-physical density"):
         orchestrate_step1(inp)
