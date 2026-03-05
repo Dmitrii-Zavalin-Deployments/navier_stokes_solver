@@ -21,6 +21,7 @@ def test_scientific_orchestration_mapping(base_input):
 def test_scientific_field_initialization(base_input):
     """Verify staggered fields are allocated and primed with ICs."""
     base_input.grid.nx, base_input.grid.ny, base_input.grid.nz = 4, 4, 4
+    base_input.mask._data = [1] * 64
     base_input.initial_conditions.pressure = 101325.0
     base_input.initial_conditions.velocity = [1.0, 0.0, 0.0]
     
