@@ -1,3 +1,5 @@
+# # tests/scientific/test_scientific_step1_orchestration.py
+
 import pytest
 import numpy as np
 from src.step1.orchestrate_step1 import orchestrate_step1
@@ -57,4 +59,32 @@ def test_scientific_audit_firewall():
     inp.initial_conditions.velocity = [np.nan, 0.0, 0.0] 
     
     with pytest.raises(ValueError, match="Audit Failed: Non-finite values"):
+        orchestrate_step1(inp)
+
+def test_scientific_restart_metadata():
+    """Verify that kwargs correctly override default time/iteration for restarts."""
+    inp = create_scientific_input()
+    state = orchestrate_step1(inp, iteration=50, time=0.123)
+    
+    assert state.iteration == 50
+    assert state.time == 0.123
+
+def test_scientific_mask_integrity():
+    """Verify that the topology masks are correctly derived and typed."""
+    inp = create_scientific_input()
+    state = orchestrate_step1(inp)
+    
+    # Shape check
+    assert state.masks.is_fluid.shape == (4, 4, 4)
+    # Type check (Should be boolean for efficient masking)
+    assert state.masks.is_fluid.dtype == bool
+    # Content check (Assuming [1]*64 in create_scientific_input)
+    assert np.all(state.masks.is_fluid)
+
+def test_scientific_audit_rho_guard():
+    """Verify the firewall catches non-physical fluid properties."""
+    inp = create_scientific_input()
+    inp.fluid_properties.density = -5.0
+    
+    with pytest.raises(ValueError, match="Non-physical density"):
         orchestrate_step1(inp)
