@@ -26,7 +26,7 @@ def orchestrate_step2(state: SolverState) -> SolverState:
         state.config.ppe_tolerance = settings["ppe_tolerance"]
         state.config.ppe_max_iter = settings["ppe_max_iter"]
         
-    except FileNotFoundError:
+    except FileNotFoundError as e:
         raise FileNotFoundError("Critical Error: 'config.json' not found.") from e
     except KeyError as e:
         # Improved logging to show specifically which key is missing
