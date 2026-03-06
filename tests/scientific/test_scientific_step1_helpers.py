@@ -100,7 +100,14 @@ def test_scientific_bc_lookup_type_safety():
     """Rule 5/7: Ensure the parser enforces numeric types and fails on garbage."""
     item = BoundaryConditionItem()
     item.location = "x_min"
+    
+    # Initialize the mandatory type field to satisfy the BaseContainer security guard
+    item.type = "no-slip" 
+    
+    # This dictionary contains a string 'invalid', which will trigger 
+    # the ValueError during float conversion in the parse_bc_lookup loop.
     item.values = {"u": "invalid", "v": 0.0, "w": 0.0, "p": 0.0}
+    
     with pytest.raises(ValueError):
         parse_bc_lookup([item])
 
