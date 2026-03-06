@@ -6,6 +6,17 @@ import os
 from tests.helpers.solver_input_schema_dummy import make_solver_input_dummy
 from tests.helpers.solver_step1_output_dummy import make_step1_output_dummy
 
+def setup_grid_3d(state, n=3, length=0.3):
+    """
+    Utility to inject grid parameters into a SolverState instance.
+    Uses _set_safe to bypass read-only property enforcement.
+    """
+    state.grid.nx = state.grid.ny = state.grid.nz = n
+    spacing = length / n
+    state.grid._set_safe("dx", float(spacing), float)
+    state.grid._set_safe("dy", float(spacing), float)
+    state.grid._set_safe("dz", float(spacing), float)
+
 @pytest.fixture(scope="session", autouse=True)
 def configure_scientific_precision():
     """
@@ -35,4 +46,7 @@ def base_input():
 @pytest.fixture
 def state_3d_small():
     """Provides a fresh, hydrated SolverState snapshot for Step 2+ testing."""
-    return make_step1_output_dummy(nx=2, ny=2, nz=2)
+    state = make_step1_output_dummy(nx=2, ny=2, nz=2)
+    # Apply standard scientific grid resolution automatically
+    setup_grid_3d(state, n=3, length=0.3)
+    return state
