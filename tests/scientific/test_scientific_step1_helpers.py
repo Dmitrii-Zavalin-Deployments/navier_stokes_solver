@@ -10,6 +10,7 @@ from src.step1.helpers import (
     parse_bc_lookup,
 )
 
+
 def test_scientific_collocated_allocation(base_input):
     """Rule: Collocated fields must share exact Nx, Ny, Nz dimensions (Theory Section 3)."""
     grid = base_input.grid
