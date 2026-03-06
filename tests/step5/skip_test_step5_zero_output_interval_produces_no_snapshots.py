@@ -1,6 +1,5 @@
 # tests/step5/test_step5_zero_output_interval_produces_no_snapshots.py
 
-from src import step5
 import types
 from unittest.mock import MagicMock
 

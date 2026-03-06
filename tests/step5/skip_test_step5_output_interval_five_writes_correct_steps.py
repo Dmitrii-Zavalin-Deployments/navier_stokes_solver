@@ -1,6 +1,5 @@
 # tests/step5/test_step5_output_interval_five_writes_correct_steps.py
 
-from src import step5
 import types
 from unittest.mock import MagicMock
 
