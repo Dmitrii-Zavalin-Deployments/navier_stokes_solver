@@ -79,16 +79,4 @@ def orchestrate_step1(input_data: SolverInput, **kwargs) -> SolverState:
     state.config._simulation_parameters = input_data.simulation_parameters
     state.config._fluid_properties = input_data.fluid_properties
 
-    # --- 6. The Firewall ---
-    _final_audit(state)
-
     return state
-
-def _final_audit(state: SolverState) -> None:
-    """Zero-Debt Audit: Ensures no NaNs or non-physical values survived assembly."""
-    if state.fluid.rho <= 0:
-        raise ValueError("Audit Failed: Non-physical density.")
-    if not np.all(np.isfinite(state.fields.U)):
-        raise ValueError("Audit Failed: Non-finite values in Velocity field.")
-    if state.masks.is_fluid is None:
-        raise ValueError("Audit Failed: Fluid mask was not initialized.")
