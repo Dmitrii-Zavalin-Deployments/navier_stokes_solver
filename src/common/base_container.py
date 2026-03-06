@@ -39,12 +39,26 @@ class ValidatedContainer:
         out = {}
         for attr, val in self.__dict__.items():
             clean_key = attr.lstrip('_')
-            if isinstance(val, ValidatedContainer):
+            
+            # 1. Handle SciPy Sparse Matrices
+            if hasattr(val, "toarray"):
+                out[clean_key] = val.toarray().tolist()
+            
+            # 2. Handle Nested Containers
+            elif isinstance(val, ValidatedContainer):
                 out[clean_key] = val.to_dict()
+                
+            # 3. Handle NumPy Arrays
             elif isinstance(val, np.ndarray):
                 out[clean_key] = val.tolist()
+                
+            # 4. Handle Dictionaries
             elif isinstance(val, dict):
-                out[clean_key] = {k: (v.tolist() if isinstance(v, np.ndarray) else v) for k, v in val.items()}
+                out[clean_key] = {
+                    k: (v.toarray().tolist() if hasattr(v, "toarray") 
+                        else (v.tolist() if isinstance(v, np.ndarray) else v)) 
+                    for k, v in val.items()
+                }
             else:
                 out[clean_key] = val
         return out

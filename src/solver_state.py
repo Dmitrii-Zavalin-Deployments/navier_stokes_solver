@@ -63,6 +63,10 @@ class SolverConfig(ValidatedContainer):
         self._set_safe("simulation_parameters", v, dict)
 
     # --- Tactical Shortcuts (Facade) ---
+    @dt.setter
+    def dt(self, v: float):
+        self.config.dt = v
+
     @property
     def dt(self) -> float: 
         return float(self.simulation_parameters["time_step"] if isinstance(self.simulation_parameters, dict) else self.simulation_parameters.time_step)
@@ -674,7 +678,7 @@ class OutputManifest(ValidatedContainer):
 # =========================================================
 
 @dataclass
-class SolverState:
+class SolverState(ValidatedContainer):
     @property
     def constants(self):
         return self.fluid
@@ -753,6 +757,10 @@ class SolverState:
     def P_ext(self) -> np.ndarray: return self.fields.P_ext
 
     # --- Numerical Shortcuts (Validated by Config & Grid) ---
+    @dt.setter
+    def dt(self, v: float):
+        self.config.dt = v
+    
     @property
     def dt(self) -> float:
         return self.config.dt
@@ -805,6 +813,10 @@ class SolverState:
     # Serialization (Contract Bridge)
     # ---------------------------------------------------------
     def to_json_safe(self) -> dict:
+        """
+        Contract-compliant serialization. 
+        Delegates to component to_dict() methods for uniform recursion.
+        """
         return {
             "time": self.time,
             "iteration": self.iteration,
