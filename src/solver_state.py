@@ -63,10 +63,6 @@ class SolverConfig(ValidatedContainer):
         self._set_safe("simulation_parameters", v, dict)
 
     # --- Tactical Shortcuts (Facade) ---
-    @dt.setter
-    def dt(self, v: float):
-        self.config.dt = v
-
     @property
     def dt(self) -> float: 
         return float(self.simulation_parameters["time_step"] if isinstance(self.simulation_parameters, dict) else self.simulation_parameters.time_step)
@@ -88,6 +84,10 @@ class SolverConfig(ValidatedContainer):
     def advection_weight_base(self) -> float:
         """Facade: Retrieves advection_weight_base from the simulation_parameters dict."""
         return float(self.simulation_parameters["advection_weight_base"] if isinstance(self.simulation_parameters, dict) else self.simulation_parameters.advection_weight_base)
+
+    @dt.setter
+    def dt(self, v: float):
+        self.config.dt = v
 
     # --- Boundary Property Group ---
     @property
@@ -757,10 +757,6 @@ class SolverState(ValidatedContainer):
     def P_ext(self) -> np.ndarray: return self.fields.P_ext
 
     # --- Numerical Shortcuts (Validated by Config & Grid) ---
-    @dt.setter
-    def dt(self, v: float):
-        self.config.dt = v
-    
     @property
     def dt(self) -> float:
         return self.config.dt
@@ -791,6 +787,10 @@ class SolverState(ValidatedContainer):
     def total_time(self) -> float:
         """Alias for Step 5 Chronos Guard compatibility."""
         return self.config.total_time
+
+    @dt.setter
+    def dt(self, v: float):
+        self.config.dt = v
 
     # ---------------------------------------------------------
     # Legacy & Pipeline Support
