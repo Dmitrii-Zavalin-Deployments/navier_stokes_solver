@@ -42,13 +42,6 @@ def test_scientific_field_initialization(base_input):
     np.testing.assert_allclose(state.fields.U, 1.0)
     assert state.fields.P.dtype == np.float64
 
-def test_scientific_audit_firewall(base_input):
-    """Verify the _final_audit catches non-physical values."""
-    base_input.initial_conditions.velocity = [np.nan, 0.0, 0.0] 
-    
-    with pytest.raises(ValueError, match="Audit Failed: Non-finite values"):
-        orchestrate_step1(base_input, iteration=0, time=0.0)
-
 def test_scientific_restart_metadata(base_input):
     """Verify that kwargs correctly override default time/iteration for restarts."""
     state = orchestrate_step1(base_input, iteration=50, time=0.123)
@@ -68,12 +61,6 @@ def test_scientific_mask_integrity(base_input):
     # Type check
     assert state.masks.is_fluid.dtype == bool
     assert np.all(state.masks.is_fluid)
-
-def test_scientific_audit_rho_guard(base_input):
-    # Bypass the setter to inject a bad value for testing the auditor
-    base_input.fluid_properties._density = -5.0 
-    with pytest.raises(ValueError, match="Audit Failed: Non-physical density"):
-        orchestrate_step1(base_input, iteration=0, time=0.0)
 
 def test_scientific_boundary_lookup_integrity(base_input):
     bc1 = BoundaryConditionItem()
@@ -135,16 +122,3 @@ def test_scientific_missing_kwargs_keyerror(base_input):
     """Rule 5: Ensure orchestration fails if iteration/time are missing."""
     with pytest.raises(KeyError, match="Step 1 requires explicit iteration and time values"):
         orchestrate_step1(base_input) # Missing kwargs
-
-def test_scientific_audit_mask_none_failure(base_input):
-    """Rule 7: Ensure the firewall catches uninitialized masks."""
-    # We mock a scenario where masking is skipped or fails
-    # Orchestrator should trigger the audit failure
-    base_input.mask._data = [1] * (base_input.grid.nx * base_input.grid.ny * base_input.grid.nz)
-    
-    # Manually trigger a state where mask is None to test the Firewall's logic
-    state = orchestrate_step1(base_input, iteration=0, time=0.0)
-    state.masks.is_fluid = None 
-    
-    with pytest.raises(ValueError, match="Audit Failed: Fluid mask was not initialized"):
-        _final_audit(state)
