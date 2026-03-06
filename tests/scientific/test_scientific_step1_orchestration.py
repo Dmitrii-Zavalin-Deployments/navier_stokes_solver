@@ -130,3 +130,21 @@ def test_scientific_config_hydration(base_input):
 
     assert state.config._simulation_parameters is base_input.simulation_parameters
     assert state.config._fluid_properties is base_input.fluid_properties
+
+def test_scientific_missing_kwargs_keyerror(base_input):
+    """Rule 5: Ensure orchestration fails if iteration/time are missing."""
+    with pytest.raises(KeyError, match="Step 1 requires explicit iteration and time values"):
+        orchestrate_step1(base_input) # Missing kwargs
+
+def test_scientific_audit_mask_none_failure(base_input):
+    """Rule 7: Ensure the firewall catches uninitialized masks."""
+    # We mock a scenario where masking is skipped or fails
+    # Orchestrator should trigger the audit failure
+    base_input.mask._data = [1] * (base_input.grid.nx * base_input.grid.ny * base_input.grid.nz)
+    
+    # Manually trigger a state where mask is None to test the Firewall's logic
+    state = orchestrate_step1(base_input, iteration=0, time=0.0)
+    state.masks.is_fluid = None 
+    
+    with pytest.raises(ValueError, match="Audit Failed: Fluid mask was not initialized"):
+        _final_audit(state)
