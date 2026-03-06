@@ -68,3 +68,46 @@ def test_scientific_audit_rho_guard(base_input):
     base_input.fluid_properties._density = -5.0 
     with pytest.raises(ValueError, match="Audit Failed: Non-physical density"):
         orchestrate_step1(base_input)
+
+def test_scientific_boundary_lookup_integrity(base_input):
+    base_input.boundary_conditions.items = [
+        DummyBC("x_min", "dirichlet", [1,2,3]),
+        DummyBC("x_max", "neumann", [0,0,0]),
+    ]
+
+    state = orchestrate_step1(base_input, iteration=0, time=0.0)
+
+    lookup = state.boundary_lookup
+
+    assert "x_min" in lookup
+    assert lookup["x_min"]["type"] == "dirichlet"
+    assert np.allclose(lookup["x_min"]["values"], [1,2,3])
+
+def test_scientific_boundary_condition_mapping(base_input):
+    bc = base_input.boundary_conditions.items[0]
+    state = orchestrate_step1(base_input, iteration=0, time=0.0)
+
+    mapped = state.config.boundary_conditions[0]
+    assert mapped["location"] == bc.location
+    assert mapped["type"] == bc.type
+    assert mapped["values"] == bc.values
+
+def test_scientific_external_forces_mapping(base_input):
+    base_input.external_forces.force_vector = np.array([0.1, 0.0, -0.1])
+    state = orchestrate_step1(base_input, iteration=0, time=0.0)
+
+    fv = state.config.external_forces["force_vector"]
+    np.testing.assert_allclose(fv, [0.1, 0.0, -0.1])
+
+def test_scientific_boundary_mask_integrity(base_input):
+    base_input.mask._data = [0] * 64  # all boundary
+    state = orchestrate_step1(base_input, iteration=0, time=0.0)
+
+    assert np.all(state.masks.is_boundary)
+    assert not np.any(state.masks.is_fluid)
+
+def test_scientific_config_hydration(base_input):
+    state = orchestrate_step1(base_input, iteration=0, time=0.0)
+
+    assert state.config._simulation_parameters is base_input.simulation_parameters
+    assert state.config._fluid_properties is base_input.fluid_properties

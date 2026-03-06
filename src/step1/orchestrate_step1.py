@@ -60,8 +60,12 @@ def orchestrate_step1(input_data: SolverInput, **kwargs) -> SolverState:
     state.masks.is_boundary = is_boundary
 
     # --- 5. Global Metadata (Deterministic Policy) ---
-    state.iteration = int(kwargs.get("iteration", 0))
-    state.time = float(kwargs.get("time", 0.0))
+    if "iteration" not in kwargs or "time" not in kwargs:
+        raise KeyError("Step 1 requires explicit iteration and time values.")
+
+    state.iteration = int(kwargs["iteration"])
+    state.time = float(kwargs["time"])
+
     state.ready_for_time_loop = False
     
     # Internal Lookup Tables (for math performance)
