@@ -5,10 +5,11 @@ import numpy as np
 from src.step1.orchestrate_step1 import orchestrate_step1
 
 def test_scientific_orchestration_mapping(base_input):
-    base_input.grid.nx, base_input.grid.ny, base_input.grid.nz = 4, 4, 4
-    # Manually update the mask to match the new volume
-    base_input.mask._data = [1] * 64
-    state = orchestrate_step1(base_input)
+    nx, ny, nz = 4, 4, 4
+    base_input.grid.nx, base_input.grid.ny, base_input.grid.nz = nx, ny, nz
+    # Fix: Use dynamic product instead of hardcoded 64
+    base_input.mask._data = [1] * (nx * ny * nz) 
+    state = orchestrate_step1(base_input, iteration=0, time=0.0)
     
     # Verify Geometry
     assert state.grid.nx == 4
@@ -20,12 +21,13 @@ def test_scientific_orchestration_mapping(base_input):
 
 def test_scientific_field_initialization(base_input):
     """Verify staggered fields are allocated and primed with ICs."""
-    base_input.grid.nx, base_input.grid.ny, base_input.grid.nz = 4, 4, 4
-    base_input.mask._data = [1] * 64
+    nx, ny, nz = 4, 4, 4
+    base_input.grid.nx, base_input.grid.ny, base_input.grid.nz = nx, ny, nz
+    base_input.mask._data = [1] * (nx * ny * nz)
     base_input.initial_conditions.pressure = 101325.0
     base_input.initial_conditions.velocity = [1.0, 0.0, 0.0]
     
-    state = orchestrate_step1(base_input)
+    state = orchestrate_step1(base_input, iteration=0, time=0.0)
     
     # Harlow-Welch Staggering Check
     assert state.fields.U.shape == (5, 4, 4)
@@ -42,7 +44,7 @@ def test_scientific_audit_firewall(base_input):
     base_input.initial_conditions.velocity = [np.nan, 0.0, 0.0] 
     
     with pytest.raises(ValueError, match="Audit Failed: Non-finite values"):
-        orchestrate_step1(base_input)
+        orchestrate_step1(base_input, iteration=0, time=0.0)
 
 def test_scientific_restart_metadata(base_input):
     """Verify that kwargs correctly override default time/iteration for restarts."""
@@ -53,9 +55,10 @@ def test_scientific_restart_metadata(base_input):
 
 def test_scientific_mask_integrity(base_input):
     """Verify that the topology masks are correctly derived and typed."""
-    base_input.grid.nx, base_input.grid.ny, base_input.grid.nz = 4, 4, 4
-    base_input.mask._data = [1] * 64
-    state = orchestrate_step1(base_input)
+    nx, ny, nz = 4, 4, 4
+    base_input.grid.nx, base_input.grid.ny, base_input.grid.nz = nx, ny, nz
+    base_input.mask._data = [1] * (nx * ny * nz)
+    state = orchestrate_step1(base_input, iteration=0, time=0.0)
     
     # Shape check
     assert state.masks.is_fluid.shape == (4, 4, 4)
@@ -67,7 +70,7 @@ def test_scientific_audit_rho_guard(base_input):
     # Bypass the setter to inject a bad value for testing the auditor
     base_input.fluid_properties._density = -5.0 
     with pytest.raises(ValueError, match="Audit Failed: Non-physical density"):
-        orchestrate_step1(base_input)
+        orchestrate_step1(base_input, iteration=0, time=0.0)
 
 def test_scientific_boundary_lookup_integrity(base_input):
     base_input.boundary_conditions.items = [
@@ -93,7 +96,7 @@ def test_scientific_boundary_condition_mapping(base_input):
     assert mapped["values"] == bc.values
 
 def test_scientific_external_forces_mapping(base_input):
-    base_input.external_forces.force_vector = np.array([0.1, 0.0, -0.1])
+    base_input.external_forces.force_vector = [0.1, 0.0, -0.1]
     state = orchestrate_step1(base_input, iteration=0, time=0.0)
 
     fv = state.config.external_forces["force_vector"]
