@@ -6,6 +6,7 @@ import pytest
 from src.solver_input import BoundaryConditionItem
 from src.step1.orchestrate_step1 import orchestrate_step1
 
+
 def test_scientific_orchestration_mapping(base_input):
     """Rule: Verify Collocated Grid dimensions match input exactly."""
     nx, ny, nz = 4, 4, 4

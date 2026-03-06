@@ -1,9 +1,12 @@
 # src/step1/orchestrate_step1.py
 
 from __future__ import annotations
+
 from src.solver_input import SolverInput
 from src.solver_state import SolverState
+
 from .helpers import allocate_fields, generate_3d_masks, parse_bc_lookup
+
 
 def orchestrate_step1(input_data: SolverInput, **kwargs) -> SolverState:
     """
