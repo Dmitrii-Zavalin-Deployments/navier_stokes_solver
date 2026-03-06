@@ -26,14 +26,27 @@ class ValidatedContainer:
 
     def validate_against_schema(self, schema_path: str):
         """
-        Final Firewall: Validates the current state (as a dict) 
-        against the master JSON schema file.
+        Final Firewall: Automatically flattens nested 'config' and 'masks'
+        structures to align with the flat requirements of the schema.
         """
         with open(schema_path) as f:
             schema = json.load(f)
         
-        # Validates current instance state against the contract
-        jsonschema.validate(instance=self.to_dict(), schema=schema)
+        # 1. Get the standard recursive dict
+        instance_data = self.to_dict()
+        
+        # 2. Automatically flatten known nesting patterns
+        if "config" in instance_data:
+            config = instance_data.pop("config")
+            # Merge config items into the root
+            instance_data.update(config)
+            
+        if "masks" in instance_data and isinstance(instance_data["masks"], dict):
+            if "mask" in instance_data["masks"]:
+                instance_data["mask"] = instance_data["masks"]["mask"]
+
+        # 3. Validate the flattened instance
+        jsonschema.validate(instance=instance_data, schema=schema)
 
     def to_dict(self) -> dict:
         out = {}
