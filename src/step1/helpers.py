@@ -4,7 +4,7 @@ import numpy as np
 from typing import Dict, List, Tuple
 from src.solver_input import GridInput, BoundaryConditionItem
 
-# Global Debug Toggle
+# Global Debug Toggle - Rule 7: Granular Traceability
 DEBUG = True
 
 def allocate_staggered_fields(grid: GridInput) -> Dict[str, np.ndarray]:
@@ -32,12 +32,11 @@ def generate_3d_masks(mask_data: List[int], grid: GridInput) -> Tuple[np.ndarray
     """Transforms the flat JSON mask into 3D topology arrays."""
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     
-    # Validation of data volume
     expected_len = nx * ny * nz
     if len(mask_data) != expected_len:
         raise ValueError(f"Mask size mismatch: Expected {expected_len}, got {len(mask_data)}")
 
-    # Order 'F' is critical for Fortran-style indexing used in solvers
+    # Order 'F' is critical for Fortran-style indexing (i, j, k)
     mask_3d = np.asarray(mask_data, dtype=np.int8).reshape((nx, ny, nz), order="F")
     
     is_fluid = (mask_3d == 1)
@@ -48,23 +47,26 @@ def generate_3d_masks(mask_data: List[int], grid: GridInput) -> Tuple[np.ndarray
         print(f"  > Target Domain: {nx}x{ny}x{nz}")
         print(f"  > Fluid Volume: {np.sum(is_fluid)} cells")
         print(f"  > Solid/Boundary Volume: {np.sum(is_boundary)} cells")
-        # Print a small slice of the reconstructed mask for pattern verification
-        print(f"  > Reconstruction Parity Check (1st layer): \n{mask_3d[:, :, 0]}")
         
     return mask_3d, is_fluid, is_boundary
 
 def parse_bc_lookup(items: List[BoundaryConditionItem]) -> Dict[str, Dict]:
-    """Converts BC list into a high-speed lookup table."""
+    """
+    Converts BC list into a high-speed lookup table.
+    Rule 5 Violation Fixed: Removed .get() defaults.
+    """
     table = {}
     for item in items:
+        # Accessing keys directly: If 'u', 'v', 'w', or 'p' is missing, 
+        # it will raise a KeyError, satisfying the "Explicit or Error" mandate.
         table[item.location] = {
             "type": item.type,
-            "u": float(item.values.get("u", 0.0)),
-            "v": float(item.values.get("v", 0.0)),
-            "w": float(item.values.get("w", 0.0)),
-            "p": float(item.values.get("p", 0.0))
+            "u": float(item.values["u"]),
+            "v": float(item.values["v"]),
+            "w": float(item.values["w"]),
+            "p": float(item.values["p"])
         }
         if DEBUG:
-            print(f"DEBUG [Step 1.3]: BC Map -> {item.location}: type={item.type}, P_ref={table[item.location]['p']}")
+            print(f"DEBUG [Step 1.3]: BC Map -> {item.location}: type={item.type}")
             
     return table
