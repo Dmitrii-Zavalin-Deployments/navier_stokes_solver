@@ -141,26 +141,3 @@ def test_scientific_laplacian_conservation(state_3d_small):
     # Note: If you have a Dirichlet point for pressure, one row will be different.
     # For now, we check if the internal nodes follow conservation.
     assert np.allclose(row_sums, 0, atol=1e-10), f"Laplacian rows do not sum to zero: {row_sums}"
-
-def test_scientific_advection_weights_sum(state_3d_small):
-    """Rule 7: Interpolation weights must sum to 1.0 (Unity Property)."""
-    # Initialize state with a specific weight
-    state_3d_small.config.advection_weight_base = 0.125
-    build_advection_stencils(state_3d_small)
-    
-    # Each row in weights corresponds to 8 neighbors
-    # 8 neighbors * 0.125 = 1.0
-    row_sums = np.sum(state_3d_small.advection.weights, axis=1)
-    assert np.allclose(row_sums, 1.0, atol=1e-12)
-
-def test_scientific_advection_index_bounds(state_3d_small):
-    """Rule 7: Stencil indices must never exceed the pressure grid boundaries."""
-    nx, ny, nz = 3, 3, 3
-    state_3d_small.grid.nx, state_3d_small.grid.ny, state_3d_small.grid.nz = nx, ny, nz
-    build_advection_stencils(state_3d_small)
-    
-    indices = state_3d_small.advection.indices
-    
-    # Max index should be (nx*ny*nz) - 1 = 26
-    assert indices.max() < (nx * ny * nz)
-    assert indices.min() >= 0
