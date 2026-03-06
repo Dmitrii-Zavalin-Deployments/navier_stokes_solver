@@ -1,6 +1,7 @@
 # src/main_solver.py
 
 import json
+import jsonschema
 import logging
 import os
 import shutil
