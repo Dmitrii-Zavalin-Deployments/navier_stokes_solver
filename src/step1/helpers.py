@@ -1,36 +1,45 @@
 # src/step1/helpers.py
 
-
 import numpy as np
-
 from src.solver_input import BoundaryConditionItem, GridInput
 
 # Global Debug Toggle - Rule 7: Granular Traceability
 DEBUG = True
 
-def allocate_staggered_fields(grid: GridInput) -> dict[str, np.ndarray]:
-    """Allocates memory for the Harlow-Welch staggered grid."""
+def allocate_fields(grid: GridInput) -> dict[str, np.ndarray]:
+    """
+    Allocates memory for Cell-Centered fields.
+    
+    Theory Mapping: Section 3 - All fields (P, U, V, W) share the same spatial domain.
+    
+    Mathematical Trace:
+    Let \phi \in \{P, U, V, W\}. 
+    The domain \Omega \subset \mathbb{R}^3 is discretized into N = nx * ny * nz cells.
+    Every field \phi is mapped to indices (i, j, k) \in [0, nx-1] \times [0, ny-1] \times [0, nz-1].
+    """
     nx, ny, nz = grid.nx, grid.ny, grid.nz
 
-    # Staggered Grid Rule: Velocity components have N+1 points in their direction
+    # Collocated Grid: Every field is defined at the cell center (i, j, k).
+    # All fields share shape (nx, ny, nz).
     fields = {
         "P": np.zeros((nx, ny, nz), dtype=np.float64),
-        "U": np.zeros((nx + 1, ny, nz), dtype=np.float64),
-        "V": np.zeros((nx, ny + 1, nz), dtype=np.float64),
-        "W": np.zeros((nx, ny, nz + 1), dtype=np.float64),
+        "U": np.zeros((nx, ny, nz), dtype=np.float64),
+        "V": np.zeros((nx, ny, nz), dtype=np.float64),
+        "W": np.zeros((nx, ny, nz), dtype=np.float64),
     }
 
     if DEBUG:
-        print(f"DEBUG [Step 1.1]: Harlow-Welch Staggering Check:")
-        print(f"  > P-Grid (Cell Center): {fields['P'].shape}")
-        print(f"  > U-Face (East-West):   {fields['U'].shape}")
-        print(f"  > V-Face (North-South): {fields['V'].shape}")
-        print(f"  > W-Face (Front-Back):  {fields['W'].shape}")
+        print(f"DEBUG [Step 1.1]: Collocated Grid Allocation (Theory Section 3):")
+        print(f"  > All Fields (P, U, V, W) shape: {fields['P'].shape}")
 
     return fields
 
 def generate_3d_masks(mask_data: list[int], grid: GridInput) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Transforms the flat JSON mask into 3D topology arrays."""
+    """
+    Transforms the flat JSON mask into 3D topology arrays.
+    
+    Theory Mapping: Section 6 - Mask-Based Geometry.
+    """
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     
     expected_len = nx * ny * nz
@@ -44,10 +53,9 @@ def generate_3d_masks(mask_data: list[int], grid: GridInput) -> tuple[np.ndarray
     is_boundary = (mask_3d == -1)
     
     if DEBUG:
-        print(f"DEBUG [Step 1.2]: Topology Verification:")
+        print(f"DEBUG [Step 1.2]: Topology Verification (Theory Section 6):")
         print(f"  > Target Domain: {nx}x{ny}x{nz}")
         print(f"  > Fluid Volume: {np.sum(is_fluid)} cells")
-        print(f"  > Solid/Boundary Volume: {np.sum(is_boundary)} cells")
         
     return mask_3d, is_fluid, is_boundary
 
