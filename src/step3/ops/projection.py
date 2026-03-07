@@ -1,8 +1,9 @@
 # Example: src/step3/ops/projection.py
 
-from .gradient import build_gradient
 from .divergence import build_divergence
+from .gradient import build_gradient
 from .laplacian import build_laplacian
+
 
 def build_projection_operator(state):
     G = build_gradient(state)
