@@ -2,6 +2,7 @@
 
 from src.common.base_container import ValidatedContainer
 
+
 class Cell(ValidatedContainer):
     """
     Transient Data Transfer Object (DTO) for Step 2.
