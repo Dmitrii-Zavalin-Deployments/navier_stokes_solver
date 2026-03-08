@@ -1,6 +1,7 @@
 # src/step3/ops/forces.py
 import numpy as np
 
+
 def get_body_forces_interior(nx, ny, nz, Fx_val, Fy_val, Fz_val):
     """
     Returns the body force field F on the interior grid (nx-2, ny-2, nz-2).
