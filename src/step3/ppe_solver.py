@@ -1,17 +1,47 @@
-# src/step3/ppe.py
+# src/step3/ppe_solver.py
 
-from .ops.divergence import divergence_v_star
-from .ops.scaling import get_rho_over_dt
-from .rhie_chow import compute_rhie_chow_term
+import numpy as np
+from .ppe import compute_ppe_rhs
 
-
-def compute_ppe_rhs(v_star, p_n, dx, dy, dz, rho, dt):
+def solve_pressure_poisson(state):
     """
-    Assembles the RHS of the stabilized Pressure Poisson Equation.
+    Solves \nabla^2 p^{n+1} = RHS using SOR with config-based parameters.
     """
-    div_v_star = divergence_v_star(v_star, dx, dy, dz)
-    div_rc = compute_rhie_chow_term(p_n, dx, dy, dz, dt)
+    # 1. Hydrate configuration parameters
+    cfg = state.config.solver_settings
+    omega = cfg.get("ppe_omega", 1.5)
+    max_iter = cfg.get("ppe_max_iter", 1000)
+    tol = cfg.get("ppe_tolerance", 1e-6)
     
-    scaling = get_rho_over_dt(dt, rho)
+    # 2. Setup grid and RHS
+    dx, dy, dz = state.grid.dx, state.grid.dy, state.grid.dz
+    dx2, dy2, dz2 = dx**2, dy**2, dz**2
+    stencil_denom = 2.0 * (1/dx2 + 1/dy2 + 1/dz2)
     
-    return scaling * (div_v_star - div_rc)
+    rhs = compute_ppe_rhs(
+        state.fields.v_star, 
+        state.fields.P, 
+        dx, dy, dz, 
+        state.config.fluid_properties["density"], 
+        state.config.simulation_parameters["time_step"]
+    )
+    
+    p = state.fields.P.copy()
+    
+    # 3. SOR Iteration Loop
+    for _ in range(max_iter):
+        p_old = p.copy()
+        
+        p[1:-1, 1:-1, 1:-1] = (1 - omega) * p[1:-1, 1:-1, 1:-1] + (omega / stencil_denom) * (
+            (p[2:, 1:-1, 1:-1] + p[:-2, 1:-1, 1:-1]) / dx2 +
+            (p[1:-1, 2:, 1:-1] + p[1:-1, :-2, 1:-1]) / dy2 +
+            (p[1:-1, 1:-1, 2:] + p[1:-1, 1:-1, :-2]) / dz2 -
+            rhs
+        )
+        
+        # Convergence Check: Using L2 norm of the change
+        if np.linalg.norm(p - p_old) < tol:
+            break
+            
+    state.fields.P = p
+    return p
