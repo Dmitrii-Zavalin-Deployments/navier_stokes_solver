@@ -1,7 +1,9 @@
 # tests/operators/test_divergence.py
 
 import numpy as np
+
 from src.step3.ops.divergence import divergence_v_star
+
 
 def test_divergence_v_star_equivalence():
     nx, ny, nz = 5, 5, 5

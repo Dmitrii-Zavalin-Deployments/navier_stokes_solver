@@ -1,6 +1,5 @@
 # src/step3/ops/divergence.py
 
-import numpy as np
 
 def divergence_v_star(v_star, dx, dy, dz):
     """
