@@ -1,12 +1,11 @@
 # src/step2/orchestrate_step2.py
 
 import numpy as np
-from .factory import get_initialization_context, build_core_cell, build_ghost_cell
-from .compiler import cell_to_numpy_row, GET_CELL_ATTRIBUTES
+
 from src.core.solver_state import SolverState
 
 from .compiler import GET_CELL_ATTRIBUTES, cell_to_numpy_row
-from .factory import build_cell, get_initialization_context
+from .factory import build_core_cell, build_ghost_cell, get_initialization_context
 
 
 def orchestrate_step2(state: SolverState) -> SolverState:

@@ -1,7 +1,9 @@
 # src/step2/factory.py
 
-from .cell import Cell
 from src.core.solver_state import SolverState
+
+from .cell import Cell
+
 
 def get_initialization_context(state: SolverState) -> dict:
     """
