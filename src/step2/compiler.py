@@ -1,7 +1,9 @@
 # src/step2/compiler.py
 
 import numpy as np
+
 from .cell import Cell
+
 
 def GET_CELL_ATTRIBUTES():
     """
