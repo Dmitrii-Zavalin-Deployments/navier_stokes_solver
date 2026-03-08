@@ -1,9 +1,7 @@
 # src/step3/orchestrate_step3.py
 
 import numpy as np
-
-from src.step3.solver.predictor import compute_predictor_step
-
+from src.step3.predictor import compute_predictor_step
 
 def orchestrate_step3(state):
     """
