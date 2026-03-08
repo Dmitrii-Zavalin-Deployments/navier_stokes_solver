@@ -1,7 +1,9 @@
 # tests/operators/test_scaling.py
 
 import pytest
+
 from src.step3.ops.scaling import get_dt_over_rho, get_rho_over_dt
+
 
 def test_scaling_factors():
     dt = 0.01
