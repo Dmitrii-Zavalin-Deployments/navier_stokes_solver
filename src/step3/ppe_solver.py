@@ -4,6 +4,7 @@ from .ops.divergence import divergence_v_star
 from .ops.scaling import get_rho_over_dt
 from .rhie_chow import compute_rhie_chow_term
 
+
 def compute_ppe_rhs(v_star, p_n, dx, dy, dz, rho, dt):
     """
     Assembles the RHS of the stabilized Pressure Poisson Equation.
