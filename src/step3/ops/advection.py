@@ -1,6 +1,5 @@
 # src/step3/ops/advection.py
 
-import numpy as np
 
 def apply_advection_operator(v_n, field, dx, dy, dz):
     """

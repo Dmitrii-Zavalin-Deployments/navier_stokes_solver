@@ -1,7 +1,9 @@
 # tests/operators/test_advection.py
 
 import numpy as np
+
 from src.step3.ops.advection import apply_advection_operator
+
 
 def test_advection_operator_equivalence():
     nx, ny, nz = 5, 5, 5
