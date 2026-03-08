@@ -1,11 +1,13 @@
 # src/step3/solver/predictor.py
 
 import numpy as np
-from src.step3.ops.laplacian import laplacian_v
+
+from src.step3.core.extract import get_interior_field
 from src.step3.ops.advection import advective_term_v_n
 from src.step3.ops.gradient import gradient_p
+from src.step3.ops.laplacian import laplacian_v
 from src.step3.ops.scaling import get_dt_over_rho
-from src.step3.core.extract import get_interior_field
+
 
 def compute_predictor_step(v_n, p_n, F_int, dx, dy, dz, dt, rho, mu):
     """
