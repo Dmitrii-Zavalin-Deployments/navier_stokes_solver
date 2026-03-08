@@ -1,6 +1,5 @@
 # src/step3/ops/gradient.py
 
-import numpy as np
 
 def gradient_p_n(p_n, dx, dy, dz):
     """

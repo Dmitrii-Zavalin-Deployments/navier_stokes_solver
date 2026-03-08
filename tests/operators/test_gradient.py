@@ -2,7 +2,9 @@
 
 import numpy as np
 import pytest
+
 from src.step3.ops.gradient import gradient_p_n, gradient_p_n_plus_1
+
 
 @pytest.fixture
 def grid_setup():
