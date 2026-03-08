@@ -1,6 +1,7 @@
 import numpy as np
-import pytest
+
 from src.step3.core.grid_utils import get_interior_slices
+
 
 def test_get_interior_slices_structure():
     """Verify the function returns the correct slice tuple for 3D grids."""

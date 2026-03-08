@@ -2,8 +2,8 @@
 
 import numpy as np
 
-from .ppe import compute_ppe_rhs
 from .ops.sor_stencil import compute_sor_stencil
+from .ppe import compute_ppe_rhs
 
 
 def solve_pressure_poisson(state):
