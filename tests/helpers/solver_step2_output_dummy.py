@@ -1,50 +1,33 @@
 # tests/helpers/solver_step2_output_dummy.py
 
 import numpy as np
-from scipy.sparse import csr_matrix, eye
-
 from tests.helpers.solver_step1_output_dummy import make_step1_output_dummy
-
+from src.step2.cell import Cell
+from src.step2.stencil_block import StencilBlock
+from src.step2.stencil_assembler import assemble_stencil_matrix
+from src.step2.factory import get_initialization_context
 
 def make_step2_output_dummy(nx=4, ny=4, nz=4):
     """
-    Zero-Debt Dummy Generator for Step 2 Output.
-    Satisfies Rule 5 (Explicit Config) and avoids Matrix Voids.
+    Generates a valid SolverState with a populated stencil_matrix.
     """
     state = make_step1_output_dummy(nx=nx, ny=ny, nz=nz)
     
-    dof_p = nx * ny * nz
-    dof_u = (nx + 1) * ny * nz
-    dof_v = nx * (ny + 1) * nz
-    dof_w = nx * ny * (nz + 1)
-    total_vel_dof = dof_u + dof_v + dof_w
-
-    # 1. Operators: Use eye() for Laplacian to allow matrix inversion in tests
-    # Using CSR format as required by the scipy.sparse.linalg.cg solver
-    state.operators.divergence = csr_matrix((dof_p, total_vel_dof))
-    state.operators.grad_x = csr_matrix((dof_u, dof_p))
-    state.operators.grad_y = csr_matrix((dof_v, dof_p))
-    state.operators.grad_z = csr_matrix((dof_w, dof_p))
-    state.operators.laplacian = eye(dof_p, format='csr')
+    # 1. Prepare minimal context and physics params (matching orchestrator logic)
+    ctx = get_initialization_context(state)
+    physics_params = {
+        "dx": 0.1, "dy": 0.1, "dz": 0.1, 
+        "dt": 0.01, "rho": 1.0, "mu": 0.001, 
+        "f_vals": (0.0, 0.0, 0.0)
+    }
     
-    # 2. Advection data storage alignment
-    state.advection._weights = np.zeros((total_vel_dof, 8))
-    state.advection._indices = np.zeros((total_vel_dof, 8), dtype=int)
+    # 2. Populate the stencil_matrix using the assembler
+    # This ensures your dummy state perfectly mirrors the production logic
+    state.stencil_matrix = assemble_stencil_matrix(
+        state, nx, ny, nz, ctx, physics_params
+    )
     
-    # 3. Mandatory Handshake & Configuration (Rule 5 Compliance)
-    state.ppe._A = state.operators.laplacian
-    
-    # Hydrating the configuration to prevent _get_safe Access Errors
-    state.config.ppe_tolerance = 1e-10
-    state.config.ppe_atol = 1e-12
-    state.config.ppe_max_iter = 1000
-    
-    # 4. State Baseline
-    state.health.is_stable = True
-    state.health.max_u = 0.0
-    state.health.divergence_norm = 0.0
-    state.health.post_correction_divergence_norm = 0.0
-    
+    # 3. State Baseline
     state.ready_for_time_loop = True
     
     return state
