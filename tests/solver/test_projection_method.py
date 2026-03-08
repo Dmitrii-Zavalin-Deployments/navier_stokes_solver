@@ -1,10 +1,13 @@
 # tests/solver/test_projection_method.py
 
 import numpy as np
+
 from src.step3.ops.divergence import divergence_v_star
+from src.step3.solver.corrector import compute_corrector_step
+
 # We will assume we have these components ready
 from src.step3.solver.predictor import compute_predictor_step
-from src.step3.solver.corrector import compute_corrector_step
+
 
 def test_incompressibility_constraint():
     # 1. Setup a known state
