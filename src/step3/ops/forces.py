@@ -2,6 +2,7 @@
 
 import numpy as np
 
+
 def get_body_forces(nx, ny, nz, Fx_val, Fy_val, Fz_val):
     """
     Returns the body force field F = (Fx, Fy, Fz).

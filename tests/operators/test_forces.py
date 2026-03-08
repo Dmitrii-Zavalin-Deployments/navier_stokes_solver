@@ -1,7 +1,9 @@
 # tests/operators/test_forces.py
 
 import numpy as np
+
 from src.step3.ops.forces import get_body_forces
+
 
 def test_get_body_forces_explicit():
     # Setup - No defaults allowed
