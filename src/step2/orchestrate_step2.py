@@ -1,24 +1,36 @@
-from src.solver_input import SolverInput
-from src.solver_state import SolverState
+# src/step2/orchestrate_step2.py
 
-from .compiler import TopologyCompiler
-from .factory import CellBuilder
+import numpy as np
+from .factory import get_initialization_context, build_cell
+from .compiler import cell_to_numpy_row, GET_CELL_ATTRIBUTES
+from src.core.solver_state import SolverState
 
-
-def orchestrate_step2(state: SolverState, input_data: SolverInput) -> SolverState:
-    # 1. Initialize Builder and Compiler
-    builder = CellBuilder(input_data)
-    compiler = TopologyCompiler(shape=(state.grid.nx, state.grid.ny, state.grid.nz))
+def orchestrate_step2(state: SolverState) -> SolverState:
+    # 1. Dynamic Attribute Mapping
+    # GET_CELL_ATTRIBUTES = ['x', 'y', 'z', 'vx', 'vy', 'vz', 'p', 'mask', 'is_ghost']
+    attributes = GET_CELL_ATTRIBUTES()
+    num_attributes = len(attributes)
     
-    # 2. Loop through the grid
+    total_cells = state.grid.nx * state.grid.ny * state.grid.nz
+    
+    # 2. Pre-allocate the LOCAL buffer
+    local_cell_matrix = np.zeros((total_cells, num_attributes), dtype=np.float64)
+    
+    # 3. Initialization Context (Physical constants)
+    ctx = get_initialization_context(state)
+
+    # 4. The Main Processing Loop
+    cursor = 0
     for i in range(state.grid.nx):
         for j in range(state.grid.ny):
             for k in range(state.grid.nz):
-                # Build transient object
-                cell = builder.build(i, j, k)
-                # Compile to local buffers
-                compiler.compile_cell(cell)
+                # Factory creates DTO
+                cell = build_cell(i, j, k, state, ctx)
                 
-    # 3. Final atomic update
-    compiler.commit_to_state(state)
+                # Compiler converts DTO to row based on the same attribute list
+                local_cell_matrix[cursor] = cell_to_numpy_row(cell)
+                cursor += 1
+
+    # 5. Final Commit
+    state.cell_matrix = local_cell_matrix
     return state
