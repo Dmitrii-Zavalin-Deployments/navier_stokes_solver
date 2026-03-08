@@ -1,6 +1,5 @@
 # src/step3/core/extract.py
 
-import numpy as np
 
 def get_interior_field(field):
     """

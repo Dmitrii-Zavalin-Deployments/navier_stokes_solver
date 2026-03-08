@@ -1,7 +1,9 @@
 # tests/core/test_extract.py
 
 import numpy as np
+
 from src.step3.core.extract import get_interior_field
+
 
 def test_get_interior_field():
     nx, ny, nz = 5, 5, 5
