@@ -1,17 +1,24 @@
 # src/common/base_container.py
 
 import json
-from typing import Any
+from typing import Any, Iterator
 
 import jsonschema
 import numpy as np
 
-
 class ValidatedContainer:
-    """The 'Security Guard' logic. Now with runtime contract enforcement."""
+    """The 'Security Guard' logic. Now with memory-efficient slots."""
+    __slots__ = []  # Empty slots for the base; children will populate theirs
+
+    def __iter__(self) -> Iterator[str]:
+        """Helper to iterate over attributes defined in slots across the hierarchy."""
+        for cls in reversed(self.__class__.__mro__):
+            for slot in getattr(cls, '__slots__', []):
+                yield slot
     
     def _get_safe(self, name: str) -> Any:
         attr_name = f"_{name}"
+        # Use getattr with a sentinel to check if the slot exists
         if not hasattr(self, attr_name):
             raise AttributeError(f"Coding Error: '{attr_name}' not defined in {self.__class__.__name__}.")
         val = getattr(self, attr_name)
@@ -25,32 +32,28 @@ class ValidatedContainer:
         setattr(self, f"_{name}", value)
 
     def validate_against_schema(self, schema_path: str):
-        """
-        Final Firewall: Automatically flattens nested 'config' and 'masks'
-        structures to align with the flat requirements of the schema.
-        """
+        """Final Firewall: Automatically flattens structures for validation."""
         with open(schema_path) as f:
             schema = json.load(f)
         
-        # 1. Get the standard recursive dict
         instance_data = self.to_dict()
         
-        # 2. Automatically flatten known nesting patterns
         if "config" in instance_data:
             config = instance_data.pop("config")
-            # Merge config items into the root
             instance_data.update(config)
             
         if "masks" in instance_data and isinstance(instance_data["masks"], dict):
             if "mask" in instance_data["masks"]:
                 instance_data["mask"] = instance_data["masks"]["mask"]
 
-        # 3. Validate the flattened instance
         jsonschema.validate(instance=instance_data, schema=schema)
 
     def to_dict(self) -> dict:
+        """Serializes the container using the slots hierarchy."""
         out = {}
-        for attr, val in self.__dict__.items():
+        # Iterate over all slots defined in the hierarchy
+        for attr in self:
+            val = getattr(self, attr, None)
             clean_key = attr.lstrip('_')
             
             # 1. Handle SciPy Sparse Matrices
