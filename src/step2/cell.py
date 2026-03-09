@@ -7,21 +7,21 @@ class Cell(ValidatedContainer):
     """
     Transient Data Transfer Object (DTO) for Step 2.
     Inherits runtime contract enforcement from ValidatedContainer.
+    Optimized with __slots__ to eliminate dictionary overhead.
     """
 
-    def __init__(self, x: int = None, y: int = None, z: int = None):
-        # Initialize private storage
-        self._x = None
-        self._y = None
-        self._z = None
-        self._vx = None
-        self._vy = None
-        self._vz = None
-        self._p = None
-        self._mask = None
-        self._is_ghost = None
+    # __slots__ reserves fixed memory locations for these attributes.
+    # Note: These names match the internal storage expected by _get_safe/_set_safe.
+    __slots__ = ['_x', '_y', '_z', '_vx', '_vy', '_vz', '_p', '_mask', '_is_ghost']
 
-        # Set coordinates if provided
+    def __init__(self, x: int = None, y: int = None, z: int = None):
+        # Explicitly initialize slots to None to allow the _get_safe 
+        # uninitialized-access check to function correctly.
+        for slot in self.__slots__:
+            super().__setattr__(slot, None)
+
+        # Set coordinates if provided; these use the property setters, 
+        # which will perform the validation logic.
         if x is not None: self.x = x
         if y is not None: self.y = y
         if z is not None: self.z = z
