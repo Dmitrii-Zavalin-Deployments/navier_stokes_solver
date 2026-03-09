@@ -2,6 +2,7 @@
 
 from src.common.stencil_block import StencilBlock
 
+
 def compute_local_advection(block: StencilBlock, field: str) -> float:
     """
     Computes local (v^n ⋅ ∇) * field for a specific component (field).
