@@ -2,6 +2,7 @@
 
 from src.common.stencil_block import StencilBlock
 
+
 def apply_boundary_values(block: StencilBlock, rule: dict):
     """
     Applies boundary conditions to the block's center cell.
