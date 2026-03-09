@@ -1,7 +1,6 @@
 # src/step2/stencil_block.py
 
 from src.common.base_container import ValidatedContainer
-
 from .cell import Cell
 
 
@@ -9,29 +8,37 @@ class StencilBlock(ValidatedContainer):
     """
     Logical container representing a 7-point stencil + physical context.
     Inherits runtime contract enforcement from ValidatedContainer.
+    Optimized with __slots__ to eliminate dictionary overhead.
     """
+
+    __slots__ = [
+        '_center', '_i_minus', '_i_plus', '_j_minus', '_j_plus', '_k_minus', '_k_plus',
+        '_dx', '_dy', '_dz', '_dt', '_rho', '_mu', '_f_vals'
+    ]
 
     def __init__(self, center: Cell, i_minus: Cell, i_plus: Cell, 
                  j_minus: Cell, j_plus: Cell, k_minus: Cell, k_plus: Cell,
                  dx: float, dy: float, dz: float, dt: float, 
                  rho: float, mu: float, f_vals: tuple):
         
-        # Initialize storage (using private fields)
-        self._center = center
-        self._i_minus = i_minus
-        self._i_plus = i_plus
-        self._j_minus = j_minus
-        self._j_plus = j_plus
-        self._k_minus = k_minus
-        self._k_plus = k_plus
+        # Initialize all slots to None to allow _get_safe to detect uninitialized states.
+        for slot in self.__slots__:
+            super().__setattr__(slot, None)
         
-        self._dx = dx
-        self._dy = dy
-        self._dz = dz
-        self._dt = dt
-        self._rho = rho
-        self._mu = mu
-        self._f_vals = f_vals
+        # Assign values through the validated setters to ensure contract enforcement
+        self.center = center
+        self.i_minus = i_minus
+        self.i_plus = i_plus
+        self.j_minus = j_minus
+        self.j_plus = j_plus
+        self.k_minus = k_minus
+        self.k_plus = k_plus
+        
+        self.dx, self.dy, self.dz = dx, dy, dz
+        self.dt = dt
+        self.rho = rho
+        self.mu = mu
+        self.f_vals = f_vals
 
     # --- Cell Accessors ---
     @property
