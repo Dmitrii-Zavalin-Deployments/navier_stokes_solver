@@ -4,6 +4,7 @@ from src.common.stencil_block import StencilBlock
 from src.step3.ops.divergence import compute_local_divergence_v_star
 from src.step3.ops.scaling import get_rho_over_dt
 
+
 def solve_pressure_poisson_step(block: StencilBlock, omega: float) -> float:
     """
     Consolidated PPE Solver.

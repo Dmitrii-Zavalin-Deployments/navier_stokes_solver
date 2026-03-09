@@ -3,14 +3,12 @@
 import json
 import logging
 import os
-import shutil
 import sys
 from pathlib import Path
 
 import jsonschema
 
 from src.solver_input import SolverInput
-from src.solver_state import SolverState
 from src.step1.orchestrate_step1 import orchestrate_step1
 from src.step2.orchestrate_step2 import orchestrate_step2
 from src.step3.orchestrate_step3 import orchestrate_step3
@@ -26,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 def _load_solver_config() -> dict:
     config_path = Path("config.json")
-    with open(config_path, "r") as f:
+    with open(config_path) as f:
         return json.load(f)["solver_settings"]
 
 def run_solver_from_file(input_path: str) -> str:
