@@ -1,31 +1,35 @@
 # src/step3/predictor.py
-import numpy as np
 
-from .core.extract import get_interior_field
-from .ops.advection import advective_term_v_n
-from .ops.forces import get_body_forces_interior
-from .ops.gradient import gradient_p_n
-from .ops.laplacian import laplacian_v
-from .ops.scaling import get_dt_over_rho
+from src.common.stencil_block import StencilBlock
+from src.step3.ops.advection import compute_local_advection_vector
+from src.step3.ops.forces import get_local_body_force
+from src.step3.ops.gradient import compute_local_gradient_p
+from src.step3.ops.laplacian import compute_local_laplacian_v_n
+from src.step3.ops.scaling import get_dt_over_rho
 
-
-def compute_predictor_step(v_n, p_n, dx, dy, dz, dt, rho, mu, F_vals):
+def compute_local_predictor_step(block: StencilBlock) -> tuple:
     """
-    The Predictor Step, now located directly in src/step3/
+    Computes the intermediate velocity v* = (u*, v*, w*) for a single StencilBlock.
+    Formula: v* = v^n + (dt/rho) * (mu * lap(v^n) - rho * (v^n ⋅ ∇)v^n + F + grad(p^n))
     """
-    nx, ny, nz = v_n.shape[1:]
     
-    # Generate Force Field (interior)
-    F_int = get_body_forces_interior(nx, ny, nz, *F_vals)
+    # 1. Access components
+    mu = block.mu
+    rho = block.rho
     
-    # Physics Terms (all returned as 3, interior_dims)
-    v_n_int = get_interior_field(v_n)
-    diff = laplacian_v(v_n, dx, dy, dz)
-    adv = np.stack(advective_term_v_n(v_n, dx, dy, dz))
-    grad_p = gradient_p_n(p_n, dx, dy, dz)
+    # 2. Local Operator calls (The Logic-Layer)
+    lap_v = compute_local_laplacian_v_n(block)    # (lap_u, lap_v, lap_w)
+    adv_v = compute_local_advection_vector(block) # (adv_u, adv_v, adv_w)
+    force = get_local_body_force(block)           # (Fx, Fy, Fz)
+    grad_p = compute_local_gradient_p(block, use_next=False) # (dpdx, dpdy, dpdz)
     
-    # Scaling and final update
-    scaling = get_dt_over_rho(dt, rho)
-    v_star = v_n_int + scaling * (mu * diff - rho * adv + F_int + grad_p)
+    # 3. Scaling factor
+    dt_over_rho = get_dt_over_rho(block)
     
-    return v_star
+    # 4. Compute components of v* (u*, v*, w*)
+    # v_star_i = v_n_i + (dt/rho) * (mu * lap_i - rho * adv_i + F_i + grad_i)
+    u_star = block.center.vx + dt_over_rho * (mu * lap_v[0] - rho * adv_v[0] + force[0] + grad_p[0])
+    v_star = block.center.vy + dt_over_rho * (mu * lap_v[1] - rho * adv_v[1] + force[1] + grad_p[1])
+    w_star = block.center.vz + dt_over_rho * (mu * lap_v[2] - rho * adv_v[2] + force[2] + grad_p[2])
+    
+    return u_star, v_star, w_star
