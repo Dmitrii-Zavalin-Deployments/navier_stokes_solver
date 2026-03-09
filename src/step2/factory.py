@@ -1,8 +1,8 @@
 # src/step2/factory.py
 
 from src.core.solver_state import SolverState
-
-from .cell import Cell
+# Updated import to point to common location
+from src.common.cell import Cell 
 
 
 def get_initialization_context(state: SolverState) -> dict:
