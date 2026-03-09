@@ -1,33 +1,43 @@
 # src/step3/ops/advection.py
 
+from src.common.stencil_block import StencilBlock
 
-def apply_advection_operator(v_n, field, dx, dy, dz):
+def compute_local_advection(block: StencilBlock, field: str) -> float:
     """
-    Computes (v^n * nabla) * field.
+    Computes local (v^n ⋅ ∇) * field for a specific component (field).
     
-    Formula:
-    u * df/dx + v * df/dy + w * df/dz
+    Formula: 
+    u_c * df/dx + v_c * df/dy + w_c * df/dz
+    
+    Args:
+        block: The StencilBlock instance.
+        field: The attribute name in Cell to advect (e.g., 'vx', 'vy', 'vz').
     """
-    u, v, w = v_n[0], v_n[1], v_n[2]
+    # 1. Access components for central difference (df/dx, df/dy, df/dz)
+    # Using getattr to dynamically fetch the attribute (vx, vy, or vz) from neighbors
+    f_ip, f_im = getattr(block.i_plus, field), getattr(block.i_minus, field)
+    f_jp, f_jm = getattr(block.j_plus, field), getattr(block.j_minus, field)
+    f_kp, f_km = getattr(block.k_plus, field), getattr(block.k_minus, field)
     
-    # Central difference for gradients
-    df_dx = (field[2:, 1:-1, 1:-1] - field[:-2, 1:-1, 1:-1]) / (2 * dx)
-    df_dy = (field[1:-1, 2:, 1:-1] - field[1:-1, :-2, 1:-1]) / (2 * dy)
-    df_dz = (field[1:-1, 1:-1, 2:] - field[1:-1, 1:-1, :-2]) / (2 * dz)
+    df_dx = (f_ip - f_im) / (2.0 * block.dx)
+    df_dy = (f_jp - f_jm) / (2.0 * block.dy)
+    df_dz = (f_kp - f_km) / (2.0 * block.dz)
     
-    # Velocity at cell centers (simple average for consistency with cell-centered pressure)
-    u_c = (u[2:, 1:-1, 1:-1] + u[:-2, 1:-1, 1:-1]) / 2 # Simplified
-    v_c = (v[1:-1, 2:, 1:-1] + v[1:-1, :-2, 1:-1]) / 2
-    w_c = (w[1:-1, 1:-1, 2:] + w[1:-1, 1:-1, :-2]) / 2
+    # 2. Compute cell-centered velocities (average of neighbors)
+    u_c = (block.i_plus.vx + block.i_minus.vx) / 2.0
+    v_c = (block.j_plus.vy + block.j_minus.vy) / 2.0
+    w_c = (block.k_plus.vz + block.k_minus.vz) / 2.0
     
+    # 3. Assemble advection term: (v ⋅ ∇)f
     return u_c * df_dx + v_c * df_dy + w_c * df_dz
 
-def advective_term_v_n(v_n, dx, dy, dz):
+def compute_local_advection_vector(block: StencilBlock) -> tuple:
     """
-    Computes (v^n * nabla) * v^n (The Advective Term).
+    Computes the full advective term for the momentum equation:
+    (v^n ⋅ ∇) * v^n = ((v ⋅ ∇)u, (v ⋅ ∇)v, (v ⋅ ∇)w)
     """
     return (
-        apply_advection_operator(v_n, v_n[0], dx, dy, dz),
-        apply_advection_operator(v_n, v_n[1], dx, dy, dz),
-        apply_advection_operator(v_n, v_n[2], dx, dy, dz)
+        compute_local_advection(block, 'vx'),
+        compute_local_advection(block, 'vy'),
+        compute_local_advection(block, 'vz')
     )
