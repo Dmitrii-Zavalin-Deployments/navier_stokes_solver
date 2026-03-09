@@ -1,20 +1,32 @@
 # src/step3/ops/divergence.py
 
+from src.common.stencil_block import StencilBlock
 
-def divergence_v_star(v_star, dx, dy, dz):
+def compute_local_divergence(block: StencilBlock) -> float:
     """
-    Computes the scalar divergence \nabla \cdot \vec{v}^* for the 
-    Pressure Poisson Equation source term.
+    Computes the local scalar divergence ∇ ⋅ v* for the Pressure Poisson Equation.
     
     Formula:
-    \nabla \cdot \vec{v}^* \approx (u_{i+1}-u_{i-1})/2dx + (v_{j+1}-v_{j-1})/2dy + (w_{k+1}-w_{k-1})/2dz
-    """
-    u, v, w = v_star[0], v_star[1], v_star[2]
+    ∇ ⋅ v* \approx (u_{i+1} - u_{i-1}) / (2*dx) + 
+                   (v_{j+1} - v_{j-1}) / (2*dy) + 
+                   (w_{k+1} - w_{k-1}) / (2*dz)
     
-    # --- PRODUCTION (Optimized) ---
-    div = (
-        (u[2:, 1:-1, 1:-1] - u[:-2, 1:-1, 1:-1]) / (2 * dx) +
-        (v[1:-1, 2:, 1:-1] - v[1:-1, :-2, 1:-1]) / (2 * dy) +
-        (w[1:-1, 1:-1, 2:] - w[1:-1, 1:-1, :-2]) / (2 * dz)
-    )
-    return div
+    Args:
+        block: The StencilBlock containing neighbor references.
+        
+    Returns:
+        float: The divergence value at the center cell.
+    """
+    
+    # 1. Access components from neighbors
+    # Using v*_star components stored in cells
+    u_ip, u_im = block.i_plus.vx_star, block.i_minus.vx_star
+    v_jp, v_jm = block.j_plus.vy_star, block.j_minus.vy_star
+    w_kp, w_km = block.k_plus.vz_star, block.k_minus.vz_star
+    
+    # 2. Central difference: ∇ ⋅ v*
+    div_x = (u_ip - u_im) / (2.0 * block.dx)
+    div_y = (v_jp - v_jm) / (2.0 * block.dy)
+    div_z = (w_kp - w_km) / (2.0 * block.dz)
+    
+    return div_x + div_y + div_z
