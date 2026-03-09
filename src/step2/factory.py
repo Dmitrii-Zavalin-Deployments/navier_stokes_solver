@@ -8,7 +8,6 @@ def get_initialization_context(state: SolverState) -> dict:
     """
     Step 2 Context Provider:
     Hoists physical constants and initial conditions out of the 3D loop.
-    This prevents O(N^3) dictionary lookups.
     """
     init_cond = state.config.initial_conditions 
     init_v = init_cond["velocity"]
@@ -30,7 +29,6 @@ def get_initialization_context(state: SolverState) -> dict:
 def build_core_cell(i: int, j: int, k: int, state: SolverState, ctx: dict) -> Cell:
     """
     Creates a real cell inside the nx * ny * nz domain.
-    Maps physical coordinates and topology from the input MaskData.
     """
     cell = Cell()
     
@@ -39,12 +37,11 @@ def build_core_cell(i: int, j: int, k: int, state: SolverState, ctx: dict) -> Ce
     cell.y = ctx["y_min"] + (j + 0.5) * ctx["dy"]
     cell.z = ctx["z_min"] + (k + 0.5) * ctx["dz"]
 
-    # 2. Map Physics from the hoisted Context
+    # 2. Map Physics
     cell.vx, cell.vy, cell.vz, cell.p = ctx["vx"], ctx["vy"], ctx["vz"], ctx["p"]
     
-    # 3. Initialize new solver states to 0.0
+    # 3. Initialize transient solver states to 0.0
     cell.vx_star, cell.vy_star, cell.vz_star = 0.0, 0.0, 0.0
-    cell.vx_next, cell.vy_next, cell.vz_next = 0.0, 0.0, 0.0
     cell.p_next = 0.0
     
     # 4. Topology from Step 1 Mask
@@ -68,12 +65,11 @@ def build_ghost_cell(i: int, j: int, k: int, ctx: dict) -> Cell:
     # 2. Initial Physics
     cell.vx, cell.vy, cell.vz, cell.p = ctx["vx"], ctx["vy"], ctx["vz"], ctx["p"]
     
-    # 3. Initialize new solver states to 0.0 for consistency
+    # 3. Initialize transient solver states to 0.0
     cell.vx_star, cell.vy_star, cell.vz_star = 0.0, 0.0, 0.0
-    cell.vx_next, cell.vy_next, cell.vz_next = 0.0, 0.0, 0.0
     cell.p_next = 0.0
     
-    # 4. Compliance: Using -1 as the boundary/ghost indicator
+    # 4. Boundary indicator
     cell.mask = -1  
     cell.is_ghost = True
     

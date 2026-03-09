@@ -5,7 +5,7 @@ from src.common.base_container import ValidatedContainer
 
 class Cell(ValidatedContainer):
     """
-    Transient Data Transfer Object (DTO) for the Projection Method.
+    Lean Data Transfer Object (DTO) for the Projection Method.
     Inherits runtime contract enforcement from ValidatedContainer.
     Optimized with __slots__ to eliminate dictionary overhead.
     """
@@ -14,7 +14,6 @@ class Cell(ValidatedContainer):
         '_x', '_y', '_z', 
         '_vx', '_vy', '_vz', 
         '_vx_star', '_vy_star', '_vz_star', 
-        '_vx_next', '_vy_next', '_vz_next',
         '_p', '_p_next', 
         '_mask', '_is_ghost'
     ]
@@ -74,22 +73,6 @@ class Cell(ValidatedContainer):
     def vz_star(self) -> float: return self._get_safe("vz_star")
     @vz_star.setter
     def vz_star(self, value: float): self._set_safe("vz_star", value, (float, int))
-
-    # --- Next Velocity Fields (n+1) ---
-    @property
-    def vx_next(self) -> float: return self._get_safe("vx_next")
-    @vx_next.setter
-    def vx_next(self, value: float): self._set_safe("vx_next", value, (float, int))
-
-    @property
-    def vy_next(self) -> float: return self._get_safe("vy_next")
-    @vy_next.setter
-    def vy_next(self, value: float): self._set_safe("vy_next", value, (float, int))
-
-    @property
-    def vz_next(self) -> float: return self._get_safe("vz_next")
-    @vz_next.setter
-    def vz_next(self, value: float): self._set_safe("vz_next", value, (float, int))
 
     # --- Pressure Fields ---
     @property
