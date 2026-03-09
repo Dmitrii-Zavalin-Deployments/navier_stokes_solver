@@ -5,7 +5,6 @@ from pathlib import Path
 
 from src.common.stencil_block import StencilBlock
 from src.step3.ops.divergence import compute_local_divergence_v_star
-from src.step3.ops.laplacian import compute_local_laplacian_p_next
 from src.step3.ops.scaling import get_rho_over_dt
 
 
