@@ -6,7 +6,6 @@ from .factory import get_initialization_context
 from .stencil_assembler import assemble_stencil_matrix
 
 
-
 def orchestrate_step2(state: SolverState) -> SolverState:
     """
     Orchestrates the construction of the Stencil Matrix.

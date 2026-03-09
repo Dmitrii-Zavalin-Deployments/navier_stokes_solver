@@ -1,6 +1,5 @@
 # src/step2/stencil_assembler.py
 
-from .factory import build_core_cell, build_ghost_cell
 # Import is already pointing to the new common location
 from src.common.stencil_block import StencilBlock
 
