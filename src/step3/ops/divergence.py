@@ -2,6 +2,7 @@
 
 from src.common.stencil_block import StencilBlock
 
+
 def compute_local_divergence(block: StencilBlock) -> float:
     """
     Computes the local scalar divergence ∇ ⋅ v* for the Pressure Poisson Equation.
