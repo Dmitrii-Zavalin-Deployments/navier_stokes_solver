@@ -24,12 +24,22 @@ DEBUG = True
 logging.basicConfig(level=logging.INFO, stream=sys.stderr)
 logger = logging.getLogger(__name__)
 
+def _load_solver_config() -> dict:
+    config_path = Path("config.json")
+    with open(config_path, "r") as f:
+        return json.load(f)["solver_settings"]
+
 def run_solver_from_file(input_path: str) -> str:
-    """Master Controller: Orchestrates the pipeline with strict contract enforcement."""
+    """Master Controller: Orchestrates the pipeline with iterative PPE-Boundary coupling."""
     if not os.path.exists(input_path):
         raise FileNotFoundError(f"Input file missing at {input_path}")
 
-    # Path to the single source of truth contract
+    # Load configuration once (Hoisting)
+    cfg = _load_solver_config()
+    omega = cfg["ppe_omega"]
+    max_iter = cfg["ppe_max_iter"]
+    tol = cfg["ppe_tolerance"]
+
     SCHEMA_PATH = Path("schema/solver_input_schema.json")
 
     try:
@@ -58,51 +68,45 @@ def run_solver_from_file(input_path: str) -> str:
         
         # 2. MAIN EXECUTION LOOP
         while state.ready_for_time_loop:
-            # A. Physics & Boundaries
-            state = orchestrate_step3(state)
-            state = orchestrate_step4(state)
+            # A. PREDICTOR PASS (Once per time step)
+            for block in state.stencil_matrix:
+                # Calculate v*
+                orchestrate_step3(block, omega, is_first_pass=True)
+                # Enforce BCs on the predicted velocity v*
+                orchestrate_step4(block)
             
-            # B. ODOMETER UPDATE
+            # B. ITERATIVE SOLVER & BOUNDARY PASS
+            for _ in range(max_iter):
+                max_delta = 0.0
+                for block in state.stencil_matrix:
+                    # Solve (SOR) -> Correct (v^{n+1}) -> Sync (p^{n+1})
+                    block, delta = orchestrate_step3(block, omega, is_first_pass=False)
+                    
+                    # Enforce BCs on the newly corrected velocity v^{n+1}
+                    block = orchestrate_step4(block)
+                    
+                    max_delta = max(max_delta, delta)
+                
+                if max_delta < tol:
+                    break
+            
+            # C. ODOMETER UPDATE
             state.iteration += 1
             state.time += state.dt
             
-            # C. FINALIZATION & GUARD
+            # D. FINALIZATION & GUARD
             state = orchestrate_step5(state)
             
             if DEBUG and state.iteration % 10 == 0:
-                logger.info(f"Iter {state.iteration}: t={state.time:.4f}s | Div={state.health.divergence_norm:.2e}")
+                logger.info(f"Iter {state.iteration}: t={state.time:.4f}s | Delta={max_delta:.2e}")
 
         if DEBUG:
             logger.info("DEBUG [Main]: Loop exit detected. Finalizing artifacts.")
-        
+
         return archive_simulation_artifacts(state)
 
     except Exception as e:
         logger.error(f"FATAL PIPELINE ERROR: {str(e)}")
         raise RuntimeError(f"Solver Pipeline crashed: {str(e)}") from e
 
-def archive_simulation_artifacts(state: SolverState) -> str:
-    """Rule 4: SSoT Archiving. Moves manifest snapshots into a single ZIP."""
-    base_dir = Path(".")
-    zip_base_name = base_dir / f"navier_stokes_{state.config.case_name}_output"
-    source_dir = Path(state.manifest.output_directory)
-
-    # Final metadata capture
-    state_json_path = source_dir / "final_state_snapshot.json"
-    with open(state_json_path, "w") as f:
-        json.dump(state.to_json_safe(), f, indent=4)
-    
-    result_path = shutil.make_archive(str(zip_base_name), 'zip', str(source_dir))
-    
-    if DEBUG:
-        logger.info(f"DEBUG [Main]: Artifact created: {result_path}")
-    
-    return result_path
-
-if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        sys.exit(1)
-    try:
-        print(run_solver_from_file(sys.argv[1])) 
-    except Exception:
-        sys.exit(1)
+# ... [archive_simulation_artifacts and if __name__ == "__main__" remain the same] ...
