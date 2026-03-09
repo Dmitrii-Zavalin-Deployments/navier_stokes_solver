@@ -2,14 +2,16 @@
 
 import json
 from pathlib import Path
+
 from src.common.stencil_block import StencilBlock
 from src.step3.ops.divergence import compute_local_divergence_v_star
 from src.step3.ops.laplacian import compute_local_laplacian_p_next
 from src.step3.ops.scaling import get_rho_over_dt
 
+
 def _load_ppe_config() -> dict:
     config_path = Path(__file__).resolve().parents[2] / "config.json"
-    with open(config_path, "r") as f:
+    with open(config_path) as f:
         return json.load(f)["solver_settings"]
 
 def solve_pressure_poisson_step(block: StencilBlock) -> float:
