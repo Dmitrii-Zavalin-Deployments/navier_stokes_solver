@@ -1,15 +1,12 @@
 # src/step3/ops/forces.py
-import numpy as np
 
+from src.common.stencil_block import StencilBlock
 
-def get_body_forces_interior(nx, ny, nz, Fx_val, Fy_val, Fz_val):
+def get_local_body_force(block: StencilBlock) -> tuple:
     """
-    Returns the body force field F on the interior grid (nx-2, ny-2, nz-2).
-    This ensures it is ready for immediate addition to the velocity field.
-    """
-    # Create the interior-only grid directly
-    Fx = np.full((nx-2, ny-2, nz-2), Fx_val, dtype=np.float64)
-    Fy = np.full((nx-2, ny-2, nz-2), Fy_val, dtype=np.float64)
-    Fz = np.full((nx-2, ny-2, nz-2), Fz_val, dtype=np.float64)
+    Returns the body force vector (Fx, Fy, Fz) for the current stencil block.
     
-    return np.array([Fx, Fy, Fz])
+    Accesses the tuple stored in the StencilBlock instance.
+    """
+    # f_vals is stored as (Fx, Fy, Fz) in the block
+    return block.f_vals
