@@ -1,7 +1,7 @@
 # src/common/solver_input.py
 
 from dataclasses import dataclass, field
-from typing import Optional
+
 from src.common.base_container import ValidatedContainer
 
 # =========================================================
@@ -12,7 +12,7 @@ from src.common.base_container import ValidatedContainer
 class DomainConfigInput(ValidatedContainer):
     __slots__ = ['_type', '_reference_velocity']
     _type: str
-    _reference_velocity: Optional[list]
+    _reference_velocity: list | None
 
     @property
     def type(self) -> str: return self._get_safe("type")
