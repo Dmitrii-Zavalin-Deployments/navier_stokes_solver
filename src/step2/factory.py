@@ -1,8 +1,10 @@
 # src/step2/factory.py
 
 import numpy as np
+
 from src.common.cell import Cell
 from src.core.solver_state import SolverState
+
 
 def get_initialization_context(state: SolverState) -> dict:
     """

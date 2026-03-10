@@ -1,7 +1,9 @@
 # src/step2/stencil_assembler.py
 
 from src.common.stencil_block import StencilBlock
+
 from .factory import build_core_cell, build_ghost_cell
+
 
 def assemble_stencil_matrix(state, nx, ny, nz, ctx, physics_params):
     """
