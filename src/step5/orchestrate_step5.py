@@ -1,12 +1,12 @@
-def orchestrate_step5(state: SolverState) -> SolverState:
-    # 1. Apply Physical Constraints (Ghost Cell Synchronization)
-    # This uses the masks generated in Step 2 to ensure we don't 
-    # touch internal fluid cells, only boundary-associated ghost cells.
-    apply_boundary_conditions(state)
-    
-    # 2. Finalize and Archive
-    # Only now is the state "Physical" enough to be saved for analysis.
-    if state.iteration % state.config.archive_frequency == 0:
-        state.archive.save_snapshot(state)
+# src/step5/orchestrate_step5.py
+from src.step5.io_archivist import save_snapshot
+
+def orchestrate_step5(state) -> object:
+    """
+    Step 5: The Archivist.
+    Decides when to trigger data persistence.
+    """
+    if state.iteration % state.config.output_interval == 0:
+        save_snapshot(state)
         
     return state
