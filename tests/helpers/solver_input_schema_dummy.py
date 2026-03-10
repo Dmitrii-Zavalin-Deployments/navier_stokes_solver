@@ -1,17 +1,22 @@
 # tests/helpers/solver_input_schema_dummy.py
 
-from src.solver_input import SolverInput
-
+from src.common.solver_input import SolverInput
 
 def solver_input_schema_dummy() -> dict:
     """
     Returns a raw dictionary representing valid JSON input.
-    Use this for integration tests or file-loading tests.
+    Compliant with Phase C: Deterministic Initialization and Law of Singular Access.
     """
     nx, ny, nz = 2, 2, 2
-    mask_flat = [0] * (nx * ny * nz) # All fluid for the dummy
+    # Rule 5: Explicit initialization. 
+    # Mask values: 1 = fluid, 0 = solid, -1 = boundary-fluid
+    mask_flat = [1] * (nx * ny * nz) 
 
     return {
+        "domain_configuration": {
+            "type": "INTERNAL",
+            "reference_velocity": [0.0, 0.0, 0.0]
+        },
         "grid": {
             "x_min": 0.0, "x_max": 1.0,
             "y_min": 0.0, "y_max": 1.0,
@@ -30,27 +35,25 @@ def solver_input_schema_dummy() -> dict:
             "time_step": 0.01,
             "total_time": 0.1,
             "output_interval": 1,
-            "advection_weight_base": 0.125,
         },
         "boundary_conditions": [
-            {"location": "x_min", "type": "no-slip", "values": {"u": 0.0, "v": 0.0, "w": 0.0, "p": 0.0}, "comment": "wall"},
-            {"location": "x_max", "type": "outflow", "values": {"u": 0.0, "v": 0.0, "w": 0.0, "p": 0.0}, "comment": "exit"},
-            {"location": "y_min", "type": "no-slip", "values": {"u": 0.0, "v": 0.0, "w": 0.0, "p": 0.0}, "comment": "wall"},
-            {"location": "y_max", "type": "no-slip", "values": {"u": 0.0, "v": 0.0, "w": 0.0, "p": 0.0}, "comment": "wall"},
-            {"location": "z_min", "type": "no-slip", "values": {"u": 0.0, "v": 0.0, "w": 0.0, "p": 0.0}, "comment": "wall"},
-            {"location": "z_max", "type": "no-slip", "values": {"u": 0.0, "v": 0.0, "w": 0.0, "p": 0.0}, "comment": "wall"},
+            {"location": "x_min", "type": "inflow", "values": {"u": 1.0, "v": 0.0, "w": 0.0}},
+            {"location": "x_max", "type": "outflow", "values": {"p": 0.0}},
+            {"location": "y_min", "type": "no-slip", "values": {"u": 0.0, "v": 0.0, "w": 0.0}},
+            {"location": "y_max", "type": "free-slip", "values": {"u": 1.0, "w": 0.0}},
+            {"location": "z_min", "type": "pressure", "values": {"p": 101325.0}},
+            {"location": "z_max", "type": "pressure", "values": {"p": 0.0}},
+            {"location": "wall", "type": "no-slip", "values": {"u": 0.0, "v": 0.0, "w": 0.0}},
         ],
         "mask": mask_flat,
         "external_forces": {
-            "force_vector": [0.0, 0.0, 0.0],
-            "comment": "No gravity"
+            "force_vector": [0.0, -9.81, 0.0]
         },
     }
 
 def make_solver_input_dummy() -> SolverInput:
     """
     Returns a fully hydrated SolverInput OBJECT.
-    Use this for unit testing orchestrate_step1 directly.
+    Rule 8: Singular access; all data must pass through .from_dict().
     """
-    raw_dict = solver_input_schema_dummy()
-    return SolverInput.from_dict(raw_dict)
+    return SolverInput.from_dict(solver_input_schema_dummy())
