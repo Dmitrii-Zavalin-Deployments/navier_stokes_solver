@@ -34,7 +34,7 @@ def run_solver_from_file(input_path: str) -> str:
 
     # Load configuration once (Hoisting)
     cfg = _load_solver_config()
-    omega = cfg["ppe_omega"]
+    cfg["ppe_omega"]
     max_iter = cfg["ppe_max_iter"]
     tol = cfg["ppe_tolerance"]
 
