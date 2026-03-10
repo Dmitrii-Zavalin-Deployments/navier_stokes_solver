@@ -359,12 +359,12 @@ class FieldManager(ValidatedContainer):
             raise TypeError("Field data must be a NumPy array.")
         self._set_safe("data", value, np.ndarray)
 
-    def allocate(self, n_cells: int):
+    def allocate(self, n_cells: int, dtype=np.float64):
         """
         Pre-allocate memory for all fields:
         [vx, vy, vz, vx_star, vy_star, vz_star, p, p_next]
         """
-        self.data = np.zeros((n_cells, 8), dtype=np.float64)
+        self.data = np.zeros((n_cells, 8), dtype=dtype)
 
 # =========================================================
 # THE UNIVERSAL CONTAINER (The Constitution)
