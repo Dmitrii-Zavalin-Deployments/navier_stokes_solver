@@ -28,8 +28,13 @@
           "description": "INTERNAL: Pressure-driven pipe flow. EXTERNAL: Far-field aerodynamics."
         },
         "reference_velocity": {
-          "type": "number",
-          "description": "Optional reference velocity for far-field calculations."
+          "type": "array",
+          "description": "Optional reference velocity of the EXTERNAL flow",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
         }
       }
     },

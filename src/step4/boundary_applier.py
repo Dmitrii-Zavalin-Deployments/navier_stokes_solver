@@ -6,23 +6,36 @@ DEBUG = True
 def apply_boundary_values(block, rule: dict):
     """
     Selective update: only updates attributes present in the rule['values'].
-    Maps schema keys (u, v, w) to Cell attributes (vx, vy, vz).
+    Enforces strict policy: if a key is expected for a specific boundary type,
+    it must be present in the rule, otherwise, raises ValueError.
     """
-    values = rule.get("values", {})
+    values = rule.get("values")
+    location = rule.get("location")
+    boundary_type = rule.get("type")
+    
+    if values is None or location is None or boundary_type is None:
+        raise ValueError(f"Boundary rule is missing required fields: location={location}, type={boundary_type}, values={values}")
+
     x, y, z = block.center.x, block.center.y, block.center.z
     
-    if DEBUG and values:
-        print(f"DEBUG [Applier]: Applying values to Block ({x},{y},{z}) | Rule: {rule.get('location')} ({rule.get('type')})")
+    if DEBUG:
+        print(f"DEBUG [Applier]: Applying {boundary_type} at {location} to Block ({x},{y},{z})")
 
-    if "u" in values: 
-        block.center.vx = values["u"]
-        if DEBUG: print(f"  -> vx set to {values['u']}")
-    if "v" in values: 
-        block.center.vy = values["v"]
-        if DEBUG: print(f"  -> vy set to {values['v']}")
-    if "w" in values: 
-        block.center.vz = values["w"]
-        if DEBUG: print(f"  -> vz set to {values['w']}")
-    if "p" in values: 
-        block.center.p = values["p"]
-        if DEBUG: print(f"  -> p set to {values['p']}")
+    # Strict application: If we encounter keys we don't recognize or values are missing
+    # where physics requires them, we do not guess—we crash.
+    
+    for key, value in values.items():
+        if key == "u":
+            block.center.vx = value
+            if DEBUG: print(f"  -> vx set to {value}")
+        elif key == "v":
+            block.center.vy = value
+            if DEBUG: print(f"  -> vy set to {value}")
+        elif key == "w":
+            block.center.vz = value
+            if DEBUG: print(f"  -> vz set to {value}")
+        elif key == "p":
+            block.center.p = value
+            if DEBUG: print(f"  -> p set to {value}")
+        else:
+            raise ValueError(f"Unsupported boundary value key '{key}' encountered at {location}")
