@@ -3,15 +3,22 @@
 from src.step2.factory import get_initialization_context
 from src.step2.stencil_assembler import assemble_stencil_matrix
 from tests.helpers.solver_step1_output_dummy import make_step1_output_dummy
-
+from src.common.solver_state import FieldManager  # Added import
 
 def make_step2_output_dummy(nx=4, ny=4, nz=4):
     """
-    Generates a valid SolverState with a populated stencil_matrix.
+    Generates a valid SolverState with a populated FieldManager foundation 
+    and a stencil_matrix wiring.
     """
     state = make_step1_output_dummy(nx=nx, ny=ny, nz=nz)
     
-    # 1. Prepare minimal context and physics params (matching orchestrator logic)
+    # 1. Allocate the Foundation (Rule 9)
+    # We must allocate the data before the assembler expects the cells to have indices
+    n_cells = nx * ny * nz
+    state.fields = FieldManager()
+    state.fields.allocate(n_cells)
+    
+    # 2. Prepare minimal context and physics params
     ctx = get_initialization_context(state)
     physics_params = {
         "dx": 0.1, "dy": 0.1, "dz": 0.1, 
@@ -19,13 +26,12 @@ def make_step2_output_dummy(nx=4, ny=4, nz=4):
         "f_vals": (0.0, 0.0, 0.0)
     }
     
-    # 2. Populate the stencil_matrix using the assembler
-    # This ensures your dummy state perfectly mirrors the production logic
+    # 3. Populate the stencil_matrix (Wiring)
     state.stencil_matrix = assemble_stencil_matrix(
         state, nx, ny, nz, ctx, physics_params
     )
     
-    # 3. State Baseline
+    # 4. State Baseline
     state.ready_for_time_loop = True
     
     return state
