@@ -42,46 +42,38 @@ class GridInput(ValidatedContainer):
     def x_min(self) -> float: return self._get_safe("x_min")
     @x_min.setter
     def x_min(self, v: float): self._set_safe("x_min", v, float)
-
     @property
     def x_max(self) -> float: return self._get_safe("x_max")
     @x_max.setter
     def x_max(self, v: float): self._set_safe("x_max", v, float)
-
     @property
     def nx(self) -> int: return self._get_safe("nx")
     @nx.setter
     def nx(self, v: int): 
         if v < 1: raise ValueError(f"nx must be >= 1, got {v}")
         self._set_safe("nx", v, int)
-
     @property
     def y_min(self) -> float: return self._get_safe("y_min")
     @y_min.setter
     def y_min(self, v: float): self._set_safe("y_min", v, float)
-
     @property
     def y_max(self) -> float: return self._get_safe("y_max")
     @y_max.setter
     def y_max(self, v: float): self._set_safe("y_max", v, float)
-
     @property
     def ny(self) -> int: return self._get_safe("ny")
     @ny.setter
     def ny(self, v: int): 
         if v < 1: raise ValueError(f"ny must be >= 1, got {v}")
         self._set_safe("ny", v, int)
-
     @property
     def z_min(self) -> float: return self._get_safe("z_min")
     @z_min.setter
     def z_min(self, v: float): self._set_safe("z_min", v, float)
-
     @property
     def z_max(self) -> float: return self._get_safe("z_max")
     @z_max.setter
     def z_max(self, v: float): self._set_safe("z_max", v, float)
-
     @property
     def nz(self) -> int: return self._get_safe("nz")
     @nz.setter
@@ -110,7 +102,6 @@ class FluidInput(ValidatedContainer):
     def density(self, v: float):
         if v <= 0: raise ValueError(f"Density must be > 0, got {v}")
         self._set_safe("density", v, float)
-
     @property
     def viscosity(self) -> float: return self._get_safe("viscosity")
     @viscosity.setter
@@ -130,7 +121,6 @@ class InitialConditionsInput(ValidatedContainer):
     def velocity(self, v: list):
         if v is not None and len(v) != 3: raise ValueError("velocity must have 3 items")
         self._set_safe("velocity", v, list)
-
     @property
     def pressure(self) -> float: return self._get_safe("pressure")
     @pressure.setter
@@ -149,14 +139,12 @@ class SimParamsInput(ValidatedContainer):
     def time_step(self, v: float):
         if v <= 0: raise ValueError("time_step must be > 0")
         self._set_safe("time_step", v, float)
-
     @property
     def total_time(self) -> float: return self._get_safe("total_time")
     @total_time.setter
     def total_time(self, v: float):
         if v <= 0: raise ValueError("total_time must be > 0")
         self._set_safe("total_time", v, float)
-
     @property
     def output_interval(self) -> int: return self._get_safe("output_interval")
     @output_interval.setter
@@ -166,11 +154,10 @@ class SimParamsInput(ValidatedContainer):
 
 @dataclass
 class BoundaryConditionItem(ValidatedContainer):
-    __slots__ = ['_location', '_type', '_values', '_comment']
+    __slots__ = ['_location', '_type', '_values']
     _location: str
     _type: str
     _values: dict
-    _comment: str
 
     @property
     def location(self) -> str: return self._get_safe("location")
@@ -179,7 +166,6 @@ class BoundaryConditionItem(ValidatedContainer):
         valid = ["x_min", "x_max", "y_min", "y_max", "z_min", "z_max", "wall"]
         if v not in valid: raise ValueError(f"Invalid location: {v}")
         self._set_safe("location", v, str)
-
     @property
     def type(self) -> str: return self._get_safe("type")
     @type.setter
@@ -187,16 +173,10 @@ class BoundaryConditionItem(ValidatedContainer):
         valid = ["no-slip", "free-slip", "inflow", "outflow", "pressure"]
         if v not in valid: raise ValueError(f"Invalid type: {v}")
         self._set_safe("type", v, str)
-
     @property
     def values(self) -> dict: return self._get_safe("values")
     @values.setter
     def values(self, v: dict): self._set_safe("values", v, dict)
-
-    @property
-    def comment(self) -> str: return self._get_safe("comment")
-    @comment.setter
-    def comment(self, v: str): self._set_safe("comment", v, str)
 
 @dataclass
 class BoundaryConditionsInput(ValidatedContainer):
@@ -225,9 +205,8 @@ class MaskInput(ValidatedContainer):
 
 @dataclass
 class ExternalForcesInput(ValidatedContainer):
-    __slots__ = ['_force_vector', '_comment']
+    __slots__ = ['_force_vector']
     _force_vector: list
-    _comment: str
 
     @property
     def force_vector(self) -> list: return self._get_safe("force_vector")
@@ -235,11 +214,6 @@ class ExternalForcesInput(ValidatedContainer):
     def force_vector(self, v: list):
         if len(v) != 3: raise ValueError("force_vector must have 3 items")
         self._set_safe("force_vector", v, list)
-
-    @property
-    def comment(self) -> str: return self._get_safe("comment")
-    @comment.setter
-    def comment(self, v: str): self._set_safe("comment", v, str)
 
 # =========================================================
 # 2. THE UNIVERSAL INPUT CONTAINER
@@ -262,7 +236,6 @@ class SolverInput(ValidatedContainer):
     @classmethod
     def from_dict(cls, data: dict) -> "SolverInput":
         obj = cls()
-        # Direct key access ensures failure on missing data (Deterministic Initialization)
         dc = data["domain_configuration"]
         obj.domain_configuration.type = dc["type"]
         obj.domain_configuration.reference_velocity = dc.get("reference_velocity")
@@ -284,10 +257,7 @@ class SolverInput(ValidatedContainer):
         obj.simulation_parameters.total_time = sp["total_time"]
         obj.simulation_parameters.output_interval = sp["output_interval"]
         
-        ef = data["external_forces"]
-        obj.external_forces.force_vector = ef["force_vector"]
-        obj.external_forces.comment = ef.get("comment", "")
-        
+        obj.external_forces.force_vector = data["external_forces"]["force_vector"]
         obj.mask.data = data["mask"]
         obj.boundary_conditions.items = data["boundary_conditions"]
         
@@ -307,7 +277,7 @@ class SolverInput(ValidatedContainer):
                 "total_time": self.simulation_parameters.total_time, 
                 "output_interval": self.simulation_parameters.output_interval
             },
-            "boundary_conditions": [{"location": bc.location, "type": bc.type, "values": bc.values, "comment": bc.comment} for bc in self.boundary_conditions.items],
+            "boundary_conditions": [{"location": bc.location, "type": bc.type, "values": bc.values} for bc in self.boundary_conditions.items],
             "mask": self.mask.data,
-            "external_forces": {"force_vector": self.external_forces.force_vector, "comment": self.external_forces.comment}
+            "external_forces": {"force_vector": self.external_forces.force_vector}
         }
