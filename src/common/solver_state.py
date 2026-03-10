@@ -347,20 +347,74 @@ class ExternalForceManager(ValidatedContainer):
 @dataclass
 class SolverState(ValidatedContainer):
     __slots__ = [
-        'domain', 'grid', 'fluid', 'initial_conditions', 
-        'boundary_conditions', 'external_forces', 'sim_params', 
-        'masks', 'iteration', 'time', 'ready_for_time_loop'
+        '_domain', '_grid', '_fluid', '_initial_conditions', 
+        '_boundary_conditions', '_external_forces', '_sim_params', 
+        '_masks', '_iteration', '_time', '_ready_for_time_loop'
     ]
 
-    domain: DomainManager
-    grid: GridManager
-    fluid: FluidPropertiesManager
-    initial_conditions: InitialConditionManager
-    boundary_conditions: BoundaryConditionManager
-    external_forces: ExternalForceManager
-    sim_params: SimulationParameterManager
-    masks: MaskManager
+    # Internal state initialized to None (Zero-Debt Policy)
+    _domain: DomainManager = None
+    _grid: GridManager = None
+    _fluid: FluidPropertiesManager = None
+    _initial_conditions: InitialConditionManager = None
+    _boundary_conditions: BoundaryConditionManager = None
+    _external_forces: ExternalForceManager = None
+    _sim_params: SimulationParameterManager = None
+    _masks: MaskManager = None
     
-    iteration: int = 0
-    time: float = 0.0
-    ready_for_time_loop: bool = False
+    _iteration: int = 0
+    _time: float = 0.0
+    _ready_for_time_loop: bool = False
+
+    # --- Property Gates (The Firewall) ---
+
+    @property
+    def domain(self) -> DomainManager: return self._get_safe("domain")
+    @domain.setter
+    def domain(self, value: DomainManager): self._set_safe("domain", value, DomainManager)
+
+    @property
+    def grid(self) -> GridManager: return self._get_safe("grid")
+    @grid.setter
+    def grid(self, value: GridManager): self._set_safe("grid", value, GridManager)
+
+    @property
+    def fluid(self) -> FluidPropertiesManager: return self._get_safe("fluid")
+    @fluid.setter
+    def fluid(self, value: FluidPropertiesManager): self._set_safe("fluid", value, FluidPropertiesManager)
+
+    @property
+    def initial_conditions(self) -> InitialConditionManager: return self._get_safe("initial_conditions")
+    @initial_conditions.setter
+    def initial_conditions(self, value: InitialConditionManager): self._set_safe("initial_conditions", value, InitialConditionManager)
+
+    @property
+    def boundary_conditions(self) -> BoundaryConditionManager: return self._get_safe("boundary_conditions")
+    @boundary_conditions.setter
+    def boundary_conditions(self, value: BoundaryConditionManager): self._set_safe("boundary_conditions", value, BoundaryConditionManager)
+
+    @property
+    def external_forces(self) -> ExternalForceManager: return self._get_safe("external_forces")
+    @external_forces.setter
+    def external_forces(self, value: ExternalForceManager): self._set_safe("external_forces", value, ExternalForceManager)
+
+    @property
+    def sim_params(self) -> SimulationParameterManager: return self._get_safe("sim_params")
+    @sim_params.setter
+    def sim_params(self, value: SimulationParameterManager): self._set_safe("sim_params", value, SimulationParameterManager)
+
+    @property
+    def masks(self) -> MaskManager: return self._get_safe("masks")
+    @masks.setter
+    def masks(self, value: MaskManager): self._set_safe("masks", value, MaskManager)
+
+    # Simple types can use direct access, or getters if you want strict initialization checks
+    @property
+    def iteration(self) -> int: return self._iteration
+    @iteration.setter
+    def iteration(self, value: int): self._iteration = value
+
+    @property
+    def time(self) -> float: return self._time
+    @time.setter
+    def time(self, value: float): self._time = value
