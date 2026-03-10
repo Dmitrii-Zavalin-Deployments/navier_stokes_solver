@@ -43,8 +43,7 @@ def make_step1_output_dummy(nx=4, ny=4, nz=4):
         {'location': 'z_min', 'type': 'no-slip', 'values': {'u': 0.0, 'v': 0.0, 'w': 0.0}},
         {'location': 'z_max', 'type': 'no-slip', 'values': {'u': 0.0, 'v': 0.0, 'w': 0.0}},
         # Internal boundary:
-        {'location': 'internal_boundary', 'type': 'no-slip', 'values': {'u': 0.0, 'v': 0.0, 'w': 0.0}},
-        ]
+        {'location': 'wall', 'type': 'no-slip', 'values': {'u': 0.0, 'v': 0.0, 'w': 0.0}}]
 
     # Standard Grid/Field Setup
     state.grid.nx, state.grid.ny, state.grid.nz = nx, ny, nz
