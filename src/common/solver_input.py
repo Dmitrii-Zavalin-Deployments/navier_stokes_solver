@@ -1,12 +1,33 @@
-# src/solver_input.py
+# src/common/solver_input.py
 
 from dataclasses import dataclass, field
-
+from typing import Optional
 from src.common.base_container import ValidatedContainer
 
 # =========================================================
 # 1. SUB-DEPARTMENT CONTAINERS
 # =========================================================
+
+@dataclass
+class DomainConfigInput(ValidatedContainer):
+    _type: str = None
+    _reference_velocity: Optional[list] = None
+
+    @property
+    def type(self) -> str: return self._get_safe("type")
+    @type.setter
+    def type(self, v: str):
+        if v not in ["INTERNAL", "EXTERNAL"]: 
+            raise ValueError(f"Invalid domain type: {v}. Must be INTERNAL or EXTERNAL.")
+        self._set_safe("type", v, str)
+
+    @property
+    def reference_velocity(self) -> list: return self._get_safe("reference_velocity")
+    @reference_velocity.setter
+    def reference_velocity(self, v: list):
+        if v is not None and len(v) != 3: 
+            raise ValueError("reference_velocity must have 3 items [u, v, w]")
+        self._set_safe("reference_velocity", v, list)
 
 @dataclass
 class GridInput(ValidatedContainer):
@@ -15,7 +36,6 @@ class GridInput(ValidatedContainer):
     _z_min: float = None; _z_max: float = None
     _nx: int = None; _ny: int = None; _nz: int = None
 
-    # --- Properties (Getters/Setters) ---
     @property
     def x_min(self) -> float: return self._get_safe("x_min")
     @x_min.setter
@@ -67,22 +87,14 @@ class GridInput(ValidatedContainer):
         if v is not None and v < 1: raise ValueError(f"nz must be >= 1, got {v}")
         self._set_safe("nz", v, int)
 
-    # --- Geometric Derived Properties (Spatial Governor) ---
     @property
-    def dx(self) -> float:
-        return (self.x_max - self.x_min) / self.nx
-
+    def dx(self) -> float: return (self.x_max - self.x_min) / self.nx
     @property
-    def dy(self) -> float:
-        return (self.y_max - self.y_min) / self.ny
-
+    def dy(self) -> float: return (self.y_max - self.y_min) / self.ny
     @property
-    def dz(self) -> float:
-        return (self.z_max - self.z_min) / self.nz
-
+    def dz(self) -> float: return (self.z_max - self.z_min) / self.nz
     @property
-    def total_cells(self) -> int:
-        return self.nx * self.ny * self.nz
+    def total_cells(self) -> int: return self.nx * self.ny * self.nz
 
 @dataclass
 class FluidInput(ValidatedContainer):
@@ -149,14 +161,11 @@ class SimParamsInput(ValidatedContainer):
         self._set_safe("output_interval", v, int)
 
     @property
-    def advection_weight_base(self) -> float: 
-        return self._get_safe("advection_weight_base")
-        
+    def advection_weight_base(self) -> float: return self._get_safe("advection_weight_base")
     @advection_weight_base.setter
     def advection_weight_base(self, v: float):
         if v is not None:
-            if v < 0: raise ValueError(f"advection_weight_base must be >= 0, got {v}")
-            if v > 1: raise ValueError(f"advection_weight_base must be <= 1, got {v}")
+            if v < 0 or v > 1: raise ValueError(f"advection_weight_base must be in [0, 1], got {v}")
         self._set_safe("advection_weight_base", v, float)
 
 @dataclass
@@ -170,7 +179,7 @@ class BoundaryConditionItem(ValidatedContainer):
     def location(self) -> str: return self._get_safe("location")
     @location.setter
     def location(self, v: str):
-        valid = ["x_min", "x_max", "y_min", "y_max", "z_min", "z_max"]
+        valid = ["x_min", "x_max", "y_min", "y_max", "z_min", "z_max", "wall"]
         if v not in valid: raise ValueError(f"Invalid location: {v}")
         self._set_safe("location", v, str)
 
@@ -221,9 +230,8 @@ class MaskInput(ValidatedContainer):
     def data(self) -> list: return self._get_safe("data")
     @data.setter
     def data(self, v: list):
-        if v is not None:
-            if not all(val in {-1, 0, 1} for val in v):
-                raise ValueError("Mask contains invalid values. Only -1, 0, 1 allowed.")
+        if v is not None and not all(val in {-1, 0, 1} for val in v):
+            raise ValueError("Mask contains invalid values. Only -1, 0, 1 allowed.")
         self._set_safe("data", v, list)
 
 @dataclass
@@ -249,6 +257,7 @@ class ExternalForcesInput(ValidatedContainer):
 
 @dataclass
 class SolverInput(ValidatedContainer):
+    domain_configuration: DomainConfigInput = field(default_factory=DomainConfigInput)
     grid: GridInput = field(default_factory=GridInput)
     fluid_properties: FluidInput = field(default_factory=FluidInput)
     initial_conditions: InitialConditionsInput = field(default_factory=InitialConditionsInput)
@@ -260,6 +269,11 @@ class SolverInput(ValidatedContainer):
     @classmethod
     def from_dict(cls, data: dict) -> "SolverInput":
         obj = cls()
+        
+        # Hydrate Domain Configuration
+        dc = data.get("domain_configuration", {})
+        if "type" in dc: obj.domain_configuration.type = dc["type"]
+        if "reference_velocity" in dc: obj.domain_configuration.reference_velocity = dc["reference_velocity"]
         
         g = data.get("grid", {})
         for k in ["x_min", "x_max", "y_min", "y_max", "z_min", "z_max", "nx", "ny", "nz"]:
@@ -277,9 +291,7 @@ class SolverInput(ValidatedContainer):
         if "time_step" in sp: obj.simulation_parameters.time_step = sp["time_step"]
         if "total_time" in sp: obj.simulation_parameters.total_time = sp["total_time"]
         if "output_interval" in sp: obj.simulation_parameters.output_interval = sp["output_interval"]
-        # NEW: Hydrate the advection weight
-        if "advection_weight_base" in sp: 
-            obj.simulation_parameters.advection_weight_base = sp["advection_weight_base"]
+        if "advection_weight_base" in sp: obj.simulation_parameters.advection_weight_base = sp["advection_weight_base"]
         
         ef = data.get("external_forces", {})
         if "force_vector" in ef: obj.external_forces.force_vector = ef["force_vector"]
@@ -291,18 +303,20 @@ class SolverInput(ValidatedContainer):
         return obj
 
     def to_dict(self) -> dict:
-        """Serializes back to a clean JSON-compatible dictionary."""
         def get_val(obj, key, default=None):
             if isinstance(obj, dict): return obj.get(key, default)
             return getattr(obj, key, default)
 
         return {
+            "domain_configuration": {
+                "type": self.domain_configuration.type,
+                "reference_velocity": self.domain_configuration.reference_velocity
+            },
             "grid": {k: get_val(self.grid, k) for k in ["x_min", "x_max", "y_min", "y_max", "z_min", "z_max", "nx", "ny", "nz"]},
             "fluid_properties": {k: get_val(self.fluid_properties, k) for k in ["density", "viscosity"]},
             "initial_conditions": {k: get_val(self.initial_conditions, k) for k in ["velocity", "pressure"]},
             "simulation_parameters": {
                 k: get_val(self.simulation_parameters, k) 
-                # UPDATED: Included advection_weight_base in the keys list
                 for k in ["time_step", "total_time", "output_interval", "advection_weight_base"]
             },
             "boundary_conditions": [
