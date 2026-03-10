@@ -67,36 +67,44 @@ def run_solver_from_file(input_path: str) -> str:
         # 2. MAIN EXECUTION LOOP
         while state.ready_for_time_loop:
             # A. PREDICTOR PASS (Once per time step)
+            # Calculates intermediate velocity (v_star) and applies boundaries
             for block in state.stencil_matrix:
-                # Calculate v*
-                block, delta = orchestrate_step3(block, omega, is_first_pass=True)
-                # Enforce BCs on the predicted velocity v*
-                block = orchestrate_step4(processed_block, state.config.boundary_conditions)
+                # orchestrate_step3: Calculate v_star
+                block, _ = orchestrate_step3(block, is_first_pass=True)
+                
+                # orchestrate_step4: Enforce BCs on v_star
+                block = orchestrate_step4(block, state.config.boundary_conditions, state.grid)
             
             # B. ITERATIVE SOLVER & BOUNDARY PASS
+            # Pressure-Poisson solution and velocity correction (v_next)
             for _ in range(max_iter):
                 max_delta = 0.0
                 for block in state.stencil_matrix:
-                    # Solve (SOR) -> Correct (v^{n+1}) -> Sync (p^{n+1})
-                    block, delta = orchestrate_step3(block, omega, is_first_pass=False)
+                    # orchestrate_step3: Solve PPE (SOR) -> Correct (v_next)
+                    # returns delta (change in pressure) for convergence check
+                    block, delta = orchestrate_step3(block, is_first_pass=False)
                     
-                    # Enforce BCs on the newly corrected velocity v^{n+1}
-                    block = orchestrate_step4(processed_block, state.config.boundary_conditions)
+                    # orchestrate_step4: Enforce BCs on the corrected velocity
+                    block = orchestrate_step4(block, state.config.boundary_conditions, state.grid)
                     
                     max_delta = max(max_delta, delta)
                 
+                # Convergence check for the Pressure-Poisson equation
                 if max_delta < tol:
+                    if DEBUG:
+                        logger.info(
+                            f"PPE Converged: Iter={_ + 1} | "
+                            f"Delta={max_delta:.2e} < Tol={tol:.2e}"
+                        )
                     break
             
-            # C. ODOMETER UPDATE
-            state.iteration += 1
-            state.time += state.dt
-            
-            # D. FINALIZATION & GUARD
+            # C. FINALIZATION, LOGGING & TEMPORAL GUARD
+            # Step 5 handles the odometer (iteration/time) and convergence/termination checks
             state = orchestrate_step5(state)
             
             if DEBUG and state.iteration % 10 == 0:
-                logger.info(f"Iter {state.iteration}: t={state.time:.4f}s | Delta={max_delta:.2e}")
+                # We use the max_delta from the final SOR iteration
+                logger.info(f"Iter {state.iteration}: t={state.time:.4f}s | PPE Delta={max_delta:.2e}")
 
         if DEBUG:
             logger.info("DEBUG [Main]: Loop exit detected. Finalizing artifacts.")

@@ -1,24 +1,24 @@
 # tests/helpers/solver_step4_output_dummy.py
 
-import numpy as np
-
 from tests.helpers.solver_step3_output_dummy import make_step3_output_dummy
 
-
 def make_step4_output_dummy(nx=4, ny=4, nz=4):
+    """
+    Generates a valid SolverState representing the system 
+    immediately after orchestrate_step4 has finished.
+    """
+    # 1. Start with the established Step 3 state
     state = make_step3_output_dummy(nx=nx, ny=ny, nz=nz)
 
-    state.fields.P_ext = np.zeros((nx + 2, ny + 2, nz + 2))
-    state.fields.U_ext = np.zeros((nx + 3, ny + 2, nz + 2))
-    state.fields.V_ext = np.zeros((nx + 2, ny + 3, nz + 2))
-    state.fields.W_ext = np.zeros((nx + 2, ny + 2, nz + 3))
+    # 2. Apply Boundary Enforcement (In-place modification)
+    # This reflects exactly what orchestrate_step4 does to the blocks.
+    for block in state.stencil_matrix:
+        if not block.center.is_ghost:
+            # Enforce physics: Solid (mask 0) and Wall (mask -1)
+            # mapping schema u, v, w to Cell attributes vx, vy, vz
+            if block.center.mask == 0 or block.center.mask == -1:
+                block.center.vx = 0.0
+                block.center.vy = 0.0
+                block.center.vz = 0.0
 
-    total_voxels = (nx+2)*(ny+2)*(nz+2) 
-    state.diagnostics.memory_footprint_gb = (total_voxels * 8 * 4) / 1e9
-    state.diagnostics.bc_verification_passed = True
-    
-    max_u = state.health.max_u
-    state.diagnostics.initial_cfl_dt = 0.5 * state.grid.dx / max_u if max_u > 0 else 0.01
-
-    state.ready_for_time_loop = True
     return state
