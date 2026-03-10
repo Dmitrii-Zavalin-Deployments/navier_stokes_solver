@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+import shutil
 import sys
 from pathlib import Path
 
@@ -32,11 +33,11 @@ def run_solver_from_file(input_path: str) -> str:
     if not os.path.exists(input_path):
         raise FileNotFoundError(f"Input file missing at {input_path}")
 
-    # Load configuration once (Hoisting)
+    # Load configuration once
     cfg = _load_solver_config()
-    cfg["ppe_omega"]
     max_iter = cfg["ppe_max_iter"]
     tol = cfg["ppe_tolerance"]
+    omega = cfg["ppe_omega"]
 
     SCHEMA_PATH = Path("schema/solver_input_schema.json")
 
@@ -49,44 +50,31 @@ def run_solver_from_file(input_path: str) -> str:
         state = orchestrate_step1(input_container)
         state = orchestrate_step2(state)
 
-        # FIREWALL: Ensure the fully initialized state matches the master contract
-        # before the simulation enters the physics loop.
+        # FIREWALL: Contract Validation
         try:
             state.validate_against_schema(str(SCHEMA_PATH))
+            logger.info("✅ State validation passed.")
         except jsonschema.exceptions.ValidationError as e:
-            print("\n" + "!" * 60)
-            print("CONTRACT VIOLATION: Solver State does not match Schema")
-            print(f"Path to error: {'.'.join([str(p) for p in e.path])}")
-            print(f"Error message: {e.message}")
-            print("!" * 60 + "\n")
-            raise  # Re-raise to stop the execution
+            logger.error(f"CONTRACT VIOLATION at {'.'.join([str(p) for p in e.path])}")
+            logger.error(f"Message: {e.message}")
+            raise
 
         if DEBUG:
             logger.info(f"🚀 Starting Simulation: {state.config.case_name}")
         
         # 2. MAIN EXECUTION LOOP
         while state.ready_for_time_loop:
-            # A. PREDICTOR PASS (Once per time step)
-            # Calculates intermediate velocity (v_star) and applies boundaries
+            # A. PREDICTOR PASS
             for block in state.stencil_matrix:
-                # orchestrate_step3: Calculate v_star
-                block, _ = orchestrate_step3(block, is_first_pass=True)
-                
-                # orchestrate_step4: Enforce BCs on v_star
+                block, _ = orchestrate_step3(block, omega=omega, is_first_pass=True)
                 block = orchestrate_step4(block, state.config.boundary_conditions, state.grid)
             
             # B. ITERATIVE SOLVER & BOUNDARY PASS
-            # Pressure-Poisson solution and velocity correction (v_next)
             for _ in range(max_iter):
                 max_delta = 0.0
                 for block in state.stencil_matrix:
-                    # orchestrate_step3: Solve PPE (SOR) -> Correct (v_next)
-                    # returns delta (change in pressure) for convergence check
-                    block, delta = orchestrate_step3(block, is_first_pass=False)
-                    
-                    # orchestrate_step4: Enforce BCs on the corrected velocity
+                    block, delta = orchestrate_step3(block, omega=omega, is_first_pass=False)
                     block = orchestrate_step4(block, state.config.boundary_conditions, state.grid)
-                    
                     max_delta = max(max_delta, delta)
                 
                 # Convergence check for the Pressure-Poisson equation
@@ -100,10 +88,9 @@ def run_solver_from_file(input_path: str) -> str:
             
             # C. ODOMETER UPDATE
             state.iteration += 1
-            state.time += state.state.config.time_step
+            state.time += state.config.time_step
             
-            # D. FINALIZATION & ARCHIVING
-            # Step 5 now only decides IF and HOW to save the snapshot
+            # D. ARCHIVING (Step 5)
             state = orchestrate_step5(state)
             
             # E. TEMPORAL GUARD
@@ -111,7 +98,6 @@ def run_solver_from_file(input_path: str) -> str:
                 state.ready_for_time_loop = False
             
             if DEBUG and state.iteration % 10 == 0:
-                # We use the max_delta from the final SOR iteration
                 logger.info(f"Iter {state.iteration}: t={state.time:.4f}s | PPE Delta={max_delta:.2e}")
 
         if DEBUG:
@@ -123,4 +109,28 @@ def run_solver_from_file(input_path: str) -> str:
         logger.error(f"FATAL PIPELINE ERROR: {str(e)}")
         raise RuntimeError(f"Solver Pipeline crashed: {str(e)}") from e
 
-# ... [archive_simulation_artifacts and if __name__ == "__main__" remain the same] ...
+def archive_simulation_artifacts(state) -> str:
+    """Rule 4: SSoT Archiving. Moves manifest snapshots into a single ZIP."""
+    base_dir = Path(".")
+    zip_base_name = base_dir / f"navier_stokes_{state.config.case_name}_output"
+    source_dir = Path("output")
+
+    # Final metadata capture
+    state_json_path = source_dir / "final_state_snapshot.json"
+    with open(state_json_path, "w") as f:
+        json.dump(state.to_json_safe(), f, indent=4)
+    
+    result_path = shutil.make_archive(str(zip_base_name), 'zip', str(source_dir))
+    
+    if DEBUG:
+        logger.info(f"DEBUG [Main]: Artifact created: {result_path}")
+    
+    return result_path
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        sys.exit(1)
+    try:
+        print(run_solver_from_file(sys.argv[1])) 
+    except Exception:
+        sys.exit(1)
