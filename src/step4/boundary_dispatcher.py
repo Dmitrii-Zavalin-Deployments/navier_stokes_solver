@@ -7,7 +7,7 @@ def get_applicable_boundary_configs(block, boundary_cfg: list, grid) -> list:
     """
     mask = block.center.mask
     
-    # 1. Internal Boundary Fluid (-1) - Now referred to as 'wall'
+    # 1. Internal Boundary Fluid (-1) - Referred to as 'wall'
     if mask == -1:
         return _find_config(boundary_cfg, "wall")
         
@@ -26,9 +26,9 @@ def get_applicable_boundary_configs(block, boundary_cfg: list, grid) -> list:
 def _find_config(boundary_cfg: list, location: str) -> list:
     """Returns the config entry including location, type, and values."""
     for bc in boundary_cfg:
-        if bc["location"] == location:
+        if bc.get("location") == location:
             return [bc]
-    # If not found in config, returns empty list (Strict Policy)
+    # If not found in config, returns empty list (Strict Non-Default Policy)
     return []
 
 def _get_domain_location_type(block, grid) -> str:

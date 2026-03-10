@@ -141,7 +141,8 @@
               "y_min",
               "y_max",
               "z_min",
-              "z_max"
+              "z_max",
+              "wall"
             ]
           },
           "type": {
