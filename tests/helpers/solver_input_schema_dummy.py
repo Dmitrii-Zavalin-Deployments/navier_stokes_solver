@@ -8,10 +8,12 @@ Compliance:
 - Rule 8: API Minimalism (Primary interfaces only).
 """
 
-from src.common.solver_input import SolverInput
-from typing import Dict, Any
+from typing import Any
 
-def get_explicit_solver_config(nx: int, ny: int, nz: int) -> Dict[str, Any]:
+from src.common.solver_input import SolverInput
+
+
+def get_explicit_solver_config(nx: int, ny: int, nz: int) -> dict[str, Any]:
     """
     Returns a strictly typed dictionary for input hydration.
     No hardcoded defaults; all simulation parameters are explicit.

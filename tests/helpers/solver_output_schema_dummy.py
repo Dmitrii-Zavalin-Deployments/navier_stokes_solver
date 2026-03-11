@@ -11,6 +11,7 @@ Compliance:
 from src.solver.solver_state import SolverState
 from tests.helpers.solver_step5_output_dummy import make_step5_output_dummy
 
+
 def create_terminal_state_dummy(nx: int = 4, ny: int = 4, nz: int = 4) -> SolverState:
     """
     Hydrates a terminal SolverState object.

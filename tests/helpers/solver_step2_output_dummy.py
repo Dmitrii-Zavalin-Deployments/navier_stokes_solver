@@ -8,9 +8,10 @@ Compliance:
 - Rule 7: Atomic Numerical Truth (Use fixed values for verification).
 """
 
-from tests.helpers.solver_step1_output_dummy import make_step1_output_dummy
 from src.common.stencil_block import StencilBlock
 from src.step2.factory import build_core_cell
+from tests.helpers.solver_step1_output_dummy import make_step1_output_dummy
+
 
 def make_step2_output_dummy(nx: int = 4, ny: int = 4, nz: int = 4):
     """

@@ -8,9 +8,9 @@ Compliance:
 - Rule 9: Hybrid Memory Foundation (Fields initialized to verified state).
 """
 
-import numpy as np
 from src.common.field_schema import FI
 from tests.helpers.solver_step2_output_dummy import make_step2_output_dummy
+
 
 def make_step3_output_dummy(nx: int = 4, ny: int = 4, nz: int = 4):
     """

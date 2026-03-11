@@ -7,6 +7,7 @@ Compliance:
 """
 
 import numpy as np
+
 from src.common.solver_state import (
     BoundaryCondition,
     BoundaryConditionManager,
@@ -20,6 +21,7 @@ from src.common.solver_state import (
     SimulationParameterManager,
     SolverState,
 )
+
 
 def make_step1_output_dummy(nx: int = 4, ny: int = 4, nz: int = 4) -> SolverState:
     """
