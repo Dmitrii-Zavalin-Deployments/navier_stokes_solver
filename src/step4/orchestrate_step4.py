@@ -4,31 +4,22 @@ from src.common.stencil_block import StencilBlock
 from src.step4.boundary_applier import apply_boundary_values
 from src.step4.boundary_dispatcher import get_applicable_boundary_configs
 
-
 def orchestrate_step4(block: StencilBlock, boundary_cfg: list, grid, domain_cfg: dict) -> StencilBlock:
     """
-    Step 4: Boundary Enforcement.
-    Coordinates the identification and application of boundary conditions
-    to a specific stencil block, using domain configuration to select the 
-    physics strategy (Internal vs. External).
+    Step 4: Boundary Enforcement Orchestration.
     
     Compliance:
-    - Acts as the final stage of the pipeline to enforce physical constraints.
-    - Operates exclusively on the Foundation through the StencilBlock pointer graph,
-      ensuring that modifications are reflected in the global fields_buffer.
+    - Rule 0 (Performance): Operates as a thin orchestration layer over Foundation-mutating ops.
+    - Rule 4 (SSoT): Relies on dispatcher/applier for configuration and memory access.
     """
-    # Ghost cells are identified by the Foundation logic and are typically skipped 
-    # to avoid redundant boundary condition overwriting.
-    if block.center.is_ghost:
-        return block
-
-    # 1. Identify which boundaries apply based on location and the domain strategy
-    # The dispatcher uses the schema-compliant block.center.mask to determine strategy.
+    
+    # 1. Identify applicable boundary rules
+    # The dispatcher uses schema-locked properties to filter the block.
+    # No local logic or "guesses" permitted (Rule 5: Deterministic Initialization).
     rules = get_applicable_boundary_configs(block, boundary_cfg, grid, domain_cfg)
     
-    # 2. Apply updates for each rule found (Selective partial updates)
-    # The applier uses the schema-locked property setters (e.g., block.center.vx = ...)
-    # to perform in-place mutations of the contiguous Foundation buffer.
+    # 2. Apply updates
+    # The applier performs direct in-place mutation of the Foundation buffer (Rule 9).
     for rule in rules:
         apply_boundary_values(block, rule)
         

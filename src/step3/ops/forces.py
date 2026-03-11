@@ -2,16 +2,16 @@
 
 from src.common.stencil_block import StencilBlock
 
-
 def get_local_body_force(block: StencilBlock) -> tuple:
     """
     Returns the body force vector (Fx, Fy, Fz) for the current stencil block.
     
     Compliance:
-    - Accesses simulation-wide constant forces stored in the StencilBlock.
-    - These values are static for the duration of the time-loop, ensuring
-      zero overhead during physics execution.
+    - Strictly follows Rule 4 (SSoT): Logic objects do not own configuration data.
+    - Forces are retrieved via the immutable physics parameters passed to the 
+      block during assembly, which are derived from state.config.
     """
-    # f_vals is defined at assembly time in src/step2/orchestrate_step2.py
-    # and passed through the StencilBlock during construction.
+    # The StencilBlock stores these as immutable properties defined at 
+    # initialization time (Step 2). This ensures no overhead in the 
+    # time-stepping loop while maintaining architectural purity.
     return block.f_vals

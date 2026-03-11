@@ -1,7 +1,7 @@
 # src/step3/ops/divergence.py
 
 from src.common.stencil_block import StencilBlock
-
+from src.common.field_schema import FI
 
 def compute_local_divergence_v_star(block: StencilBlock) -> float:
     """
@@ -13,17 +13,23 @@ def compute_local_divergence_v_star(block: StencilBlock) -> float:
                    (w_{k+1} - w_{k-1}) / (2*dz)
     
     Compliance:
-    - Uses schema-locked property getters (e.g., .vx_star) to access
-      intermediate velocity fields from the foundation buffer.
+    - Uses schema-locked method get_field() to access foundation buffers (Rule 9).
+    - Eliminates implicit property lookups, ensuring O(1) performance (Rule 0).
     """
     
-    # Access intermediate velocity components from neighbors
-    # Each access retrieves data directly from the foundation buffer via Cell.vx_star
-    u_ip, u_im = block.i_plus.vx_star, block.i_minus.vx_star
-    v_jp, v_jm = block.j_plus.vy_star, block.j_minus.vy_star
-    w_kp, w_km = block.k_plus.vz_star, block.k_minus.vz_star
+    # Access intermediate velocity components from neighbors via Enum-locked mapping
+    # This maintains the Hybrid Memory Foundation integrity.
+    u_ip = block.i_plus.get_field(FI.VX_STAR)
+    u_im = block.i_minus.get_field(FI.VX_STAR)
+    
+    v_jp = block.j_plus.get_field(FI.VY_STAR)
+    v_jm = block.j_minus.get_field(FI.VY_STAR)
+    
+    w_kp = block.k_plus.get_field(FI.VZ_STAR)
+    w_km = block.k_minus.get_field(FI.VZ_STAR)
     
     # Central difference: ∇ ⋅ v* \approx ∂u/∂x + ∂v/∂y + ∂w/∂z
+    # Direct extraction of grid spacing from block (Hybrid Memory Wiring)
     div_x = (u_ip - u_im) / (2.0 * block.dx)
     div_y = (v_jp - v_jm) / (2.0 * block.dy)
     div_z = (w_kp - w_km) / (2.0 * block.dz)

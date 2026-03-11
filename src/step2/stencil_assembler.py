@@ -1,29 +1,45 @@
 # src/step2/stencil_assembler.py
 
-from src.common.field_schema import FI  # Import the Single Source of Truth
+from src.common.field_schema import FI
 from src.common.stencil_block import StencilBlock
-
+from src.core.solver_state import SolverState
 from .factory import build_core_cell, build_ghost_cell
 
 # Rule 7: Granular Traceability
 DEBUG = True
 
-def assemble_stencil_matrix(state, nx, ny, nz, ctx, physics_params):
+def assemble_stencil_matrix(state: SolverState) -> list:
     """
     Assembles a flattened list of StencilBlocks. 
-    Uses a cache to ensure shared cells are instantiated only once.
+    Directly accesses SSoT containers (Rule 4) to maintain architectural integrity.
     """
     local_stencil_list = []
     
-    # Ensure the Foundation Buffer is initialized to the correct width
-    # Based on the Schema definition
+    # Foundation Verification (Rule 9)
     if state.fields.data.shape[1] != FI.num_fields():
         raise RuntimeError(f"Foundation Mismatch: Buffer width {state.fields.data.shape[1]} "
-                           f"does not match Schema requirement {FI.num_fields()}.")
+                           f"!= Schema requirement {FI.num_fields()}.")
 
-    # Extract the Foundation Buffer once for efficiency
-    fields_buffer = state.fields.data
+    # Local caching of SSoT pointers for performance (Rule 0)
+    grid = state.grid
+    nx, ny, nz = grid.nx, grid.ny, grid.nz
     
+    # Physics parameters cached from state.config (Rule 5)
+    sim_params = state.config.simulation_parameters
+    fluid_props = state.config.fluid_properties
+    ext_forces = state.config.external_forces
+    
+    # Prepare parameter bundle for StencilBlock (Rule 5: No defaults)
+    physics_params = {
+        "dx": grid.dx,
+        "dy": grid.dy,
+        "dz": grid.dz,
+        "dt": sim_params["time_step"],
+        "rho": fluid_props["density"],
+        "mu": fluid_props["viscosity"],
+        "f_vals": tuple(ext_forces["force_vector"])
+    }
+
     # Cache for Cell objects to prevent redundant object creation
     cell_cache = {}
 
@@ -32,28 +48,22 @@ def assemble_stencil_matrix(state, nx, ny, nz, ctx, physics_params):
         if coord in cell_cache:
             return cell_cache[coord]
             
-        # Determine if we are building a Core or Ghost cell
+        # Factory call uses state directly (Rule 4)
         if (0 <= ix < nx) and (0 <= iy < ny) and (0 <= iz < nz):
-            # Pass the fields_buffer to the Cell factory so it can 'view' the foundation
-            cell = build_core_cell(ix, iy, iz, state, ctx, fields_buffer)
+            cell = build_core_cell(ix, iy, iz, state)
         else:
-            # Ghost cells typically don't hold physical data, 
-            # but we pass the buffer for interface consistency if needed
-            cell = build_ghost_cell(ix, iy, iz, ctx, fields_buffer)
+            cell = build_ghost_cell(ix, iy, iz, state)
             
         cell_cache[coord] = cell
         return cell
 
     if DEBUG:
         print(f"DEBUG [Step 2.2]: Stencil Assembly Started for {nx}x{ny}x{nz} Domain")
-        print(f"DEBUG [Step 2.2]: Foundation Schema Width: {FI.num_fields()} fields")
 
-    # Iterate through the Core domain to build the wiring
+    # Iterate through the Core domain to build the wiring (Logic Layer)
     for i in range(nx):
         for j in range(ny):
             for k in range(nz):
-                
-                # Assemble the block using the cached cell instances (The Wiring)
                 block = StencilBlock(
                     center=get_cell(i, j, k),
                     i_minus=get_cell(i-1, j, k), i_plus=get_cell(i+1, j, k),
@@ -61,12 +71,9 @@ def assemble_stencil_matrix(state, nx, ny, nz, ctx, physics_params):
                     k_minus=get_cell(i, j, k-1), k_plus=get_cell(i, j, k+1),
                     **physics_params
                 )
-                
                 local_stencil_list.append(block)
     
     if DEBUG:
-        print(f"DEBUG [Step 2.2]: Assembly Complete")
-        print(f"  > Total StencilBlocks: {len(local_stencil_list)}")
-        print(f"  > Unique Cell Cache Size: {len(cell_cache)}")
+        print(f"DEBUG [Step 2.2]: Assembly Complete. Total StencilBlocks: {len(local_stencil_list)}")
                 
     return local_stencil_list

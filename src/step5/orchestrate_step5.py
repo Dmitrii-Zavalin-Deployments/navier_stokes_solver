@@ -2,22 +2,25 @@
 
 from src.step5.io_archivist import save_snapshot
 
-
 def orchestrate_step5(state) -> object:
     """
-    Step 5: The Archivist.
-    Coordinates data persistence based on simulation iteration.
+    Step 5: The Archivist Orchestration.
     
     Compliance:
-    - Maintains the separation between the 'Logic' (the orchestrator's timing) 
-      and the 'Foundation' (the buffer saved by the archivist).
-    - Ensures zero-copy access to the global fields_buffer via the state object.
+    - Rule 4 (SSoT): Accesses output interval exclusively via state.config.
+    - Rule 5 (Deterministic Init): Relies on explicit iteration counts; no default interval logic.
+    - Rule 9 (Hybrid Memory): Maintains zero-copy interaction with the Foundation buffer.
     """
-    # The output_interval is a configuration property; the decision to save
-    # is a logic-layer operation that does not affect memory layout.
-    if state.iteration % state.config.output_interval == 0:
-        # save_snapshot interacts directly with state.fields_buffer, 
-        # leveraging the FI schema for performance-critical data serialization.
+    
+    # Rule 5: Accessing configuration explicitly.
+    # If output_interval is missing, this will raise an AttributeError,
+    # ensuring the simulation does not proceed with unverified defaults.
+    interval = state.config.output_interval
+    
+    # Logic-layer operation: Decision to archive
+    if state.iteration % interval == 0:
+        # Rule 4: Data persistence delegated to the Archivist.
+        # No serialization logic here; orchestration stays thin and focused.
         save_snapshot(state)
         
     return state

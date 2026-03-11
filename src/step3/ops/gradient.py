@@ -1,28 +1,28 @@
 # src/step3/ops/gradient.py
 
 from src.common.stencil_block import StencilBlock
+from src.common.field_schema import FI
 
-
-def compute_local_gradient_p(block: StencilBlock, use_next: bool = False) -> tuple:
+def compute_local_gradient_p(block: StencilBlock, field_id: FI = FI.P) -> tuple:
     """
     Computes the pressure gradient: ∇p = (dp/dx, dp/dy, dp/dz)
     
     Compliance:
-    - Uses schema-locked property getters (e.g., .p, .p_next).
-    - Accesses the Foundation buffer via the Cell object-pointer graph.
+    - Uses schema-locked field_id mapping (Rule 9).
+    - Eliminates conditional branch overhead (Rule 0).
     """
     
-    # 1. Select source field using schema-locked properties
-    if not use_next:
-        # These properties map internally to FI.P
-        p_im, p_ip = block.i_minus.p, block.i_plus.p
-        p_jm, p_jp = block.j_minus.p, block.j_plus.p
-        p_km, p_kp = block.k_minus.p, block.k_plus.p
-    else:
-        # These properties map internally to FI.P_NEXT
-        p_im, p_ip = block.i_minus.p_next, block.i_plus.p_next
-        p_jm, p_jp = block.j_minus.p_next, block.j_plus.p_next
-        p_km, p_kp = block.k_minus.p_next, block.k_plus.p_next
+    # 1. Access field values via explicit schema-locked lookup
+    # This keeps the logic clean and performance-oriented by avoiding 
+    # branches inside the inner loop (Rule 0).
+    p_im = block.i_minus.get_field(field_id)
+    p_ip = block.i_plus.get_field(field_id)
+    
+    p_jm = block.j_minus.get_field(field_id)
+    p_jp = block.j_plus.get_field(field_id)
+    
+    p_km = block.k_minus.get_field(field_id)
+    p_kp = block.k_plus.get_field(field_id)
         
     # 2. Central difference: (dp/dx, dp/dy, dp/dz)
     grad_x = (p_ip - p_im) / (2.0 * block.dx)

@@ -1,34 +1,38 @@
 # src/step3/ops/advection.py
 
 from src.common.stencil_block import StencilBlock
+from src.common.field_schema import FI
 
-
-def compute_local_advection(block: StencilBlock, field_name: str) -> float:
+def compute_local_advection(block: StencilBlock, field_id: FI) -> float:
     """
-    Computes local (v^n ⋅ ∇) * field.
-    
+    Computes local (v^n ⋅ ∇) * field using schema-locked accessors.
+
     Formula: 
     u_c * (df/dx) + v_c * (df/dy) + w_c * (df/dz)
     
     Compliance:
-    - Uses schema-locked property access via getattr.
-    - Accesses the global Foundation buffers via the StencilBlock pointer graph.
+    - Rule 9 (Hybrid Memory): Uses get_field(FI) for all buffer access.
+    - Rule 0 (Performance): Direct indexing into Foundation buffers.
     """
-    # 1. Access components for central difference (df/dx, df/dy, df/dz)
-    # The properties (vx, vy, vz, etc.) map directly to the FI schema foundation.
-    f_ip, f_im = getattr(block.i_plus, field_name), getattr(block.i_minus, field_name)
-    f_jp, f_jm = getattr(block.j_plus, field_name), getattr(block.j_minus, field_name)
-    f_kp, f_km = getattr(block.k_plus, field_name), getattr(block.k_minus, field_name)
+    
+    # 1. Compute spatial derivatives (Central Differencing)
+    # Accessing f_neighbors via explicit FI schema
+    f_ip = block.i_plus.get_field(field_id)
+    f_im = block.i_minus.get_field(field_id)
+    f_jp = block.j_plus.get_field(field_id)
+    f_jm = block.j_minus.get_field(field_id)
+    f_kp = block.k_plus.get_field(field_id)
+    f_km = block.k_minus.get_field(field_id)
     
     df_dx = (f_ip - f_im) / (2.0 * block.dx)
     df_dy = (f_jp - f_jm) / (2.0 * block.dy)
     df_dz = (f_kp - f_km) / (2.0 * block.dz)
     
-    # 2. Compute cell-centered velocities (average of neighbors)
-    # Uses schema-locked velocity properties.
-    u_c = (block.i_plus.vx + block.i_minus.vx) / 2.0
-    v_c = (block.j_plus.vy + block.j_minus.vy) / 2.0
-    w_c = (block.k_plus.vz + block.k_minus.vz) / 2.0
+    # 2. Compute cell-centered velocities
+    # Accessing velocity Foundation buffers via FI schema constants
+    u_c = (block.i_plus.get_field(FI.VX) + block.i_minus.get_field(FI.VX)) / 2.0
+    v_c = (block.j_plus.get_field(FI.VY) + block.j_minus.get_field(FI.VY)) / 2.0
+    w_c = (block.k_plus.get_field(FI.VZ) + block.k_minus.get_field(FI.VZ)) / 2.0
     
     # 3. Assemble advection term: (v ⋅ ∇)f
     return u_c * df_dx + v_c * df_dy + w_c * df_dz
@@ -38,7 +42,7 @@ def compute_local_advection_vector(block: StencilBlock) -> tuple:
     Computes the full advective term for the momentum equation.
     """
     return (
-        compute_local_advection(block, 'vx'),
-        compute_local_advection(block, 'vy'),
-        compute_local_advection(block, 'vz')
+        compute_local_advection(block, FI.VX),
+        compute_local_advection(block, FI.VY),
+        compute_local_advection(block, FI.VZ)
     )
