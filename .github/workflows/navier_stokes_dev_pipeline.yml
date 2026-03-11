@@ -34,7 +34,7 @@ jobs:
 
       - name: 🧹 Auto-Clean (Autoflake)
         run: |
-          autoflake --in-place --recursive --remove-unused-variables --remove-all-unused-imports src
+          autoflake --in-place --recursive --remove-unused-variables --remove-all-unused-imports src tests
 
       - name: 🧹 Static Analysis & Lint (Ruff)
         run: |
