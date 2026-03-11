@@ -316,7 +316,7 @@ class FieldManager(ValidatedContainer):
         self._set_safe("data", value, np.ndarray)
 
     def allocate(self, n_cells: int, dtype=np.float64):
-        self.data = np.zeros((n_cells, 8), dtype=dtype)
+        self._data = np.zeros((n_cells, 8), dtype=dtype)
 
 # =========================================================
 # THE UNIVERSAL CONTAINER (The Constitution)
