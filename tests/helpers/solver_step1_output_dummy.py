@@ -1,3 +1,5 @@
+# tests/helpers/solver_step1_output_dummy.py
+
 """
 Archivist Testing: Explicit SolverState Hydration.
 
@@ -37,25 +39,26 @@ def make_step1_output_dummy(nx: int = 4, ny: int = 4, nz: int = 4) -> SolverStat
     state._grid._z_min, state._grid._z_max = 0.0, 1.0
     state._grid._nx, state._grid._ny, state._grid._nz = nx, ny, nz
     
-    state._domain = DomainManager(
-        type="INTERNAL", 
-        reference_velocity=np.array([0.0, 0.0, 0.0])
-    )
+    state._domain = DomainManager()
+    state._domain._type = "INTERNAL"
+    state._domain._reference_velocity = np.array([0.0, 0.0, 0.0])
     
     # 2. Physics & Foundation: Atomic Constructor Injection
-    state._fluid = FluidPropertiesManager(density=1000.0, viscosity=0.001)
-    state._initial_conditions = InitialConditionManager(
-        velocity=np.array([0.0, 0.0, 0.0]), 
-        pressure=0.0
-    )
-    state._sim_params = SimulationParameterManager(
-        time_step=0.001, 
-        total_time=1.0, 
-        output_interval=1
-    )
-    state._external_forces = ExternalForceManager(
-        force_vector=np.array([0.0, 0.0, -9.81])
-    )
+    state._fluid = FluidPropertiesManager()
+    state._fluid._density = 1000.0
+    state._fluid._viscosity = 0.001
+    
+    state._initial_conditions = InitialConditionManager()
+    state._initial_conditions._velocity = np.array([0.0, 0.0, 0.0])
+    state._initial_conditions._pressure = 0.0
+    
+    state._sim_params = SimulationParameterManager()
+    state._sim_params._time_step = 0.001
+    state._sim_params._total_time = 1.0
+    state._sim_params._output_interval = 1
+    
+    state._external_forces = ExternalForceManager()
+    state._external_forces._force_vector = np.array([0.0, 0.0, -9.81])
     
     # 3. Foundation Allocation: Explicit call per Rule 9
     state._fields = FieldManager()
@@ -63,18 +66,28 @@ def make_step1_output_dummy(nx: int = 4, ny: int = 4, nz: int = 4) -> SolverStat
     
     # 4. Topology: Explicit injection
     state._masks = MaskManager()
-    state._masks.mask = np.ones((nx, ny, nz), dtype=int)
+    state._masks._mask = np.ones((nx, ny, nz), dtype=int)
     
     # 5. Boundary Condition Setup: Atomic instantiation
-    state._boundary_conditions = BoundaryConditionManager(conditions=[
-        BoundaryCondition(location='x_min', type='inflow', values={'u': 1.0, 'v': 0.0, 'w': 0.0, 'p': 1.0}),
-        BoundaryCondition(location='x_max', type='outflow', values={'p': 0.0}),
-        BoundaryCondition(location='y_min', type='no-slip', values={'u': 0.0, 'v': 0.0, 'w': 0.0}),
-        BoundaryCondition(location='y_max', type='no-slip', values={'u': 0.0, 'v': 0.0, 'w': 0.0}),
-        BoundaryCondition(location='z_min', type='no-slip', values={'u': 0.0, 'v': 0.0, 'w': 0.0}),
-        BoundaryCondition(location='z_max', type='no-slip', values={'u': 0.0, 'v': 0.0, 'w': 0.0}),
-        BoundaryCondition(location='wall', type='no-slip', values={'u': 0.0, 'v': 0.0, 'w': 0.0})
-    ])
+    state._boundary_conditions = BoundaryConditionManager()
+    # Create individual conditions
+    conds = []
+    for loc, typ, vals in [
+        ('x_min', 'inflow', {'u': 1.0, 'v': 0.0, 'w': 0.0, 'p': 1.0}),
+        ('x_max', 'outflow', {'p': 0.0}),
+        ('y_min', 'no-slip', {'u': 0.0, 'v': 0.0, 'w': 0.0}),
+        ('y_max', 'no-slip', {'u': 0.0, 'v': 0.0, 'w': 0.0}),
+        ('z_min', 'no-slip', {'u': 0.0, 'v': 0.0, 'w': 0.0}),
+        ('z_max', 'no-slip', {'u': 0.0, 'v': 0.0, 'w': 0.0}),
+        ('wall', 'no-slip', {'u': 0.0, 'v': 0.0, 'w': 0.0})
+    ]:
+        bc = BoundaryCondition()
+        bc._location = loc
+        bc._type = typ
+        bc._values = vals
+        conds.append(bc)
+    
+    state._boundary_conditions._conditions = conds
     
     # 6. Engine State: Explicit declaration
     state._iteration = 0
