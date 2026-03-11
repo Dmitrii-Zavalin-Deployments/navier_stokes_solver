@@ -16,8 +16,7 @@ class ValidatedContainer:
     def __iter__(self) -> Iterator[str]:
         """Helper to iterate over attributes defined in slots across the hierarchy."""
         for cls in reversed(self.__class__.__mro__):
-            for slot in getattr(cls, '__slots__', []):
-                yield slot
+            yield from getattr(cls, '__slots__', [])
     
     def _get_safe(self, name: str) -> Any:
         attr_name = f"_{name}"
