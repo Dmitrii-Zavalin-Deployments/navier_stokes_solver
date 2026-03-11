@@ -4,6 +4,7 @@ from src.common.stencil_block import StencilBlock
 from src.step3.ops.gradient import compute_local_gradient_p
 from src.step3.ops.scaling import get_dt_over_rho
 
+
 def apply_local_velocity_correction(block: StencilBlock) -> None:
     """
     Projects the intermediate velocity field v* onto a divergence-free space.

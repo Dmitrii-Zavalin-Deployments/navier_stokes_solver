@@ -2,6 +2,7 @@
 
 from src.common.stencil_block import StencilBlock
 
+
 def get_local_body_force(block: StencilBlock) -> tuple:
     """
     Returns the body force vector (Fx, Fy, Fz) for the current stencil block.

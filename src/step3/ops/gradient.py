@@ -2,6 +2,7 @@
 
 from src.common.stencil_block import StencilBlock
 
+
 def compute_local_gradient_p(block: StencilBlock, use_next: bool = False) -> tuple:
     """
     Computes the pressure gradient: ∇p = (dp/dx, dp/dy, dp/dz)

@@ -2,6 +2,7 @@
 
 from src.common.stencil_block import StencilBlock
 
+
 def compute_local_laplacian_v_n(block: StencilBlock) -> tuple:
     """
     Computes the discrete Laplacian ∇²v^n = (∇²u, ∇²v, ∇²w) for the Predictor Step.

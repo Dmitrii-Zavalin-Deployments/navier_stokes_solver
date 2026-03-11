@@ -2,6 +2,7 @@
 
 from src.common.stencil_block import StencilBlock
 
+
 def get_dt_over_rho(block: StencilBlock) -> float:
     """
     Returns the scaling factor (dt / rho) for the Predictor Step.

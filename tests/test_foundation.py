@@ -1,7 +1,9 @@
 # src/tests/test_foundation.py
 
 import numpy as np
+
 from src.common.field_schema import FI
+
 
 def verify_foundation_integrity(state):
     """
