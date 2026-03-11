@@ -2,41 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Final Solver Output Schema",
   "type": "object",
-  "properties": {
-    "time": { "type": "number" },
-    "iteration": { "type": "integer" },
-    "ready_for_time_loop": { "type": "boolean" },
-    "config": { "type": "object" },
-    "grid": { "type": "object" },
-    "fields": {
-      "type": "object",
-      "description": "The Foundation Buffer state at the current iteration.",
-      "properties": {
-        "data": { "type": "array", "description": "Monolithic NumPy buffer shaped (N_CELLS, FI.num_fields())" }
-      },
-      "required": ["data"]
-    },
-    "masks": {
-      "type": "object",
-      "properties": {
-        "mask": { "type": "array" }
-      },
-      "required": ["mask"]
-    },
-    "fluid": { "type": "object" },
-    "manifest": {
-      "type": "object",
-      "properties": {
-        "output_directory": { "type": "string" },
-        "saved_snapshots": { 
-          "type": "array",
-          "items": { "type": "string" }
-        }
-      },
-      "required": ["output_directory", "saved_snapshots"]
-    },
-    "health": { "type": "object", "description": "System state (POST results)" }
-  },
+  "additionalProperties": false,
   "required": [
     "time",
     "iteration",
@@ -47,5 +13,69 @@
     "masks",
     "manifest"
   ],
-  "additionalProperties": false
+  "properties": {
+    "time": {
+      "type": "number"
+    },
+    "iteration": {
+      "type": "integer"
+    },
+    "ready_for_time_loop": {
+      "type": "boolean"
+    },
+    "config": {
+      "type": "object"
+    },
+    "grid": {
+      "type": "object"
+    },
+    "fields": {
+      "type": "object",
+      "required": [
+        "data"
+      ],
+      "description": "The Foundation Buffer state at the current iteration.",
+      "properties": {
+        "data": {
+          "type": "array",
+          "description": "Monolithic NumPy buffer shaped (N_CELLS, FI.num_fields())"
+        }
+      }
+    },
+    "masks": {
+      "type": "object",
+      "required": [
+        "mask"
+      ],
+      "properties": {
+        "mask": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        }
+      }
+    },
+    "fluid": {
+      "type": "object"
+    },
+    "manifest": {
+      "type": "object",
+      "required": [
+        "output_directory",
+        "saved_snapshots"
+      ],
+      "properties": {
+        "output_directory": {
+          "type": "string"
+        },
+        "saved_snapshots": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
 }
