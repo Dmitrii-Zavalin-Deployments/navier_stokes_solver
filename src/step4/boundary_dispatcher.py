@@ -14,7 +14,6 @@ def get_applicable_boundary_configs(block: StencilBlock, boundary_cfg: list, gri
     
     # Accessing mask and index directly from the Foundation via Cell properties
     mask = block.center.mask
-    block.center.index
     
     # 1. Wall Boundary (Mask -1)
     if mask == -1:
