@@ -5,7 +5,6 @@ import os
 import shutil
 import sys
 from pathlib import Path
-
 import jsonschema
 
 from src.solver_input import SolverInput
@@ -54,10 +53,15 @@ def run_solver(input_path: str):
         print(f"!!! Message: {e.message}")
         raise
 
+    # 2. ACTIVATE SYSTEM SENTINEL
+    # Setting this to True triggers the POST and Physical Sanity checks 
+    # via the SolverState property setter.
+    state.ready_for_time_loop = True
+
     if DEBUG:
         print(f"🚀 Starting Simulation: {state.config.case_name}")
     
-    # 2. MAIN EXECUTION LOOP
+    # 3. MAIN EXECUTION LOOP
     while state.ready_for_time_loop:
         # A. PREDICTOR PASS
         for block in state.stencil_matrix:
@@ -82,7 +86,7 @@ def run_solver(input_path: str):
         state.iteration += 1
         state.time += state.config.time_step
         
-        # D. ARCHIVING (Step 5 - Individual Snapshots)
+        # D. ARCHIVING
         state = orchestrate_step5(state)
         
         # E. TEMPORAL GUARD

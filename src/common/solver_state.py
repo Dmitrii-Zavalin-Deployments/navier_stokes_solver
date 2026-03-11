@@ -1,7 +1,6 @@
 # src/common/solver_state.py
 
 from dataclasses import dataclass
-
 import numpy as np
 
 from src.common.base_container import ValidatedContainer
@@ -433,8 +432,6 @@ class SolverState(ValidatedContainer):
     _external_forces: ExternalForceManager = None
     _sim_params: SimulationParameterManager = None
     _masks: MaskManager = None
-    
-    # --- Rule 9 Foundation ---
     _fields: FieldManager = None
     _stencil_matrix: list = None # The "Wiring" (Graph of StencilBlocks)
     
@@ -505,6 +502,27 @@ class SolverState(ValidatedContainer):
     @time.setter
     def time(self, value: float): self._time = value
 
+    def validate_physical_readiness(self):
+        """
+        Final system-level check before the Time-Loop.
+        Catches global corruption (NaNs/Infs) not caught by individual setters.
+        """
+        if self.fields is None or self.fields.data is None:
+            raise RuntimeError("CRITICAL: Foundation buffer is missing.")
+            
+        # Global Foundation check
+        if np.any(np.isnan(self.fields.data)) or np.any(np.isinf(self.fields.data)):
+            raise RuntimeError("CRITICAL: NaNs/Infs detected in Foundation buffer!")
+            
+        # Structural check
+        if self.grid.nx is None or self.grid.nx < 1:
+            raise RuntimeError("CRITICAL: Grid not properly initialized.")
+            
+        if self.fluid.density is None or self.fluid.density <= 0:
+            raise RuntimeError("CRITICAL: Physics invalid: Density <= 0.")
+            
+        print("DEBUG [State]: ✅ Physical readiness verified.")
+
     @property
     def ready_for_time_loop(self) -> bool:
         return self._ready_for_time_loop
@@ -521,5 +539,7 @@ class SolverState(ValidatedContainer):
                 raise RuntimeError("Cannot start: Foundation or Wiring is missing.")
             # 2. Enforce structural integrity (POST)
             verify_foundation_integrity(self)
+            # 3. Enforce global physical sanity
+            self.validate_physical_readiness()
             
         self._ready_for_time_loop = value
