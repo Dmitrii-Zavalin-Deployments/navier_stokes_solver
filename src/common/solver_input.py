@@ -1,7 +1,6 @@
 # src/common/solver_input.py
 
-from dataclasses import dataclass, field
-
+from dataclasses import dataclass
 from src.common.base_container import ValidatedContainer
 
 # =========================================================
@@ -11,9 +10,7 @@ from src.common.base_container import ValidatedContainer
 @dataclass
 class DomainConfigInput(ValidatedContainer):
     __slots__ = ['_type', '_reference_velocity']
-    _type: str
-    _reference_velocity: list | None
-
+    
     @property
     def type(self) -> str: return self._get_safe("type")
     @type.setter
@@ -33,11 +30,7 @@ class DomainConfigInput(ValidatedContainer):
 @dataclass
 class GridInput(ValidatedContainer):
     __slots__ = ['_x_min', '_x_max', '_y_min', '_y_max', '_z_min', '_z_max', '_nx', '_ny', '_nz']
-    _x_min: float; _x_max: float
-    _y_min: float; _y_max: float
-    _z_min: float; _z_max: float
-    _nx: int; _ny: int; _nz: int
-
+    
     @property
     def x_min(self) -> float: return self._get_safe("x_min")
     @x_min.setter
@@ -93,9 +86,7 @@ class GridInput(ValidatedContainer):
 @dataclass
 class FluidInput(ValidatedContainer):
     __slots__ = ['_density', '_viscosity']
-    _density: float
-    _viscosity: float
-
+    
     @property
     def density(self) -> float: return self._get_safe("density")
     @density.setter
@@ -112,9 +103,7 @@ class FluidInput(ValidatedContainer):
 @dataclass
 class InitialConditionsInput(ValidatedContainer):
     __slots__ = ['_velocity', '_pressure']
-    _velocity: list
-    _pressure: float
-
+    
     @property
     def velocity(self) -> list: return self._get_safe("velocity")
     @velocity.setter
@@ -129,10 +118,7 @@ class InitialConditionsInput(ValidatedContainer):
 @dataclass
 class SimParamsInput(ValidatedContainer):
     __slots__ = ['_time_step', '_total_time', '_output_interval']
-    _time_step: float
-    _total_time: float
-    _output_interval: int
-
+    
     @property
     def time_step(self) -> float: return self._get_safe("time_step")
     @time_step.setter
@@ -155,10 +141,7 @@ class SimParamsInput(ValidatedContainer):
 @dataclass
 class BoundaryConditionItem(ValidatedContainer):
     __slots__ = ['_location', '_type', '_values']
-    _location: str
-    _type: str
-    _values: dict
-
+    
     @property
     def location(self) -> str: return self._get_safe("location")
     @location.setter
@@ -181,8 +164,7 @@ class BoundaryConditionItem(ValidatedContainer):
 @dataclass
 class BoundaryConditionsInput(ValidatedContainer):
     __slots__ = ['_items']
-    _items: list[BoundaryConditionItem]
-
+    
     @property
     def items(self) -> list[BoundaryConditionItem]: return self._get_safe("items")
     @items.setter
@@ -193,8 +175,7 @@ class BoundaryConditionsInput(ValidatedContainer):
 @dataclass
 class MaskInput(ValidatedContainer):
     __slots__ = ['_data']
-    _data: list
-
+    
     @property
     def data(self) -> list: return self._get_safe("data")
     @data.setter
@@ -206,8 +187,7 @@ class MaskInput(ValidatedContainer):
 @dataclass
 class ExternalForcesInput(ValidatedContainer):
     __slots__ = ['_force_vector']
-    _force_vector: list
-
+    
     @property
     def force_vector(self) -> list: return self._get_safe("force_vector")
     @force_vector.setter
@@ -224,18 +204,23 @@ class SolverInput(ValidatedContainer):
     __slots__ = ['domain_configuration', 'grid', 'fluid_properties', 'initial_conditions', 
                  'simulation_parameters', 'external_forces', 'mask', 'boundary_conditions']
     
-    domain_configuration: DomainConfigInput = field(default_factory=DomainConfigInput)
-    grid: GridInput = field(default_factory=GridInput)
-    fluid_properties: FluidInput = field(default_factory=FluidInput)
-    initial_conditions: InitialConditionsInput = field(default_factory=InitialConditionsInput)
-    simulation_parameters: SimParamsInput = field(default_factory=SimParamsInput)
-    external_forces: ExternalForcesInput = field(default_factory=ExternalForcesInput)
-    mask: MaskInput = field(default_factory=MaskInput)
-    boundary_conditions: BoundaryConditionsInput = field(default_factory=BoundaryConditionsInput)
+    def __init__(self):
+        for slot in self.__slots__:
+            object.__setattr__(self, slot, None)
 
     @classmethod
     def from_dict(cls, data: dict) -> "SolverInput":
         obj = cls()
+        
+        # Instantiate sub-containers
+        obj.domain_configuration = DomainConfigInput()
+        obj.grid = GridInput()
+        obj.fluid_properties = FluidInput()
+        obj.initial_conditions = InitialConditionsInput()
+        obj.simulation_parameters = SimParamsInput()
+        obj.external_forces = ExternalForcesInput()
+        obj.mask = MaskInput()
+        obj.boundary_conditions = BoundaryConditionsInput()
         
         # Domain Configuration
         dc = data["domain_configuration"]

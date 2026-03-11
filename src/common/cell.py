@@ -1,29 +1,30 @@
 # src/common/cell.py
 
 import numpy as np
-
 from src.common.base_container import ValidatedContainer
-from src.common.field_schema import FI  # Importing the Single Source of Truth
-
+from src.common.field_schema import FI
 
 class Cell(ValidatedContainer):
     """
-    Lean Topology DTO (Wiring). 
-    Holds index, spatial coordinates, mask, and a reference to the global Foundation buffer.
+    Lean Topology DTO (Wiring).
+    Uses __slots__ to enforce zero-overhead logic-data.
+    The Cell acts as a pointer-view into the shared Foundation buffer.
     """
     __slots__ = ['index', 'fields_buffer', 'x', 'y', 'z', 'mask', 'is_ghost']
 
     def __init__(self, index: int, fields_buffer: np.ndarray, x: int, y: int, z: int, mask: int, is_ghost: bool = False):
-        # Topology data (stays in the object)
-        super().__setattr__('index', index)
-        super().__setattr__('fields_buffer', fields_buffer)
-        super().__setattr__('x', x)
-        super().__setattr__('y', y)
-        super().__setattr__('z', z)
-        super().__setattr__('mask', mask)
-        super().__setattr__('is_ghost', is_ghost)
+        # Explicit initialization to bypass __dict__ creation
+        object.__setattr__(self, 'index', index)
+        object.__setattr__(self, 'fields_buffer', fields_buffer)
+        object.__setattr__(self, 'x', x)
+        object.__setattr__(self, 'y', y)
+        object.__setattr__(self, 'z', z)
+        object.__setattr__(self, 'mask', mask)
+        object.__setattr__(self, 'is_ghost', is_ghost)
 
     # --- Physical Fields (View into Foundation) ---
+    # Rule 9: Access is Enum-locked to ensure 100% mapping reliability.
+    
     @property
     def vx(self) -> float: return self.fields_buffer[self.index, FI.VX]
     @vx.setter

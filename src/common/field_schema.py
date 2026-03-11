@@ -2,24 +2,34 @@
 
 from enum import IntEnum
 
-
 class FI(IntEnum):
     """
     FieldIndex (FI) Schema:
-    The Single Source of Truth for the global fields_buffer column mapping.
+    The Single Source of Truth (SSoT) for the global fields_buffer 
+    column mapping.
     
-    This ensures that memory access is consistent across the entire solver.
+    This Enum MUST be used by the FieldManager for memory allocation
+    and by Cell objects for pointer-based access to ensure consistency.
     """
+    # Primary Velocity Fields
     VX = 0
     VY = 1
     VZ = 2
+    
+    # Intermediate Predictor Fields
     VX_STAR = 3
     VY_STAR = 4
     VZ_STAR = 5
+    
+    # Pressure Fields
     P = 6
     P_NEXT = 7
 
     @classmethod
     def num_fields(cls) -> int:
-        """Returns the total number of fields in the buffer."""
+        """
+        Returns the total number of fields in the buffer.
+        Used by the FieldManager to allocate the Foundation buffer:
+        buffer = np.zeros((N_CELLS, FI.num_fields()), dtype=np.float32)
+        """
         return len(cls)

@@ -1,9 +1,6 @@
 # src/common/solver_state.py
 
-from dataclasses import dataclass
-
 import numpy as np
-
 from src.common.base_container import ValidatedContainer
 from src.common.field_schema import FI
 
@@ -70,18 +67,15 @@ def verify_foundation_integrity(state):
 # THE DEPARTMENT SAFES (Memory-Hardened Managers)
 # =========================================================
 
-@dataclass
 class DomainManager(ValidatedContainer):
     __slots__ = ['_type', '_reference_velocity']
     
-    # Internal state initialized to None (enforcing Rule 5: Zero-Debt)
-    _type: str = None
-    _reference_velocity: np.ndarray = None
+    def __init__(self):
+        self._type = None
+        self._reference_velocity = None
 
     @property
-    def type(self) -> str:
-        return self._get_safe("type")
-
+    def type(self) -> str: return self._get_safe("type")
     @type.setter
     def type(self, value: str):
         if value not in ["INTERNAL", "EXTERNAL"]:
@@ -89,35 +83,28 @@ class DomainManager(ValidatedContainer):
         self._set_safe("type", value, str)
 
     @property
-    def reference_velocity(self) -> np.ndarray:
-        return self._get_safe("reference_velocity")
-
+    def reference_velocity(self) -> np.ndarray: return self._get_safe("reference_velocity")
     @reference_velocity.setter
     def reference_velocity(self, value: np.ndarray):
         if value is not None and (not isinstance(value, np.ndarray) or value.size != 3):
             raise TypeError("reference_velocity must be a 3D NumPy array.")
         self._set_safe("reference_velocity", value, np.ndarray)
 
-@dataclass
 class GridManager(ValidatedContainer):
     __slots__ = [
         '_x_min', '_x_max', '_y_min', '_y_max', '_z_min', '_z_max', 
         '_nx', '_ny', '_nz'
     ]
 
-    # Internal state initialized to None (Zero-Debt Policy)
-    _x_min: float = None; _x_max: float = None
-    _y_min: float = None; _y_max: float = None
-    _z_min: float = None; _z_max: float = None
-    _nx: int = None; _ny: int = None; _nz: int = None
+    def __init__(self):
+        self._x_min = self._x_max = self._y_min = self._y_max = self._z_min = self._z_max = None
+        self._nx = self._ny = self._nz = None
 
-    # --- Setters and Getters with Security Firewall ---
-    
     @property
     def x_min(self) -> float: return self._get_safe("x_min")
     @x_min.setter
     def x_min(self, value: float): self._set_safe("x_min", value, float)
-
+    
     @property
     def x_max(self) -> float: return self._get_safe("x_max")
     @x_max.setter
@@ -164,7 +151,6 @@ class GridManager(ValidatedContainer):
         if value < 1: raise ValueError("nz must be >= 1")
         self._set_safe("nz", value, int)
 
-    # --- Derived Spacing Properties ---
     @property
     def dx(self) -> float: return (self.x_max - self.x_min) / self.nx
     @property
@@ -172,288 +158,186 @@ class GridManager(ValidatedContainer):
     @property
     def dz(self) -> float: return (self.z_max - self.z_min) / self.nz
 
-@dataclass
 class FluidPropertiesManager(ValidatedContainer):
     __slots__ = ['_density', '_viscosity']
     
-    # Internal state initialized to None (Zero-Debt Policy)
-    _density: float = None
-    _viscosity: float = None
-
-    # --- Setters and Getters with Security Firewall ---
+    def __init__(self):
+        self._density = self._viscosity = None
 
     @property
-    def density(self) -> float: 
-        return self._get_safe("density")
-
+    def density(self) -> float: return self._get_safe("density")
     @density.setter
     def density(self, value: float):
-        if value is not None and value <= 0:
-            raise ValueError(f"Density must be > 0, got {value}.")
+        if value is not None and value <= 0: raise ValueError(f"Density must be > 0, got {value}.")
         self._set_safe("density", value, float)
 
     @property
-    def viscosity(self) -> float: 
-        return self._get_safe("viscosity")
-
+    def viscosity(self) -> float: return self._get_safe("viscosity")
     @viscosity.setter
     def viscosity(self, value: float):
-        if value is not None and value < 0:
-            raise ValueError(f"Viscosity must be >= 0, got {value}.")
+        if value is not None and value < 0: raise ValueError(f"Viscosity must be >= 0, got {value}.")
         self._set_safe("viscosity", value, float)
 
-@dataclass
 class InitialConditionManager(ValidatedContainer):
     __slots__ = ['_velocity', '_pressure']
     
-    # Internal state initialized to None (Zero-Debt Policy)
-    _velocity: np.ndarray = None
-    _pressure: float = None
-
-    # --- Setters and Getters with Security Firewall ---
+    def __init__(self):
+        self._velocity = self._pressure = None
 
     @property
-    def velocity(self) -> np.ndarray:
-        return self._get_safe("velocity")
-
+    def velocity(self) -> np.ndarray: return self._get_safe("velocity")
     @velocity.setter
     def velocity(self, value: np.ndarray):
-        # Validate 3D vector constraint
         if value is not None and (not isinstance(value, np.ndarray) or value.size != 3):
-            raise ValueError(f"Velocity must be a 3D NumPy array, got {type(value)} with size {getattr(value, 'size', 'N/A')}.")
+            raise ValueError("Velocity must be a 3D NumPy array.")
         self._set_safe("velocity", value, np.ndarray)
 
     @property
-    def pressure(self) -> float:
-        return self._get_safe("pressure")
-
+    def pressure(self) -> float: return self._get_safe("pressure")
     @pressure.setter
-    def pressure(self, value: float):
-        # Enforce type check via _set_safe
-        self._set_safe("pressure", value, (float, int))
+    def pressure(self, value: float): self._set_safe("pressure", value, (float, int))
 
-@dataclass
 class SimulationParameterManager(ValidatedContainer):
     __slots__ = ['_time_step', '_total_time', '_output_interval']
     
-    # Internal state initialized to None (Zero-Debt Policy)
-    _time_step: float = None
-    _total_time: float = None
-    _output_interval: int = None
-
-    # --- Setters and Getters with Security Firewall ---
+    def __init__(self):
+        self._time_step = self._total_time = self._output_interval = None
 
     @property
-    def time_step(self) -> float:
-        return self._get_safe("time_step")
-
+    def time_step(self) -> float: return self._get_safe("time_step")
     @time_step.setter
     def time_step(self, value: float):
-        if value is not None and value <= 0:
-            raise ValueError(f"time_step must be > 0, got {value}.")
+        if value is not None and value <= 0: raise ValueError(f"time_step must be > 0, got {value}.")
         self._set_safe("time_step", value, (float, int))
 
     @property
-    def total_time(self) -> float:
-        return self._get_safe("total_time")
-
+    def total_time(self) -> float: return self._get_safe("total_time")
     @total_time.setter
     def total_time(self, value: float):
-        if value is not None and value <= 0:
-            raise ValueError(f"total_time must be > 0, got {value}.")
+        if value is not None and value <= 0: raise ValueError(f"total_time must be > 0, got {value}.")
         self._set_safe("total_time", value, (float, int))
 
     @property
-    def output_interval(self) -> int:
-        return self._get_safe("output_interval")
-
+    def output_interval(self) -> int: return self._get_safe("output_interval")
     @output_interval.setter
     def output_interval(self, value: int):
-        if value is not None and value < 1:
-            raise ValueError(f"output_interval must be >= 1, got {value}.")
+        if value is not None and value < 1: raise ValueError(f"output_interval must be >= 1, got {value}.")
         self._set_safe("output_interval", value, int)
 
-@dataclass
 class BoundaryCondition(ValidatedContainer):
     __slots__ = ['_location', '_type', '_values']
     
-    # Internal state initialized to None (Zero-Debt Policy)
-    _location: str = None
-    _type: str = None
-    _values: dict = None
-
-    # --- Setters and Getters with Security Firewall ---
+    def __init__(self):
+        self._location = self._type = self._values = None
 
     @property
-    def location(self) -> str:
-        return self._get_safe("location")
-
+    def location(self) -> str: return self._get_safe("location")
     @location.setter
     def location(self, value: str):
         valid = ["x_min", "x_max", "y_min", "y_max", "z_min", "z_max", "wall"]
-        if value is not None and value not in valid:
-            raise ValueError(f"Invalid location '{value}'. Must be one of {valid}.")
+        if value is not None and value not in valid: raise ValueError(f"Invalid location '{value}'.")
         self._set_safe("location", value, str)
 
     @property
-    def type(self) -> str:
-        return self._get_safe("type")
-
+    def type(self) -> str: return self._get_safe("type")
     @type.setter
     def type(self, value: str):
         valid = ["no-slip", "free-slip", "inflow", "outflow", "pressure"]
-        if value is not None and value not in valid:
-            raise ValueError(f"Invalid type '{value}'. Must be one of {valid}.")
+        if value is not None and value not in valid: raise ValueError(f"Invalid type '{value}'.")
         self._set_safe("type", value, str)
 
     @property
-    def values(self) -> dict:
-        return self._get_safe("values")
-
+    def values(self) -> dict: return self._get_safe("values")
     @values.setter
     def values(self, value: dict):
-        if value is not None and not isinstance(value, dict):
-            raise TypeError("values must be a dictionary.")
+        if value is not None and not isinstance(value, dict): raise TypeError("values must be a dict.")
         self._set_safe("values", value, dict)
 
-@dataclass
 class BoundaryConditionManager(ValidatedContainer):
     __slots__ = ['_conditions']
     
-    # Internal state initialized to None (Zero-Debt Policy)
-    _conditions: list[BoundaryCondition] = None
-
-    # --- Setters and Getters with Security Firewall ---
+    def __init__(self):
+        self._conditions = None
 
     @property
-    def conditions(self) -> list[BoundaryCondition]:
-        return self._get_safe("conditions")
-
+    def conditions(self) -> list[BoundaryCondition]: return self._get_safe("conditions")
     @conditions.setter
     def conditions(self, value: list[BoundaryCondition]):
-        if value is not None:
-            if not isinstance(value, list):
-                raise TypeError("conditions must be a list of BoundaryCondition objects.")
-            # Ensure every item in the list is a valid BoundaryCondition
-            for idx, item in enumerate(value):
-                if not isinstance(item, BoundaryCondition):
-                    raise TypeError(f"Item at index {idx} is not a BoundaryCondition.")
+        if value is not None and not isinstance(value, list): raise TypeError("Must be a list.")
         self._set_safe("conditions", value, list)
 
     def add_condition(self, condition: BoundaryCondition):
-        """Helper to safely append a single boundary condition."""
         current = self._conditions if self._conditions is not None else []
-        if not isinstance(condition, BoundaryCondition):
-            raise TypeError("Only BoundaryCondition objects can be added.")
+        if not isinstance(condition, BoundaryCondition): raise TypeError("Must be BoundaryCondition.")
         current.append(condition)
         self.conditions = current
 
-@dataclass
 class MaskManager(ValidatedContainer):
     __slots__ = ['_mask']
     
-    # Internal state initialized to None (Zero-Debt Policy)
-    _mask: np.ndarray = None
-
-    # --- Setters and Getters with Security Firewall ---
+    def __init__(self):
+        self._mask = None
 
     @property
-    def mask(self) -> np.ndarray:
-        return self._get_safe("mask")
-
+    def mask(self) -> np.ndarray: return self._get_safe("mask")
     @mask.setter
     def mask(self, value: np.ndarray):
         if value is not None:
-            # 1. Type and structure validation
-            if not isinstance(value, np.ndarray):
-                raise TypeError("Mask must be a NumPy array.")
-            
-            # 2. Value validation (Enforcing -1, 0, 1 enum constraint)
-            if not np.all(np.isin(value, [-1, 0, 1])):
-                raise ValueError("Mask must only contain values: -1 (boundary-fluid), 0 (solid), or 1 (fluid).")
-        
+            if not isinstance(value, np.ndarray) or not np.all(np.isin(value, [-1, 0, 1])):
+                raise ValueError("Mask must be a NumPy array of -1, 0, 1.")
         self._set_safe("mask", value, np.ndarray)
 
-@dataclass
 class ExternalForceManager(ValidatedContainer):
     __slots__ = ['_force_vector']
     
-    # Internal state initialized to None (Zero-Debt Policy)
-    _force_vector: np.ndarray = None
-
-    # --- Setters and Getters with Security Firewall ---
+    def __init__(self):
+        self._force_vector = None
 
     @property
-    def force_vector(self) -> np.ndarray:
-        return self._get_safe("force_vector")
-
+    def force_vector(self) -> np.ndarray: return self._get_safe("force_vector")
     @force_vector.setter
     def force_vector(self, value: np.ndarray):
-        if value is not None:
-            # 1. Type validation
-            if not isinstance(value, np.ndarray):
-                raise TypeError("force_vector must be a NumPy array.")
-            
-            # 2. Shape validation (Min/Max items = 3)
-            if value.size != 3:
-                raise ValueError(f"force_vector must be 3D, got size {value.size}.")
-        
+        if value is not None and (not isinstance(value, np.ndarray) or value.size != 3):
+            raise ValueError("force_vector must be a 3D NumPy array.")
         self._set_safe("force_vector", value, np.ndarray)
 
-@dataclass
 class FieldManager(ValidatedContainer):
-    """
-    The Foundation: Holds the monolithic NumPy buffer for all numerical fields.
-    Each row corresponds to a Cell index, columns correspond to physical variables.
-    """
     __slots__ = ['_data']
-    _data: np.ndarray = None
+    
+    def __init__(self):
+        self._data = None
 
     @property
-    def data(self) -> np.ndarray:
-        return self._get_safe("data")
-
+    def data(self) -> np.ndarray: return self._get_safe("data")
     @data.setter
     def data(self, value: np.ndarray):
-        if not isinstance(value, np.ndarray):
-            raise TypeError("Field data must be a NumPy array.")
+        if not isinstance(value, np.ndarray): raise TypeError("Field data must be a NumPy array.")
         self._set_safe("data", value, np.ndarray)
 
     def allocate(self, n_cells: int, dtype=np.float64):
-        """
-        Pre-allocate memory for all fields:
-        [vx, vy, vz, vx_star, vy_star, vz_star, p, p_next]
-        """
         self.data = np.zeros((n_cells, 8), dtype=dtype)
 
 # =========================================================
 # THE UNIVERSAL CONTAINER (The Constitution)
 # =========================================================
 
-@dataclass
 class SolverState(ValidatedContainer):
     __slots__ = [
         '_domain', '_grid', '_fluid', '_initial_conditions', 
         '_boundary_conditions', '_external_forces', '_sim_params', 
         '_masks', '_fields', '_stencil_matrix', 
-        '_iteration', '_time', '_ready_for_time_loop'
+        '_iteration', '_time', '_ready_for_time_loop', '_manifest'
     ]
 
-    _domain: DomainManager = None
-    _grid: GridManager = None
-    _fluid: FluidPropertiesManager = None
-    _initial_conditions: InitialConditionManager = None
-    _boundary_conditions: BoundaryConditionManager = None
-    _external_forces: ExternalForceManager = None
-    _sim_params: SimulationParameterManager = None
-    _masks: MaskManager = None
-    _fields: FieldManager = None
-    _stencil_matrix: list = None
-    _iteration: int = 0
-    _time: float = 0.0
-    _ready_for_time_loop: bool = False
-
-    # --- Property Gates (The Firewall) ---
+    def __init__(self):
+        super().__init__()
+        self._domain = self._grid = self._fluid = self._initial_conditions = None
+        self._boundary_conditions = self._external_forces = self._sim_params = None
+        self._masks = self._fields = self._stencil_matrix = None
+        self._iteration = 0
+        self._time = 0.0
+        self._ready_for_time_loop = False
+        self._manifest = {"output_directory": "output", "saved_snapshots": []}
 
     @property
     def domain(self) -> DomainManager: return self._get_safe("domain")
@@ -495,7 +379,6 @@ class SolverState(ValidatedContainer):
     @masks.setter
     def masks(self, value: MaskManager): self._set_safe("masks", value, MaskManager)
 
-    # --- Rule 9 Accessors ---
     @property
     def fields(self) -> FieldManager: return self._get_safe("fields")
     @fields.setter
@@ -517,71 +400,20 @@ class SolverState(ValidatedContainer):
     def time(self, value: float): self._time = value
 
     def validate_physical_readiness(self):
-        """
-        Final system-level check before the Time-Loop.
-        Catches global corruption (NaNs/Infs) not caught by individual setters.
-        """
         if self.fields is None or self.fields.data is None:
             raise RuntimeError("CRITICAL: Foundation buffer is missing.")
-            
-        # Global Foundation check for numeric health
         if np.any(np.isnan(self.fields.data)) or np.any(np.isinf(self.fields.data)):
             raise RuntimeError("CRITICAL: NaNs/Infs detected in Foundation buffer!")
-            
-        # Structural check
         if self.grid.nx is None or self.grid.nx < 1:
             raise RuntimeError("CRITICAL: Grid not properly initialized.")
-            
-        print("DEBUG [State]: ✅ Physical readiness verified.")
 
     @property
-    def ready_for_time_loop(self) -> bool:
-        return self._ready_for_time_loop
+    def ready_for_time_loop(self) -> bool: return self._ready_for_time_loop
 
     @ready_for_time_loop.setter
     def ready_for_time_loop(self, value: bool):
-        if not isinstance(value, bool):
-            raise TypeError(f"ready_for_time_loop must be a boolean.")
-        
-        # --- THE SAFETY GATE ---
+        if not isinstance(value, bool): raise TypeError("Must be boolean.")
         if value is True:
-            # 1. Enforce structural existence
-            if self.fields is None or self.stencil_matrix is None:
-                raise RuntimeError("Cannot start: Foundation or Wiring is missing.")
-            
-            # 2. Enforce memory wiring integrity (The Rule 9 POST)
             verify_foundation_integrity(self)
-            
-            # 3. Enforce global physical sanity
             self.validate_physical_readiness()
-            
         self._ready_for_time_loop = value
-    
-    def to_json_safe(self) -> dict:
-        """
-        Exports the current state to a JSON-compatible dictionary.
-        Strictly adheres to the Foundation-based output schema.
-        """
-        return {
-            "time": float(self.time),
-            "iteration": int(self.iteration),
-            "ready_for_time_loop": bool(self.ready_for_time_loop),
-            
-            # Ensure your Managers have a .to_dict() or .__dict__ access
-            "config": self.sim_params.to_dict(), 
-            "grid": {
-                "nx": self.grid.nx, "ny": self.grid.ny, "nz": self.grid.nz,
-                "dx": self.grid.dx, "dy": self.grid.dy, "dz": self.grid.dz
-            },
-            "fields": {
-                "data": self.fields.data.tolist() # Foundation Buffer -> List
-            },
-            "masks": {
-                "mask": self.masks.mask.tolist()   # Foundation Mask -> List
-            },
-            "manifest": {
-                # Ensure you add 'manifest' to SolverState slots if not present
-                "output_directory": getattr(self, 'manifest', {}).get('output_directory', 'output'),
-                "saved_snapshots": getattr(self, 'manifest', {}).get('saved_snapshots', [])
-            }
-        }

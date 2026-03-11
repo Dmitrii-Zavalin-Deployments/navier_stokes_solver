@@ -1,40 +1,46 @@
 # src/common/stencil_block.py
 
 from src.common.base_container import ValidatedContainer
-
 from .cell import Cell
-
 
 class StencilBlock(ValidatedContainer):
     """
     Logical Wiring: Represents the 7-point stencil topology.
     Acts as the graph node connecting neighboring Cells.
+    
+    Physics parameters are provided via properties (facades) that 
+    reference the SolverState, keeping memory usage O(1) per block.
     """
 
     __slots__ = [
         '_center', '_i_minus', '_i_plus', '_j_minus', '_j_plus', '_k_minus', '_k_plus',
-        '_dx', '_dy', '_dz', '_dt', '_rho', '_mu', '_f_vals'
+        '_state'
     ]
 
-    def __init__(self, center: Cell, i_minus: Cell, i_plus: Cell, 
-                 j_minus: Cell, j_plus: Cell, k_minus: Cell, k_plus: Cell,
-                 dx: float, dy: float, dz: float, dt: float, 
-                 rho: float, mu: float, f_vals: tuple):
+    def __init__(self, state, center: Cell, i_minus: Cell, i_plus: Cell, 
+                 j_minus: Cell, j_plus: Cell, k_minus: Cell, k_plus: Cell):
         
-        # Initialize slots (Zero-Debt Policy)
+        # Zero-Debt Policy: Initialize all slots to None
         for slot in self.__slots__:
             super().__setattr__(slot, None)
         
-        # Assign validated values
-        self.center, self.i_minus, self.i_plus = center, i_minus, i_plus
-        self.j_minus, self.j_plus = j_minus, j_plus
-        self.k_minus, self.k_plus = k_plus, k_plus
-        
-        self.dx, self.dy, self.dz = dx, dy, dz
-        self.dt, self.rho, self.mu = dt, rho, mu
-        self.f_vals = f_vals
+        # Assign parent state and topology
+        self.state = state
+        self.center = center
+        self.i_minus = i_minus
+        self.i_plus = i_plus
+        self.j_minus = j_minus
+        self.j_plus = j_plus
+        self.k_minus = k_minus
+        self.k_plus = k_plus
 
-    # --- Topological Accessors (The Wiring) ---
+    # --- Parent State Reference ---
+    @property
+    def state(self): return self._get_safe("state")
+    @state.setter
+    def state(self, val): self._set_safe("state", val, object)
+
+    # --- Topological Accessors ---
     @property
     def center(self) -> Cell: return self._get_safe("center")
     @center.setter
@@ -70,38 +76,26 @@ class StencilBlock(ValidatedContainer):
     @k_plus.setter
     def k_plus(self, val: Cell): self._set_safe("k_plus", val, Cell)
 
-    # --- Physics Parameters ---
+    # --- Physics Facades (Computed on-the-fly) ---
     @property
-    def dx(self) -> float: return self._get_safe("dx")
-    @dx.setter
-    def dx(self, val: float): self._set_safe("dx", val, float)
-
+    def dx(self) -> float: return self.state.grid.dx
+    
     @property
-    def dy(self) -> float: return self._get_safe("dy")
-    @dy.setter
-    def dy(self, val: float): self._set_safe("dy", val, float)
-
+    def dy(self) -> float: return self.state.grid.dy
+    
     @property
-    def dz(self) -> float: return self._get_safe("dz")
-    @dz.setter
-    def dz(self, val: float): self._set_safe("dz", val, float)
-
+    def dz(self) -> float: return self.state.grid.dz
+    
     @property
-    def dt(self) -> float: return self._get_safe("dt")
-    @dt.setter
-    def dt(self, val: float): self._set_safe("dt", val, float)
-
+    def dt(self) -> float: return self.state.simulation_parameters.time_step
+    
     @property
-    def rho(self) -> float: return self._get_safe("rho")
-    @rho.setter
-    def rho(self, val: float): self._set_safe("rho", val, float)
-
+    def rho(self) -> float: return self.state.fluid_properties.density
+    
     @property
-    def mu(self) -> float: return self._get_safe("mu")
-    @mu.setter
-    def mu(self, val: float): self._set_safe("mu", val, float)
-
+    def mu(self) -> float: return self.state.fluid_properties.viscosity
+    
     @property
-    def f_vals(self) -> tuple: return self._get_safe("f_vals")
-    @f_vals.setter
-    def f_vals(self, val: tuple): self._set_safe("f_vals", val, tuple)
+    def f_vals(self) -> tuple: 
+        """Returns the specific slice of the global field buffer for this Cell."""
+        return self.center.fields_buffer[self.center.index, :]
