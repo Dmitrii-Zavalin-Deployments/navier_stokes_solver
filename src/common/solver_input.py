@@ -1,6 +1,7 @@
 # src/common/solver_input.py
 
 from dataclasses import dataclass, field
+
 from src.common.base_container import ValidatedContainer
 
 # ... [Keep all your Sub-Department Containers: DomainConfigInput, GridInput, etc.] ...
