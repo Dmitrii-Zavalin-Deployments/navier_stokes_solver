@@ -10,8 +10,10 @@ Compliance:
 - Rule 8 (API Minimalism): Exposes a single, unified interface for token management.
 """
 
-import requests
 from typing import Final
+
+import requests
+
 
 class TokenManager:
     """

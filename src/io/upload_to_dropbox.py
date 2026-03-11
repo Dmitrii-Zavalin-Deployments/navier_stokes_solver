@@ -9,9 +9,12 @@ Compliance:
 - Rule 8 (API Minimalism): Encapsulated upload logic.
 """
 
-import dropbox
 from pathlib import Path
+
+import dropbox
+
 from src.io.dropbox_utils import TokenManager
+
 
 class CloudUploader:
     """
