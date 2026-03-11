@@ -1,7 +1,7 @@
 # src/step2/stencil_assembler.py
 
 from src.common.stencil_block import StencilBlock
-
+from src.common.field_schema import FI  # Import the Single Source of Truth
 from .factory import build_core_cell, build_ghost_cell
 
 # Rule 7: Granular Traceability
@@ -14,6 +14,12 @@ def assemble_stencil_matrix(state, nx, ny, nz, ctx, physics_params):
     """
     local_stencil_list = []
     
+    # Ensure the Foundation Buffer is initialized to the correct width
+    # Based on the Schema definition
+    if state.fields.data.shape[1] != FI.num_fields():
+        raise RuntimeError(f"Foundation Mismatch: Buffer width {state.fields.data.shape[1]} "
+                           f"does not match Schema requirement {FI.num_fields()}.")
+
     # Extract the Foundation Buffer once for efficiency
     fields_buffer = state.fields.data
     
@@ -39,6 +45,7 @@ def assemble_stencil_matrix(state, nx, ny, nz, ctx, physics_params):
 
     if DEBUG:
         print(f"DEBUG [Step 2.2]: Stencil Assembly Started for {nx}x{ny}x{nz} Domain")
+        print(f"DEBUG [Step 2.2]: Foundation Schema Width: {FI.num_fields()} fields")
 
     # Iterate through the Core domain to build the wiring
     for i in range(nx):

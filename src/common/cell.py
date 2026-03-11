@@ -1,9 +1,8 @@
 # src/common/cell.py
 
 import numpy as np
-
 from src.common.base_container import ValidatedContainer
-
+from src.common.field_schema import FI  # Importing the Single Source of Truth
 
 class Cell(ValidatedContainer):
     """
@@ -24,41 +23,41 @@ class Cell(ValidatedContainer):
 
     # --- Physical Fields (View into Foundation) ---
     @property
-    def vx(self) -> float: return self.fields_buffer[self.index, 0]
+    def vx(self) -> float: return self.fields_buffer[self.index, FI.VX]
     @vx.setter
-    def vx(self, value: float): self.fields_buffer[self.index, 0] = value
+    def vx(self, value: float): self.fields_buffer[self.index, FI.VX] = value
 
     @property
-    def vy(self) -> float: return self.fields_buffer[self.index, 1]
+    def vy(self) -> float: return self.fields_buffer[self.index, FI.VY]
     @vy.setter
-    def vy(self, value: float): self.fields_buffer[self.index, 1] = value
+    def vy(self, value: float): self.fields_buffer[self.index, FI.VY] = value
 
     @property
-    def vz(self) -> float: return self.fields_buffer[self.index, 2]
+    def vz(self) -> float: return self.fields_buffer[self.index, FI.VZ]
     @vz.setter
-    def vz(self, value: float): self.fields_buffer[self.index, 2] = value
+    def vz(self, value: float): self.fields_buffer[self.index, FI.VZ] = value
 
     @property
-    def vx_star(self) -> float: return self.fields_buffer[self.index, 3]
+    def vx_star(self) -> float: return self.fields_buffer[self.index, FI.VX_STAR]
     @vx_star.setter
-    def vx_star(self, value: float): self.fields_buffer[self.index, 3] = value
+    def vx_star(self, value: float): self.fields_buffer[self.index, FI.VX_STAR] = value
 
     @property
-    def vy_star(self) -> float: return self.fields_buffer[self.index, 4]
+    def vy_star(self) -> float: return self.fields_buffer[self.index, FI.VY_STAR]
     @vy_star.setter
-    def vy_star(self, value: float): self.fields_buffer[self.index, 4] = value
+    def vy_star(self, value: float): self.fields_buffer[self.index, FI.VY_STAR] = value
 
     @property
-    def vz_star(self) -> float: return self.fields_buffer[self.index, 5]
+    def vz_star(self) -> float: return self.fields_buffer[self.index, FI.VZ_STAR]
     @vz_star.setter
-    def vz_star(self, value: float): self.fields_buffer[self.index, 5] = value
+    def vz_star(self, value: float): self.fields_buffer[self.index, FI.VZ_STAR] = value
 
     @property
-    def p(self) -> float: return self.fields_buffer[self.index, 6]
+    def p(self) -> float: return self.fields_buffer[self.index, FI.P]
     @p.setter
-    def p(self, value: float): self.fields_buffer[self.index, 6] = value
+    def p(self, value: float): self.fields_buffer[self.index, FI.P] = value
 
     @property
-    def p_next(self) -> float: return self.fields_buffer[self.index, 7]
+    def p_next(self) -> float: return self.fields_buffer[self.index, FI.P_NEXT]
     @p_next.setter
-    def p_next(self, value: float): self.fields_buffer[self.index, 7] = value
+    def p_next(self, value: float): self.fields_buffer[self.index, FI.P_NEXT] = value

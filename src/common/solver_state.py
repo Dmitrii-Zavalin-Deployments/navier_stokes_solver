@@ -5,6 +5,52 @@ from dataclasses import dataclass
 import numpy as np
 
 from src.common.base_container import ValidatedContainer
+from src.common.field_schema import FI
+
+# =========================================================
+# POST: PRE-FLIGHT INTEGRITY CHECK
+# =========================================================
+
+def verify_foundation_integrity(state):
+    """
+    POST (Power-On Self-Test): Performs a 'Pre-Flight Check' on the memory wiring.
+    Uses Identity Priming to verify that pointers map to the correct array columns.
+    """
+    if state.fields is None or state.fields.data is None:
+        raise RuntimeError("POST FAILED: Fields buffer not initialized.")
+        
+    print("🚀 POST: Initiating Pre-Flight Memory Integrity Check...")
+    
+    # 1. Temporary Prime: Value = Index + FieldID/10
+    original_data = state.fields.data.copy()
+    num_cells = state.fields.data.shape[0]
+    
+    for f in FI:
+        state.fields.data[:, f] = np.arange(num_cells, dtype=float) + (float(f) / 10.0)
+
+    # 2. The Inquisition: Sample indices to ensure pointer alignment
+    try:
+        sample_indices = [0, num_cells // 2, num_cells - 1]
+        for idx in sample_indices:
+            # Check if block/cell exist
+            block = state.stencil_matrix[idx]
+            c = block.center
+            
+            # Verify P pointer (FI.P = 6)
+            expected_p = float(c.index) + 0.6
+            if not np.isclose(c.p, expected_p):
+                raise RuntimeError(f"CRITICAL: Memory Swap! Cell {c.index} P-pointer sees {c.p}, expected {expected_p}")
+
+            # Verify VX pointer (FI.VX = 0)
+            expected_vx = float(c.index) + 0.0
+            if not np.isclose(c.vx, expected_vx):
+                raise RuntimeError(f"CRITICAL: Memory Swap! Cell {c.index} VX-pointer sees {c.vx}, expected {expected_vx}")
+
+        print("✅ POST SUCCESS: Foundation wiring is verified and 'Frozen'.")
+
+    finally:
+        # 3. Restore actual simulation data
+        state.fields.data[:] = original_data
 
 # =========================================================
 # THE DEPARTMENT SAFES (Memory-Hardened Managers)
@@ -468,8 +514,12 @@ class SolverState(ValidatedContainer):
         if not isinstance(value, bool):
             raise TypeError(f"ready_for_time_loop must be a boolean, got {type(value)}")
         
-        # Optional: Add a safety check to enforce Rule 5 (Deterministic Init)
-        if value is True and (self.fields is None or self.stencil_matrix is None):
-            raise RuntimeError("Cannot set ready_for_time_loop to True: Foundation or Wiring is missing.")
+        # --- THE SAFETY GATE ---
+        if value is True:
+            # 1. Enforce existence
+            if self.fields is None or self.stencil_matrix is None:
+                raise RuntimeError("Cannot start: Foundation or Wiring is missing.")
+            # 2. Enforce structural integrity (POST)
+            verify_foundation_integrity(self)
             
         self._ready_for_time_loop = value
