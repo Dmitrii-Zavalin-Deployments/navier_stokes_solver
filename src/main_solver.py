@@ -4,15 +4,16 @@ import json
 import os
 import sys
 from pathlib import Path
+
 import jsonschema
 
+from src.common.archive_service import archive_simulation_artifacts
 from src.solver_input import SolverInput
 from src.step1.orchestrate_step1 import orchestrate_step1
 from src.step2.orchestrate_step2 import orchestrate_step2
 from src.step3.orchestrate_step3 import orchestrate_step3
 from src.step4.orchestrate_step4 import orchestrate_step4
 from src.step5.orchestrate_step5 import orchestrate_step5
-from src.common.archive_service import archive_simulation_artifacts
 
 # Global Debug Toggle
 DEBUG = True

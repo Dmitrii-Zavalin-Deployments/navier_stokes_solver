@@ -2,6 +2,7 @@
 
 from enum import IntEnum
 
+
 class FI(IntEnum):
     """
     FieldIndex (FI) Schema:

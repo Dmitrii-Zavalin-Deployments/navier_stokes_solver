@@ -2,8 +2,10 @@
 import json
 from collections.abc import Iterator
 from typing import Any
+
 import jsonschema
 import numpy as np
+
 
 class ValidatedContainer:
     """The 'Security Guard' logic. Now with memory-efficient slots and O(1) attribute validation."""
