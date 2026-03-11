@@ -1,6 +1,5 @@
 # src/step4/boundary_applier.py
 
-from src.common.field_schema import FI
 
 # Global Debug Toggle
 DEBUG = True
