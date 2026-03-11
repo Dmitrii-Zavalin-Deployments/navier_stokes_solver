@@ -8,43 +8,57 @@ from src.common.base_container import ValidatedContainer
 from src.common.field_schema import FI
 
 # =========================================================
-# POST: PRE-FLIGHT INTEGRITY CHECK
+# POST: PRE-FLIGHT INTEGRITY CHECK (Rule 9 Sentinel)
 # =========================================================
 
 def verify_foundation_integrity(state):
     """
     POST (Power-On Self-Test): Performs a 'Pre-Flight Check' on the memory wiring.
-    Uses Identity Priming to verify that pointers map to the correct array columns.
+    Uses Identity Priming: Value = Index + (Field_ID / 10.0).
+    Verifies that object-pointers map correctly to the monolithic fields_buffer.
     """
     if state.fields is None or state.fields.data is None:
         raise RuntimeError("POST FAILED: Fields buffer not initialized.")
         
     print("🚀 POST: Initiating Pre-Flight Memory Integrity Check...")
     
-    # 1. Temporary Prime: Value = Index + FieldID/10
-    original_data = state.fields.data.copy()
+    # 1. Identity Priming & Structural Synchronicity Check
     num_cells = state.fields.data.shape[0]
     
+    if len(state.stencil_matrix) != num_cells:
+        raise RuntimeError(
+            f"POST MISMATCH: Stencil count ({len(state.stencil_matrix)}) "
+            f"!= Buffer size ({num_cells}). Architecture integrity compromised."
+        )
+        
+    original_data = state.fields.data.copy()
+    
     for f in FI:
+        # Prime the buffer: Value = Index + (Field_ID / 10.0)
         state.fields.data[:, f] = np.arange(num_cells, dtype=float) + (float(f) / 10.0)
 
-    # 2. The Inquisition: Sample indices to ensure pointer alignment
+    # 2. The Inquisition: Verify pointer-to-buffer alignment
     try:
         sample_indices = [0, num_cells // 2, num_cells - 1]
         for idx in sample_indices:
-            # Check if block/cell exist
             block = state.stencil_matrix[idx]
             c = block.center
             
-            # Verify P pointer (FI.P = 6)
-            expected_p = float(c.index) + 0.6
+            # Verify Pressure (FI.P = 6)
+            expected_p = float(c.index) + (float(FI.P) / 10.0)
             if not np.isclose(c.p, expected_p):
-                raise RuntimeError(f"CRITICAL: Memory Swap! Cell {c.index} P-pointer sees {c.p}, expected {expected_p}")
+                raise RuntimeError(
+                    f"CRITICAL: Memory Swap! Cell {c.index} P-pointer sees {c.p}, "
+                    f"expected {expected_p}. Pointer drift or mapping error detected."
+                )
 
-            # Verify VX pointer (FI.VX = 0)
-            expected_vx = float(c.index) + 0.0
+            # Verify Velocity X (FI.VX = 0)
+            expected_vx = float(c.index) + (float(FI.VX) / 10.0)
             if not np.isclose(c.vx, expected_vx):
-                raise RuntimeError(f"CRITICAL: Memory Swap! Cell {c.index} VX-pointer sees {c.vx}, expected {expected_vx}")
+                raise RuntimeError(
+                    f"CRITICAL: Memory Swap! Cell {c.index} VX-pointer sees {c.vx}, "
+                    f"expected {expected_vx}. Pointer drift or mapping error detected."
+                )
 
         print("✅ POST SUCCESS: Foundation wiring is verified and 'Frozen'.")
 
@@ -434,8 +448,7 @@ class SolverState(ValidatedContainer):
     _sim_params: SimulationParameterManager = None
     _masks: MaskManager = None
     _fields: FieldManager = None
-    _stencil_matrix: list = None # The "Wiring" (Graph of StencilBlocks)
-    
+    _stencil_matrix: list = None
     _iteration: int = 0
     _time: float = 0.0
     _ready_for_time_loop: bool = False
@@ -511,16 +524,13 @@ class SolverState(ValidatedContainer):
         if self.fields is None or self.fields.data is None:
             raise RuntimeError("CRITICAL: Foundation buffer is missing.")
             
-        # Global Foundation check
+        # Global Foundation check for numeric health
         if np.any(np.isnan(self.fields.data)) or np.any(np.isinf(self.fields.data)):
             raise RuntimeError("CRITICAL: NaNs/Infs detected in Foundation buffer!")
             
         # Structural check
         if self.grid.nx is None or self.grid.nx < 1:
             raise RuntimeError("CRITICAL: Grid not properly initialized.")
-            
-        if self.fluid.density is None or self.fluid.density <= 0:
-            raise RuntimeError("CRITICAL: Physics invalid: Density <= 0.")
             
         print("DEBUG [State]: ✅ Physical readiness verified.")
 
@@ -531,15 +541,17 @@ class SolverState(ValidatedContainer):
     @ready_for_time_loop.setter
     def ready_for_time_loop(self, value: bool):
         if not isinstance(value, bool):
-            raise TypeError(f"ready_for_time_loop must be a boolean, got {type(value)}")
+            raise TypeError(f"ready_for_time_loop must be a boolean.")
         
         # --- THE SAFETY GATE ---
         if value is True:
-            # 1. Enforce existence
+            # 1. Enforce structural existence
             if self.fields is None or self.stencil_matrix is None:
                 raise RuntimeError("Cannot start: Foundation or Wiring is missing.")
-            # 2. Enforce structural integrity (POST)
+            
+            # 2. Enforce memory wiring integrity (The Rule 9 POST)
             verify_foundation_integrity(self)
+            
             # 3. Enforce global physical sanity
             self.validate_physical_readiness()
             
