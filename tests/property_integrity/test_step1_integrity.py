@@ -7,6 +7,7 @@ from src.solver_input import SolverInput
 from src.step1.orchestrate_step1 import orchestrate_step1
 from tests.helpers import solver_input_schema_dummy
 
+
 class TestStep1Integrity:
     """
     AUDITOR: Step 1 Structural Gate.
