@@ -1,15 +1,16 @@
 # tests/property_integrity/test_step3_initialization.py
 
-import pytest
 import numpy as np
+import pytest
+
 from src.common.field_schema import FI
-from src.common.solver_state import SolverState
-from src.step3.orchestrate_step3 import orchestrate_step3
-from tests.helpers.solver_input_schema_dummy import create_validated_input
-from src.step1.orchestrate_step1 import orchestrate_step1
-from src.step2.orchestrate_step2 import orchestrate_step2
 from src.common.simulation_context import SimulationContext
 from src.common.solver_config import SolverConfig
+from src.step1.orchestrate_step1 import orchestrate_step1
+from src.step2.orchestrate_step2 import orchestrate_step2
+from src.step3.orchestrate_step3 import orchestrate_step3
+from tests.helpers.solver_input_schema_dummy import create_validated_input
+
 
 class TestStep3Initialization:
     """AUDITOR: Step 3 Projection Method Pipeline Verification."""
@@ -42,7 +43,7 @@ class TestStep3Initialization:
         block = state.stencil_matrix[len(state.stencil_matrix) // 2] # Select a core cell
         
         # Capture pre-state
-        p_pre = block.center.fields_buffer[block.center.index, FI.P]
+        block.center.fields_buffer[block.center.index, FI.P]
         
         # Execute corrector/synchronization step
         orchestrate_step3(block, context, is_first_pass=False)
