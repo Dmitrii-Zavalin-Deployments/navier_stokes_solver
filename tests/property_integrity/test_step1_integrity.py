@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from src.solver_input import SolverInput
+from src.common.solver_input import SolverInput
 from src.step1.orchestrate_step1 import orchestrate_step1
 from tests.helpers import solver_input_schema_dummy
 
