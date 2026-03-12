@@ -21,6 +21,15 @@ class Cell(ValidatedContainer):
         object.__setattr__(self, 'fields_buffer', fields_buffer)
         object.__setattr__(self, 'is_ghost', is_ghost)
 
+    # --- Schema-Locked Foundation Access (Rule 9) ---
+    def get_field(self, field_id: int) -> float:
+        """Access the foundation buffer directly via schema index."""
+        return self.fields_buffer[self.index, field_id]
+
+    def set_field(self, field_id: int, value: float):
+        """Mutate the foundation buffer directly via schema index."""
+        self.fields_buffer[self.index, field_id] = value
+
     # --- Topological Access (View into Foundation) ---
     @property
     def mask(self) -> int: 
