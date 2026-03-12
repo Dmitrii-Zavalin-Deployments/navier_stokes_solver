@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from src.common.simulation_context import SimulationContext
 from src.common.field_schema import FI
+from src.common.simulation_context import SimulationContext
 from src.common.solver_state import (
     BoundaryConditionManager,
     DomainManager,

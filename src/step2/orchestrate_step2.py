@@ -1,6 +1,7 @@
 # src/step2/orchestrate_step2.py
 
 from src.common.solver_state import SolverState
+
 from .stencil_assembler import assemble_stencil_matrix
 
 # Rule 7: Granular Traceability

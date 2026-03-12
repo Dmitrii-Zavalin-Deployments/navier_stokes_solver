@@ -1,8 +1,10 @@
 # src/common/cell.py
 
 import numpy as np
+
 from src.common.base_container import ValidatedContainer
 from src.common.field_schema import FI
+
 
 class Cell(ValidatedContainer):
     """
