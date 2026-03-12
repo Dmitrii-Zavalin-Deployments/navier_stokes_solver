@@ -1,23 +1,32 @@
 # src/step4/orchestrate_step4.py
 
+from src.common.simulation_context import SimulationContext
 from src.common.stencil_block import StencilBlock
 from src.step4.boundary_applier import apply_boundary_values
 from src.step4.boundary_dispatcher import get_applicable_boundary_configs
 
-
-def orchestrate_step4(block: StencilBlock, boundary_cfg: list, grid, domain_cfg: dict) -> StencilBlock:
+def orchestrate_step4(
+    block: StencilBlock, 
+    context: SimulationContext, 
+    state_grid: object, 
+    state_bc_manager: object
+) -> StencilBlock:
     """
     Step 4: Boundary Enforcement Orchestration.
     
     Compliance:
-    - Rule 0 (Performance): Operates as a thin orchestration layer over Foundation-mutating ops.
-    - Rule 4 (SSoT): Relies on dispatcher/applier for configuration and memory access.
+    - Rule 4 (SSoT): Uses the SSoT components (grid/bc_manager) passed from the state.
+    - Rule 9 (Hybrid Memory): Orchestrates in-place mutation of Foundation buffers.
     """
     
     # 1. Identify applicable boundary rules
-    # The dispatcher uses schema-locked properties to filter the block.
-    # No local logic or "guesses" permitted (Rule 5: Deterministic Initialization).
-    rules = get_applicable_boundary_configs(block, boundary_cfg, grid, domain_cfg)
+    # We pass the domain type from the context for rule dispatching.
+    rules = get_applicable_boundary_configs(
+        block, 
+        state_bc_manager.lookup_table, 
+        state_grid, 
+        context.input_data.domain_configuration.type
+    )
     
     # 2. Apply updates
     # The applier performs direct in-place mutation of the Foundation buffer (Rule 9).
