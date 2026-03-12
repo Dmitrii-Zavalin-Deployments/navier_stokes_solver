@@ -143,6 +143,12 @@ class SimParamsInput(ValidatedContainer):
 class BoundaryConditionItem(ValidatedContainer):
     __slots__ = ['_location', '_type', '_values']
     
+    # Bypass the dataclass generator for __init__ by explicitly defining one
+    def __init__(self, location: str, type: str, values: dict):
+        self.location = location
+        self.type = type
+        self.values = values
+
     @property
     def location(self) -> str: return self._get_safe("location")
     @location.setter
@@ -150,6 +156,7 @@ class BoundaryConditionItem(ValidatedContainer):
         valid = ["x_min", "x_max", "y_min", "y_max", "z_min", "z_max", "wall"]
         if v not in valid: raise ValueError(f"Invalid location: {v}")
         self._set_safe("location", v, str)
+
     @property
     def type(self) -> str: return self._get_safe("type")
     @type.setter
@@ -157,6 +164,7 @@ class BoundaryConditionItem(ValidatedContainer):
         valid = ["no-slip", "free-slip", "inflow", "outflow", "pressure"]
         if v not in valid: raise ValueError(f"Invalid type: {v}")
         self._set_safe("type", v, str)
+
     @property
     def values(self) -> dict: return self._get_safe("values")
     @values.setter
