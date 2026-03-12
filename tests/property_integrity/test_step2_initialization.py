@@ -1,8 +1,10 @@
 # tests/property_integrity/test_step2_initialization.py
 
 import pytest
+
 from src.step2.orchestrate_step2 import orchestrate_step2
 from tests.helpers.solver_step1_output_dummy import make_step1_output_dummy
+
 
 class TestStep2Initialization:
     """AUDITOR: Step 2 Wiring & Matrix Assembly Verification."""
