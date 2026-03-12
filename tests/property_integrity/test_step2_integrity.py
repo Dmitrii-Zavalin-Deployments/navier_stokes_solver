@@ -1,10 +1,10 @@
 # tests/property_integrity/test_step2_integrity.py
 
 import pytest
+
 from src.step2.orchestrate_step2 import orchestrate_step2
-from src.common.solver_state import SolverState
+
 # Assuming you have a fixture that runs Step 1 to provide the initial state
-from tests.fixtures.step1_fixtures import hydrated_state 
 
 class TestStep2Integrity:
     """AUDITOR: Step 2 Wiring & Matrix Assembly Verification."""
