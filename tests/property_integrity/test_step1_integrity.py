@@ -5,7 +5,6 @@ import pytest
 
 from src.common.solver_input import SolverInput
 from src.step1.orchestrate_step1 import orchestrate_step1
-from tests.helpers.solver_input_schema_dummy import create_validated_input
 
 
 class TestStep1Integrity:
