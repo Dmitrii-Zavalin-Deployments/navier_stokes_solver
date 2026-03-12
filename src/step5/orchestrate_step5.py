@@ -10,14 +10,15 @@ def orchestrate_step5(state: SolverState, context: SimulationContext) -> SolverS
     Step 5: The Archivist Orchestration.
     
     Compliance:
-    - Rule 4 (SSoT): Accesses output interval exclusively via context.config.
-    - Rule 5 (Deterministic Init): Relies on explicit iteration counts from the configuration.
+    - Rule 4 (SSoT): Accesses output interval exclusively via simulation_parameters.
+    - Rule 5 (Deterministic Init): Relies on explicit iteration counts from the input schema.
     - Rule 9 (Hybrid Memory): Logic-layer remains thin; archiving is delegated.
     """
     
-    # Rule 5: Accessing configuration explicitly from the unified context.
-    # This prevents the silent failure of using a hardcoded default.
-    interval = context.config.output_interval
+    # Rule 4: SSoT Compliance
+    # Output frequency is a simulation parameter defined in the Input Schema,
+    # not an algorithmic tuning parameter (SolverConfig).
+    interval = context.input_data.simulation_parameters.output_interval
     
     # Logic-layer operation: Decision to archive
     # state.iteration is a property managed within the SolverState lifecycle
