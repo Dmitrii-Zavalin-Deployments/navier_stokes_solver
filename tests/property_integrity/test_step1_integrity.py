@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 
 from src.step1.orchestrate_step1 import orchestrate_step1
+
 # Rule 8: Explicit import of the primary interface
 from tests.helpers.solver_input_schema_dummy import create_validated_input
 
