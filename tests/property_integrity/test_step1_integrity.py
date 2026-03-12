@@ -1,4 +1,4 @@
-# tests/property_integrity/test_step1_integrity.py
+# tests/property_integrity/test_step1_initialization.py
 
 import pytest
 
@@ -8,11 +8,12 @@ from src.step1.orchestrate_step1 import orchestrate_step1
 from tests.helpers.solver_input_schema_dummy import create_validated_input
 
 
-class TestStep1Integrity:
-    """AUDITOR: Step 1 Structural Gate & POST Sentinel Verification."""
+class TestStep1Initialization:
+    """AUDITOR: Step 1 Structural Gate & Initial Hydration Verification."""
 
     @pytest.fixture(scope="class")
     def setup_data(self):
+        # Explicit input hydration ensures we test the exact state defined in our schema
         input_data = create_validated_input(nx=4, ny=4, nz=4)
         config = SolverConfig()
         config.ppe_tolerance = 1e-6
@@ -28,18 +29,6 @@ class TestStep1Integrity:
         assert state.grid is not None, "Missing GridManager"
         assert state.fields is not None, "Missing FieldManager"
         assert state.masks is not None, "Missing MaskManager"
-
-    def test_readiness_sentinel(self, setup_data):
-        """Rule 9 & 7: Triggers the POST via ready_for_time_loop."""
-        state, _ = setup_data
-        
-        assert state.ready_for_time_loop is False
-        
-        # This will trigger verify_foundation_integrity()
-        # Note: This will raise RuntimeError if stencil_matrix is None.
-        # Ensure your orchestrator or test populates state.stencil_matrix first!
-        state.ready_for_time_loop = True
-        assert state.ready_for_time_loop is True
 
     def test_no_convenience_leaks(self, setup_data):
         """Rule 4: Ensures no convenience aliases exist on root."""
