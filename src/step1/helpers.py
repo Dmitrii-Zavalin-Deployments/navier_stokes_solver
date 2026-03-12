@@ -40,19 +40,23 @@ def generate_3d_masks(mask_data: list[int], grid: GridInput) -> tuple[np.ndarray
 
 def parse_bc_lookup(bc_list: list) -> dict[str, dict]:
     """
-    Converts BC input container into a high-speed lookup table.
-    Uses dot notation to access object attributes, ensuring Rule 5 compliance.
+    Converts BC input into a lookup table. 
+    Uses None as a sentinel for missing physics, ensuring explicit data state.
     """
     table = {}
     for item in bc_list:
-        # Access attributes directly via dot notation
-        table[str(item.location)] = {
+        # Initialize with None to signify 'not applicable'
+        bc_entry = {
             "type": str(item.type),
-            "u": float(item.values["u"]),
-            "v": float(item.values["v"]),
-            "w": float(item.values["w"]),
-            "p": float(item.values["p"])
+            "u": None, "v": None, "w": None, "p": None
         }
+        
+        # Only overwrite if key exists; maintains Rule 5/Zero-Debt.
+        for key in ["u", "v", "w", "p"]:
+            if key in item.values:
+                bc_entry[key] = float(item.values[key])
+        
+        table[str(item.location)] = bc_entry
         
         if DEBUG:
             print(f"DEBUG [Step 1.3]: BC Map Entry Created -> Location: {item.location}, Type: {item.type}")
