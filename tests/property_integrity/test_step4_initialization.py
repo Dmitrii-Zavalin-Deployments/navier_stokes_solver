@@ -1,10 +1,12 @@
 # tests/property_integrity/test_step4_initialization.py
 
 import pytest
+
 from src.common.simulation_context import SimulationContext
+from src.common.solver_config import SolverConfig
 from src.step4.orchestrate_step4 import orchestrate_step4
 from tests.helpers.solver_input_schema_dummy import create_validated_input
-from src.common.solver_config import SolverConfig
+
 
 class TestStep4Initialization:
     """AUDITOR: Step 4 Boundary Enforcement Pipeline Verification."""
