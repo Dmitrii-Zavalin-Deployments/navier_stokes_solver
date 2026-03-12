@@ -26,7 +26,7 @@ def assemble_stencil_matrix(state: SolverState) -> list:
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     
     # Physics parameters cached from state.config (Rule 5)
-    sim_params = state.config.simulation_parameters
+    sim_params = state.sim_params
     fluid_props = state.config.fluid_properties
     ext_forces = state.config.external_forces
     
