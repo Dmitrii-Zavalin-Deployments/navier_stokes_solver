@@ -82,7 +82,7 @@ def orchestrate_step1(context: SimulationContext) -> SolverState:
     # --- 6. Boundary Conditions ---
     # Rule 8: Singular Access - Parse via helper, store in manager
     state.boundary_conditions = BoundaryConditionManager()
-    bc_lookup = parse_bc_lookup(input_data.boundary_conditions.items)
+    parse_bc_lookup(input_data.boundary_conditions.items)
     # Note: Assuming BoundaryConditionManager interface now supports the mapping
     # Ensure BoundaryConditionManager has a setter or method compatible with this lookup
         

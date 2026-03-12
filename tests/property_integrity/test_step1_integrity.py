@@ -1,6 +1,5 @@
 # tests/property_integrity/test_step1_integrity.py
 
-import numpy as np
 import pytest
 
 from src.common.simulation_context import SimulationContext
