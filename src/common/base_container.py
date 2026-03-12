@@ -45,7 +45,11 @@ class ValidatedContainer:
                 allowed.update(getattr(cls, '__slots__', []))
             self.__class__._ALLOWED_ATTRS = frozenset(allowed)
         
-        if name not in self._ALLOWED_ATTRS:
+        # Check if the name is an allowed slot OR a property descriptor
+        is_slot = name in self._ALLOWED_ATTRS
+        is_property = isinstance(getattr(self.__class__, name, None), property)
+        
+        if not (is_slot or is_property):
             raise AttributeError(f"Memory Leak Prevention: '{name}' not in __slots__ for {self.__class__.__name__}")
         
         super().__setattr__(name, value)
