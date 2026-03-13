@@ -63,7 +63,7 @@ class TestSolverLifecycle:
             assert hasattr(final_state, 'manifest')
             
             # 6. Archive Verification
-            archive_path = project_root / "navier_stokes_test_case_output.zip"
+            archive_path = project_root / "navier_stokes_output.zip"
             assert archive_path.exists(), "Archive service failed to produce output."
             
             # Cleanup
