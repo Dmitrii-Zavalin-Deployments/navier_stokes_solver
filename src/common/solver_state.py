@@ -386,11 +386,6 @@ class SolverState(ValidatedContainer):
     def fields(self, value: FieldManager): self._set_safe("fields", value, FieldManager)
 
     @property
-    def fields_buffer(self) -> np.ndarray:
-        """Rule 9: Authorized access to the monolithic Foundation buffer for IO."""
-        return self.fields.data
-
-    @property
     def stencil_matrix(self) -> list: return self._get_safe("stencil_matrix")
     @stencil_matrix.setter
     def stencil_matrix(self, value: list): self._set_safe("stencil_matrix", value, list)

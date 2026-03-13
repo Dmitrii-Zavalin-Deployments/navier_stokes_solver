@@ -15,7 +15,6 @@ class TestStep5Initialization:
     @pytest.fixture(scope="class")
     def setup_state(self):
         """Prepare minimal state for archive logic verification."""
-        # Rule 5: Deterministic Init - Config contains only algorithm parameters
         config = SolverConfig(
             ppe_tolerance=1e-6, 
             ppe_atol=1e-9, 
@@ -23,7 +22,6 @@ class TestStep5Initialization:
             ppe_omega=1.0
         )
         
-        # input_data houses simulation parameters
         input_data = create_validated_input(nx=4, ny=4, nz=4)
         input_data.simulation_parameters.output_interval = 10 
         
@@ -33,21 +31,27 @@ class TestStep5Initialization:
         state = SolverState()
         state.iteration = 0 
         
-        # FIX: Rule 9 Foundation Allocation
-        # Archivist requires a contiguous buffer to slice. 4x4x4 = 64 cells.
+        # Rule 9: Initialize and allocate the Foundation
         fields = FieldManager()
-        fields.allocate(n_cells=64)
+        fields.allocate(n_cells=64) # 4*4*4 = 64
         state.fields = fields
         
-        # Rule 5 & 9: Use a Structural Mock to satisfy the State's grid requirement
-        # Since the real GridManager is not yet implemented, we provide the 
-        # minimum interface required by io_archivist.py.
+        # Rule 5 & 9: UPGRADED Structural Mock
+        # Providing dummy meshes to satisfy io_archivist requirements
         class MockGrid:
-            __slots__ = ['nx', 'ny', 'nz']
+            __slots__ = ['nx', 'ny', 'nz', 'dx', 'dy', 'dz', 
+                         'x_mesh', 'y_mesh', 'z_mesh', 'mask_mesh']
             def __init__(self, nx, ny, nz):
                 self.nx, self.ny, self.nz = nx, ny, nz
+                self.dx = self.dy = self.dz = 0.1
+                # Create dummy 3D meshes for HDF5 writing
+                shape = (nx, ny, nz)
+                self.x_mesh = np.zeros(shape)
+                self.y_mesh = np.zeros(shape)
+                self.z_mesh = np.zeros(shape)
+                self.mask_mesh = np.zeros(shape, dtype=int)
 
-        # Bypass internal _set_safe to allow the MockGrid for these tests
+        # Bypass internal _set_safe for the mock
         state._grid = MockGrid(nx=4, ny=4, nz=4)
         
         return state, context
@@ -55,13 +59,12 @@ class TestStep5Initialization:
     def test_archivist_orchestration_contract(self, setup_state):
         """Rule 4: Verify Archivist receives valid configuration context."""
         state, context = setup_state
+        state.iteration = 0 # Force trigger
         
-        # Reset iteration to ensure it triggers (snapshot_0000.h5)
-        state.iteration = 0
         result = orchestrate_step5(state, context)
-        
         assert isinstance(result, SolverState), "Orchestrator must return the SolverState."
-        assert callable(orchestrate_step5), "Orchestrator must be callable."
+        # Verify the file was actually tracked in the manifest
+        assert len(state.manifest["saved_snapshots"]) > 0
 
     def test_archival_decision_logic(self, setup_state):
         """Rule 5: Verify archival threshold is strictly iteration-dependent."""
@@ -71,4 +74,5 @@ class TestStep5Initialization:
         state.iteration = 10
         orchestrate_step5(state, context)
         
-        assert state.iteration == 10, "Archivist should not modify iteration count."
+        # Check if the specific filename is in the manifest
+        assert any("snapshot_0010.h5" in s for s in state.manifest["saved_snapshots"])

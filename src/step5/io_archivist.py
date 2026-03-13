@@ -24,8 +24,9 @@ def save_snapshot(state) -> None:
     # Retrieve dimensions from the authorized Grid container
     nx, ny, nz = state.grid.nx, state.grid.ny, state.grid.nz
     
-    # Access the contiguous Foundation buffer (The "Sink")
-    data = state.fields_buffer 
+    # Access the contiguous Foundation buffer (The "Sink") 
+    # via the authorized FieldManager (Rule 5 compliance)
+    data = state.fields.data 
 
     with h5py.File(filename, 'w') as h5f:
         # Physical Fields: Direct, schema-locked slicing (Rule 9)
