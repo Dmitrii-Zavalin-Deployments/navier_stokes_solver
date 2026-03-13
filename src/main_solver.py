@@ -41,10 +41,8 @@ def run_solver(input_path: str):
     context = _load_simulation_context(input_path)
     
     # 1. PRE-EXECUTION FIREWALL: Validate Input Schema
-    # We validate the raw input_data from the context before it is processed into State
     SCHEMA_PATH = BASE_DIR / "schema/solver_input_schema.json"
     try:
-        # Validate the dict before assembly
         with open(SCHEMA_PATH) as f:
             schema = json.load(f)
         jsonschema.validate(instance=context.input_data.to_dict(), schema=schema)
@@ -65,14 +63,16 @@ def run_solver(input_path: str):
         # A. PREDICTOR PASS
         for block in state.stencil_matrix:
             block, _ = orchestrate_step3(block, context=context, is_first_pass=True)
-            block = orchestrate_step4(block, state.boundary_conditions, state.grid)
+            # UPDATED: Passing context, grid, and boundary manager
+            block = orchestrate_step4(block, context, state.grid, state.boundary_conditions)
         
         # B. ITERATIVE SOLVER & BOUNDARY PASS
         for _ in range(context.config.ppe_max_iter):
             max_delta = 0.0
             for block in state.stencil_matrix:
                 block, delta = orchestrate_step3(block, context=context, is_first_pass=False)
-                block = orchestrate_step4(block, state.boundary_conditions, state.grid)
+                # UPDATED: Passing context, grid, and boundary manager
+                block = orchestrate_step4(block, context, state.grid, state.boundary_conditions)
                 max_delta = max(max_delta, delta)
             
             if max_delta < context.config.ppe_tolerance:
