@@ -32,7 +32,8 @@ class TestSolverLifecycle:
                 "ppe_omega": 1.0
             }))
             
-            # The structure below now matches the exact keys expected by SolverInput
+            # The mask must be a flat list of integers, not a dictionary
+            # For a 4x4x4 grid, we provide 64 elements (4*4*4 = 64)
             input_file.write_text(json.dumps({
                 "domain_configuration": {"type": "INTERNAL", "reference_velocity": [0.0, 0.0, 0.0]},
                 "grid": {"nx": 4, "ny": 4, "nz": 4, "x_min": 0.0, "x_max": 1.0, "y_min": 0.0, "y_max": 1.0, "z_min": 0.0, "z_max": 1.0},
@@ -40,7 +41,7 @@ class TestSolverLifecycle:
                 "initial_conditions": {"velocity": [0.0, 0.0, 0.0], "pressure": 0.0},
                 "simulation_parameters": {"time_step": 0.01, "total_time": 0.02, "output_interval": 1},
                 "external_forces": {"force_vector": [0.0, 0.0, 0.0]},
-                "mask": {"mask": [[0]]},
+                "mask": [0] * 64, 
                 "boundary_conditions": {"conditions": []}
             }))
             
