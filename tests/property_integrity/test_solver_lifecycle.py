@@ -1,10 +1,9 @@
 # tests/integration/test_solver_lifecycle.py
 
+import pytest
 import json
 from pathlib import Path
-
-from src.main_solver import run_solver
-
+from src.main_solver import run_solver, BASE_DIR  # Import BASE_DIR to verify
 
 class TestSolverLifecycle:
     """
@@ -13,15 +12,18 @@ class TestSolverLifecycle:
     """
 
     def test_full_solver_pipeline_integrity(self):
+        # 1. Define paths precisely
         project_root = Path(__file__).resolve().parent.parent.parent
-        config_file = project_root / "config.json"
+        # Ensure we write to where the solver expects to read
+        config_file = BASE_DIR / "config.json"
         input_file = project_root / "input_validated.json"
+        
+        print(f"\nDEBUG: Writing config to: {config_file}")
         
         orig_config = config_file.read_text() if config_file.exists() else None
         
         try:
-            # 1. Define configuration with the required nested 'solver_settings' structure
-            # and include all mandatory parameters defined in SolverConfig.
+            # 2. Define configuration with the required nested 'solver_settings' structure
             config_dict = {
                 "solver_settings": {
                     "ppe_tolerance": 1e-6,
@@ -32,7 +34,7 @@ class TestSolverLifecycle:
             }
             config_file.write_text(json.dumps(config_dict))
             
-            # 2. Write mock input data
+            # 3. Write mock input data
             input_dict = {
                 "domain_configuration": {"type": "INTERNAL", "reference_velocity": [0.0, 0.0, 0.0]},
                 "grid": {"nx": 4, "ny": 4, "nz": 4, "x_min": 0.0, "x_max": 1.0, "y_min": 0.0, "y_max": 1.0, "z_min": 0.0, "z_max": 1.0},
@@ -49,14 +51,14 @@ class TestSolverLifecycle:
             }
             input_file.write_text(json.dumps(input_dict))
             
-            # 3. Execution
+            # 4. Execution
             final_state = run_solver("input_validated.json")
             
-            # 4. Assertions
+            # 5. Assertions
             assert final_state.ready_for_time_loop is False
             assert len(final_state.manifest.saved_snapshots) > 0
             
-            # 5. Archive Verification
+            # 6. Archive Verification
             archive_path = project_root / "navier_stokes_test_case_output.zip"
             assert archive_path.exists(), "Archive service failed to produce output."
             

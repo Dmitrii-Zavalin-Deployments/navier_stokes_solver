@@ -25,6 +25,8 @@ class SimulationContext:
         input_data = SolverInput.from_dict(input_dict)
         
         # Assemble numerical settings
+        print(f"DEBUG: config_dict keys: {list(config_dict.keys())}")
+        print(f"DEBUG: solver_settings content: {config_dict.get("solver_settings")}")
         config = SolverConfig()
         config.ppe_tolerance = config_dict["solver_settings"]["ppe_tolerance"]
         config.ppe_atol = config_dict["solver_settings"]["ppe_atol"]
