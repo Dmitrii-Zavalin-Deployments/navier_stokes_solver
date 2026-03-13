@@ -21,10 +21,13 @@ class TestSolverLifecycle:
         orig_config = config_file.read_text() if config_file.exists() else None
         
         try:
-            # 2. Configuration matching expected solver_settings structure
+            # 2. Configuration matching all mandatory fields in SolverConfig
+            # Rule 5: All fields must be explicitly defined to avoid 'AttributeError'
             config_dict = {
                 "ppe_tolerance": 1e-6,
-                "ppe_max_iter": 10
+                "ppe_atol": 1e-8,
+                "ppe_max_iter": 10,
+                "ppe_omega": 1.0
             }
             config_file.write_text(json.dumps(config_dict))
             
@@ -51,7 +54,6 @@ class TestSolverLifecycle:
             input_file.write_text(json.dumps(input_dict))
             
             # 4. Execution
-            # run_solver returns the path string to the zip archive
             zip_path = run_solver("input_validated.json")
             
             # 5. Assertions
