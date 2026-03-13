@@ -318,6 +318,23 @@ class FieldManager(ValidatedContainer):
     def allocate(self, n_cells: int, dtype=np.float64):
         self._data = np.zeros((n_cells, FI.num_fields()), dtype=dtype)
 
+class ManifestManager(ValidatedContainer):
+    __slots__ = ['_saved_snapshots', '_output_directory']
+    
+    def __init__(self):
+        self._saved_snapshots = []
+        self._output_directory = "output"
+
+    @property
+    def saved_snapshots(self) -> list: return self._get_safe("saved_snapshots")
+    @saved_snapshots.setter
+    def saved_snapshots(self, value: list): self._set_safe("saved_snapshots", value, list)
+
+    @property
+    def output_directory(self) -> str: return self._get_safe("output_directory")
+    @output_directory.setter
+    def output_directory(self, value: str): self._set_safe("output_directory", value, str)
+
 # =========================================================
 # THE UNIVERSAL CONTAINER (The Constitution)
 # =========================================================
@@ -338,7 +355,12 @@ class SolverState(ValidatedContainer):
         self._iteration = 0
         self._time = 0.0
         self._ready_for_time_loop = False
-        self._manifest = {"output_directory": "output", "saved_snapshots": []}
+        self.manifest = ManifestManager() 
+
+    @property
+    def manifest(self) -> ManifestManager: return self._get_safe("manifest")
+    @manifest.setter
+    def manifest(self, value: ManifestManager): self._set_safe("manifest", value, ManifestManager)
 
     @property
     def domain(self) -> DomainManager: return self._get_safe("domain")

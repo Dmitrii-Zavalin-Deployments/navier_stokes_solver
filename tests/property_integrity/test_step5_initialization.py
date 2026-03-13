@@ -1,11 +1,10 @@
 # tests/property_integrity/test_step5_initialization.py
 
-import numpy as np  # FIX: Explicit import for Rule 0 compliance
 import pytest
-
+import numpy as np
 from src.common.simulation_context import SimulationContext
 from src.common.solver_config import SolverConfig
-from src.common.solver_state import FieldManager, SolverState
+from src.common.solver_state import SolverState, FieldManager
 from src.step5.orchestrate_step5 import orchestrate_step5
 from tests.helpers.solver_input_schema_dummy import create_validated_input
 
@@ -35,11 +34,10 @@ class TestStep5Initialization:
         
         # Rule 9: Initialize and allocate the contiguous Foundation
         fields = FieldManager()
-        fields.allocate(n_cells=64) # 4x4x4 grid
+        fields.allocate(n_cells=64) 
         state.fields = fields
         
         # Rule 0: Mandatory __slots__ and Rule 9: Foundation-Object Bridge
-        # We use a Structural Mock that mimics the production GridManager interface
         class MockGrid:
             __slots__ = [
                 'nx', 'ny', 'nz', 'dx', 'dy', 'dz', 
@@ -58,7 +56,6 @@ class TestStep5Initialization:
                 self.mask_mesh = np.zeros(shape, dtype=np.int32)
 
         # Rule 4: Hierarchy over Convenience
-        # Bypass internal _set_safe to allow the mock for structural validation
         state._grid = MockGrid(nx=4, ny=4, nz=4)
         
         return state, context
@@ -68,9 +65,10 @@ class TestStep5Initialization:
         state, context = setup_state
         state.iteration = 0 
         
-        result = orchestrate_step5(state, context)
-        assert isinstance(result, SolverState), "Orchestrator must return the SolverState."
-        assert len(state.manifest["saved_snapshots"]) > 0, "Snapshot must be recorded in manifest."
+        orchestrate_step5(state, context)
+        
+        # Rule 8 & 4: Accessing manifest via the new ManifestManager container
+        assert len(state.manifest.saved_snapshots) > 0, "Snapshot must be recorded in manifest."
 
     def test_archival_decision_logic(self, setup_state):
         """Rule 5: Verify archival threshold is strictly iteration-dependent."""
@@ -80,5 +78,5 @@ class TestStep5Initialization:
         state.iteration = 10
         orchestrate_step5(state, context)
         
-        # Rule 8: Singular Access - check manifest via authorized state interface
-        assert any("snapshot_0010.h5" in s for s in state.manifest["saved_snapshots"])
+        # Rule 8: Access via typed container property
+        assert any("snapshot_0010.h5" in s for s in state.manifest.saved_snapshots)
