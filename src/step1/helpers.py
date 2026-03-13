@@ -24,7 +24,6 @@ def generate_3d_masks(mask_data: list[int], grid: GridInput) -> tuple[np.ndarray
         raise ValueError(f"Mask size mismatch: Expected {expected_len}, got {len(mask_data)}")
 
     # Fortran-style ('F') ordering maintains (i, j, k) logical indexing for spatial solvers
-    # This must match the index calculation used in factory.py (i + nx * (j + ny * k))
     mask_3d = np.asarray(mask_data, dtype=np.int8).reshape((nx, ny, nz), order="F")
     
     # Logic-Layer: Identify fluid and boundary regions via vectorized masks
@@ -37,29 +36,3 @@ def generate_3d_masks(mask_data: list[int], grid: GridInput) -> tuple[np.ndarray
         print(f"  > Fluid Volume: {np.sum(is_fluid)} cells")
         
     return mask_3d, is_fluid, is_boundary
-
-def parse_bc_lookup(bc_list: list) -> dict[str, dict]:
-    """
-    Converts BC input into a lookup table. 
-    Uses None as a sentinel for missing physics, ensuring explicit data state.
-    """
-    table = {}
-    for item in bc_list:
-        # Initialize with None to signify 'not applicable'
-        bc_entry = {
-            "type": str(item.type),
-            "u": None, "v": None, "w": None, "p": None
-        }
-        
-        # Explicit access to item values
-        # We enforce strict floating point conversion per Rule 5
-        for key in ["u", "v", "w", "p"]:
-            if hasattr(item.values, key) and getattr(item.values, key) is not None:
-                bc_entry[key] = float(getattr(item.values, key))
-        
-        table[str(item.location)] = bc_entry
-        
-        if DEBUG:
-            print(f"DEBUG [Step 1.3]: BC Map Entry Created -> Location: {item.location}, Type: {item.type}")
-            
-    return table

@@ -7,6 +7,7 @@ import numpy as np
 from src.common.field_schema import FI
 from src.common.simulation_context import SimulationContext
 from src.common.solver_state import (
+    BoundaryCondition,
     BoundaryConditionManager,
     DomainManager,
     ExternalForceManager,
@@ -19,7 +20,7 @@ from src.common.solver_state import (
     SolverState,
 )
 
-from .helpers import generate_3d_masks, parse_bc_lookup
+from .helpers import generate_3d_masks
 
 # Rule 7: Granular Traceability
 DEBUG = True
@@ -28,7 +29,6 @@ def orchestrate_step1(context: SimulationContext) -> SolverState:
     """
     Direct Ingestion Orchestrator (Phase C Compliant).
     Assembles the SolverState via strict container initialization and attribute assignment.
-    Rule 9: Unified Foundation ensures topology and fields share the same memory buffer.
     """
     if DEBUG:
         print(f"DEBUG [Step 1]: Starting State Assembly...")
@@ -65,26 +65,27 @@ def orchestrate_step1(context: SimulationContext) -> SolverState:
     state.sim_params.total_time = float(input_data.simulation_parameters.total_time)
     state.sim_params.output_interval = int(input_data.simulation_parameters.output_interval)
 
-    # --- 5. Topology & Foundation (Rule 9: Unified Foundation) ---
-    # Generate the topology
+    # --- 5. Topology & Foundation ---
     mask_3d, _, _ = generate_3d_masks(input_data.mask.data, input_data.grid)
-    
-    # Initialize Foundation
     state.fields = FieldManager()
     n_cells = state.grid.nx * state.grid.ny * state.grid.nz
     state.fields.allocate(n_cells) 
-    
-    # Migrate topology (Mask) into the Foundation buffer
-    # Flattening 3D mask ensures mapping to the contiguous n_cells buffer
     state.fields.data[:, FI.MASK] = mask_3d.flatten()
     
-    # Keep reference for metadata, but Foundation is now the SSoT for access
     state.masks = MaskManager()
     state.masks.mask = mask_3d
 
     # --- 6. Boundary Conditions ---
     state.boundary_conditions = BoundaryConditionManager()
-    parse_bc_lookup(input_data.boundary_conditions.items)
+    
+    # Explicitly satisfy Rule 5 by mapping input directly to BoundaryCondition objects
+    for item in input_data.boundary_conditions:
+        bc = BoundaryCondition()
+        bc.location = str(item.location)
+        bc.type = str(item.type)
+        bc.values = item.values  # ValidatedContainer handles the dict assignment
+        
+        state.boundary_conditions.add_condition(bc)
         
     if DEBUG:
         print(f"DEBUG [Step 1]: State assembly complete.")
