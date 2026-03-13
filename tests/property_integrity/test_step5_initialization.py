@@ -7,9 +7,12 @@ from src.common.simulation_context import SimulationContext
 from src.common.solver_config import SolverConfig
 from src.common.solver_state import (
     FieldManager,
-    GridManager,
     SimulationParameterManager,
     SolverState,
+    GridManager,
+    MaskManager,
+    ManifestManager,
+    DomainManager
 )
 from src.step5.orchestrate_step5 import orchestrate_step5
 from tests.helpers.solver_input_schema_dummy import create_validated_input
@@ -39,7 +42,7 @@ class TestStep5Initialization:
         state.iteration = 0 
         state.time = 0.0
         
-        # FIX: Manual property assignment for SimulationParameterManager
+        # Property assignment for ValidatedContainer managers
         params_manager = SimulationParameterManager()
         params_manager.time_step = input_data.simulation_parameters.time_step
         params_manager.total_time = input_data.simulation_parameters.total_time
@@ -51,7 +54,7 @@ class TestStep5Initialization:
         fields.allocate(n_cells=64) 
         state.fields = fields
         
-        # FIX: Instantiate the real GridManager to satisfy type validation
+        # Instantiate real managers to satisfy type validation
         grid = GridManager()
         grid.nx, grid.ny, grid.nz = 4, 4, 4
         grid.x_min, grid.x_max = 0.0, 1.0
@@ -59,22 +62,25 @@ class TestStep5Initialization:
         grid.z_min, grid.z_max = 0.0, 1.0
         state.grid = grid
         
-        # Mocking the MaskManager, Manifest, and Domain for state integrity
-        class MockMask: mask = np.zeros((4,4,4))
-        class MockManifest: saved_snapshots = []
-        state.masks = MockMask()
-        state.manifest = MockManifest()
+        # Initialize production-compliant managers
+        masks = MaskManager()
+        masks.mask = np.zeros((4, 4, 4))
+        state.masks = masks
         
-        class MockDomain:
-            case_name = 'test_case'
-        state.domain = MockDomain()
+        manifest = ManifestManager()
+        manifest.saved_snapshots = []
+        state.manifest = manifest
+        
+        domain = DomainManager()
+        domain.case_name = 'test_case'
+        state.domain = domain
         
         return state, context
 
     def test_archivist_orchestration_contract(self, setup_state):
         """Rule 4: Verify Archivist receives valid configuration context."""
         state, context = setup_state
-        state.iteration = 10 # Trigger snapshot
+        state.iteration = 10 
         
         orchestrate_step5(state, context)
         
