@@ -1,10 +1,9 @@
 # tests/integration/test_solver_lifecycle.py
 
+import pytest
 import json
 from pathlib import Path
-
 from src.main_solver import run_solver
-
 
 class TestSolverLifecycle:
     """
@@ -20,11 +19,15 @@ class TestSolverLifecycle:
         orig_config = config_file.read_text() if config_file.exists() else None
         
         try:
-            # 1. Define configuration explicitly
+            # 1. Define configuration with the required nested 'solver_settings' structure
+            # and include all mandatory parameters defined in SolverConfig.
             config_dict = {
-                "ppe_tolerance": 1e-6, 
-                "ppe_max_iter": 10, 
-                "ppe_omega": 1.0
+                "solver_settings": {
+                    "ppe_tolerance": 1e-6,
+                    "ppe_atol": 1e-8,
+                    "ppe_max_iter": 10,
+                    "ppe_omega": 1.0
+                }
             }
             config_file.write_text(json.dumps(config_dict))
             
@@ -46,8 +49,6 @@ class TestSolverLifecycle:
             input_file.write_text(json.dumps(input_dict))
             
             # 3. Execution
-            # If run_solver() internally uses config_file, this now succeeds 
-            # because config_file exists and is valid.
             final_state = run_solver("input_validated.json")
             
             # 4. Assertions
