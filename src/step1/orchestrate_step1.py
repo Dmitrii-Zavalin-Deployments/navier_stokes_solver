@@ -78,12 +78,12 @@ def orchestrate_step1(context: SimulationContext) -> SolverState:
     # --- 6. Boundary Conditions ---
     state.boundary_conditions = BoundaryConditionManager()
     
-    # Explicitly satisfy Rule 5 by mapping input directly to BoundaryCondition objects
+    # Strictly adhere to dictionary input structure as hydrated by SolverInput
     for item in input_data.boundary_conditions:
         bc = BoundaryCondition()
-        bc.location = str(item.location)
-        bc.type = str(item.type)
-        bc.values = item.values  # ValidatedContainer handles the dict assignment
+        bc.location = str(item["location"])
+        bc.type = str(item["type"])
+        bc.values = item["values"]
         
         state.boundary_conditions.add_condition(bc)
         
