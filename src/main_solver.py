@@ -80,7 +80,7 @@ def run_solver(input_path: str):
         
         state.iteration += 1
         state.time += state.sim_params.time_step
-        state = orchestrate_step5(state)
+        state = orchestrate_step5(state, context)
         
         if state.time >= state.sim_params.total_time:
             state.ready_for_time_loop = False
