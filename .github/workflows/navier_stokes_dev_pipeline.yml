@@ -72,8 +72,7 @@ jobs:
         run: |
           # Rule 6: Audit-driven coverage
           # Rule 7: Scientific Testing Suite must pass
-          # pytest -s tests/ -vv --cov=src --cov-report=term-missing
-          python3 -c "from src.common.solver_input import SolverInput; import json; d = {'domain_configuration': {'type': 'INTERNAL'}, 'grid': {'nx': 4, 'ny': 4, 'nz': 4, 'x_min': 0.0, 'x_max': 1.0, 'y_min': 0.0, 'y_max': 1.0, 'z_min': 0.0, 'z_max': 1.0}, 'fluid_properties': {'density': 1000.0, 'viscosity': 0.001}, 'initial_conditions': {'velocity': [0.0, 0.0, 0.0], 'pressure': 0.0}, 'simulation_parameters': {'time_step': 0.001, 'total_time': 0.002, 'output_interval': 1}, 'external_forces': {'force_vector': [0.0, 0.0, -9.81]}, 'mask': [0]*64, 'boundary_conditions': []}; s = SolverInput.from_dict(d); print(f'Accessing type: {s.domain_configuration.type}'); print(f'Accessing ref_vel: {s.domain_configuration.reference_velocity if hasattr(s.domain_configuration, \"_reference_velocity\") and s.domain_configuration._reference_velocity is not None else \"NOT_SET\"}')"
+          pytest -s tests/ -vv --cov=src --cov-report=term-missing
 
       - name: 📊 Audit Performance & Update Ledger
         if: always()
