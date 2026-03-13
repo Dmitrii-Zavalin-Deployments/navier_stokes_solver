@@ -38,9 +38,11 @@ class TestStep5Initialization:
         state.iteration = 0 
         state.time = 0.0
         
-        # FIX: Instantiate the Manager and load input to satisfy ValidatedContainer
+        # FIX: Manual property assignment for ValidatedContainer
         params_manager = SimulationParameterManager()
-        params_manager.load(input_data.simulation_parameters)
+        params_manager.time_step = input_data.simulation_parameters.time_step
+        params_manager.total_time = input_data.simulation_parameters.total_time
+        params_manager.output_interval = input_data.simulation_parameters.output_interval
         state.sim_params = params_manager
         
         # Rule 9: Initialize and allocate the contiguous Foundation
@@ -62,11 +64,15 @@ class TestStep5Initialization:
         # Rule 4: Hierarchy over Convenience
         state.grid = MockGrid(nx=4, ny=4, nz=4)
         
-        # Mocking the MaskManager and Manifest for state integrity
+        # Mocking the MaskManager, Manifest, and Domain for state integrity
         class MockMask: mask = np.zeros((4,4,4))
         class MockManifest: saved_snapshots = []
         state.masks = MockMask()
         state.manifest = MockManifest()
+        
+        class MockDomain:
+            case_name = 'test_case'
+        state.domain = MockDomain()
         
         return state, context
 
