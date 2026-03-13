@@ -11,6 +11,10 @@ from src.common.base_container import ValidatedContainer
 @dataclass
 class DomainConfigInput(ValidatedContainer):
     __slots__ = ['_type', '_reference_velocity']
+
+    def __init__(self):
+        self._type = None
+        self._reference_velocity = None
     
     @property
     def type(self) -> str: return self._get_safe("type")
