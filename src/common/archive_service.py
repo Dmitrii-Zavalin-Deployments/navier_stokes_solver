@@ -5,6 +5,7 @@ from pathlib import Path
 
 from src.common.solver_state import SolverState
 
+
 def archive_simulation_artifacts(state: SolverState) -> str:
     """
     Performs robust archiving using absolute paths to ensure consistency 
