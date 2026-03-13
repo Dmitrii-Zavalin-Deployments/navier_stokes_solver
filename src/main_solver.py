@@ -3,6 +3,7 @@
 import json
 import sys
 from pathlib import Path
+
 import jsonschema
 
 from src.common.archive_service import archive_simulation_artifacts
