@@ -3,7 +3,6 @@
 import json
 import sys
 from pathlib import Path
-
 import jsonschema
 
 from src.common.archive_service import archive_simulation_artifacts
@@ -14,7 +13,7 @@ from src.step3.orchestrate_step3 import orchestrate_step3
 from src.step4.orchestrate_step4 import orchestrate_step4
 from src.step5.orchestrate_step5 import orchestrate_step5
 
-# Global Debug Toggle
+# Global Debug Toggle: Rule 7 requires high-res logging for math
 DEBUG = True
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -23,6 +22,7 @@ def _load_simulation_context(input_path: str) -> SimulationContext:
     full_input_path = BASE_DIR / input_path
     config_path = BASE_DIR / "config.json"
     
+    # Rule 5: Explicit or Error. No fallbacks/defaults.
     if not full_input_path.exists():
         raise FileNotFoundError(f"Input file missing at {full_input_path}")
     if not config_path.exists():
@@ -35,7 +35,7 @@ def _load_simulation_context(input_path: str) -> SimulationContext:
         
     return SimulationContext.create(input_data, config_data)
 
-def run_solver(input_path: str):
+def run_solver(input_path: str) -> str:
     """Orchestrates the physics pipeline using the unified SimulationContext."""
     
     context = _load_simulation_context(input_path)
@@ -49,14 +49,28 @@ def run_solver(input_path: str):
         if DEBUG:
             print(f"DEBUG [Main]: ✅ Input schema validation passed.")
     except jsonschema.exceptions.ValidationError as e:
+        # Rule 5/7: Explicit reporting for deterministic debugging
         print(f"!!! CONTRACT VIOLATION: {e.message}")
         raise
 
-    # 2. ASSEMBLY via Orchestrators
+    # 2. ASSEMBLY via Orchestrators (Foundation logic)
     state = orchestrate_step1(context)
     state = orchestrate_step2(state)
 
-    # 3. MAIN EXECUTION LOOP
+    # 3. FIREWALL: State Contract Validation (Post-Assembly, Rule 4/SSoT)
+    # Validates current state against the SSoT schema
+    SCHEMA_PATH = Path("schema/solver_input_schema.json")
+    try:
+        state.validate_against_schema(str(SCHEMA_PATH))
+        if DEBUG:
+            print("DEBUG [Main]: ✅ State validation passed.")
+    except jsonschema.exceptions.ValidationError as e:
+        # Extract specific path for Rule 7 granular debugging
+        path_str = '.'.join([str(p) for p in e.path])
+        print(f"!!! CONTRACT VIOLATION at {path_str}: {e.message}")
+        raise
+
+    # 4. MAIN EXECUTION LOOP
     state.ready_for_time_loop = True
     
     while state.ready_for_time_loop:
@@ -83,7 +97,8 @@ def run_solver(input_path: str):
         if state.time >= state.sim_params.total_time:
             state.ready_for_time_loop = False
 
-    return state
+    # 5. ARCHIVING TRIGGER (Rule 4: Atomic lifecycle completion)
+    return archive_simulation_artifacts(state)
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
@@ -91,9 +106,7 @@ if __name__ == "__main__":
         sys.exit(1)
     
     try:
-        final_state = run_solver(sys.argv[1])
-        # ARCHIVING TRIGGER: Called only once post-execution
-        zip_path = archive_simulation_artifacts(final_state)
+        zip_path = run_solver(sys.argv[1])
         print(f"Pipeline complete. Artifacts: {zip_path}")
         sys.exit(0)
     except Exception as e:
