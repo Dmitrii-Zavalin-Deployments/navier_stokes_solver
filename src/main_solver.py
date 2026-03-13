@@ -45,7 +45,7 @@ def run_solver(input_path: str):
     context = _load_simulation_context(input_path)
     
     # Assembly via Orchestrators
-    state = orchestrate_step1(context.input_data)
+    state = orchestrate_step1(context)
     state = orchestrate_step2(state)
 
     # FIREWALL: Contract Validation
