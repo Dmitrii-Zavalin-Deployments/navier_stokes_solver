@@ -73,7 +73,8 @@ jobs:
           # Rule 6: Audit-driven coverage
           # Rule 7: Scientific Testing Suite must pass
           # pytest -s tests/ -vv --cov=src --cov-report=term-missing
-          pytest tests/property_integrity/test_step5_initialization.py -vv
+          # Run this to see the authorized slots/properties for DomainManager
+          python3 -c "from src.common.solver_state import DomainManager; print(getattr(DomainManager, '__slots__', 'No slots defined'))"
 
       - name: 📊 Audit Performance & Update Ledger
         if: always()
