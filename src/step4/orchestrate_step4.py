@@ -24,7 +24,7 @@ def orchestrate_step4(
     # We pass the domain type from the context for rule dispatching.
     rules = get_applicable_boundary_configs(
         block, 
-        state_bc_manager.lookup_table, 
+        {bc.location: bc for bc in state_bc_manager.conditions},
         state_grid, 
         context.input_data.domain_configuration.type
     )
