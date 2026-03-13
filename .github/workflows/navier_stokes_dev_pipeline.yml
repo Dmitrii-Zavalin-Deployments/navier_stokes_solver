@@ -70,7 +70,11 @@ jobs:
 
       - name: 🧪 Run Logic & Scientific Verification
         run: |
-          pytest -s tests/ -vv --cov=src --cov-report=term-missing
+          # pytest -s tests/ -vv --cov=src --cov-report=term-missing
+          # Use -s to show stdout (print statements) 
+          # Use --tb=short to minimize traceback noise 
+          # Target ONLY the failing test to prevent log truncation
+          pytest tests/property_integrity/test_solver_lifecycle.py::TestSolverLifecycle::test_full_solver_pipeline_integrity -s --tb=short
 
       - name: 📊 Audit Performance & Update Ledger
         if: always()
