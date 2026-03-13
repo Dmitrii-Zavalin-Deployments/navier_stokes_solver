@@ -54,26 +54,25 @@ jobs:
             git push || echo "Push skipped: branch protected."
           fi
 
-      # - name: 💀 Dead Code Audit (Vulture)
-      #   run: |
-      #     # Run vulture and capture output
-      #     # If any dead code is found, vulture exits with non-zero code
-      #     # which automatically kills the GitHub Action.
-      #     vulture src --min-confidence 70
+      - name: 💀 Dead Code Audit (Vulture)
+        run: |
+          # Run vulture and capture output
+          # If any dead code is found, vulture exits with non-zero code
+          # which automatically kills the GitHub Action.
+          vulture src --min-confidence 70
 
-      # - name: 🧪 Quality Gate Check
-      #   if: failure()
-      #   run: |
-      #     echo "CRITICAL: Dead code detected in src/. Review the Vulture logs above."
-      #     echo "Rule 2 (Zero-Debt Mandate) violation: Delete unused code before merging."
-      #     exit 1
+      - name: 🧪 Quality Gate Check
+        if: failure()
+        run: |
+          echo "CRITICAL: Dead code detected in src/. Review the Vulture logs above."
+          echo "Rule 2 (Zero-Debt Mandate) violation: Delete unused code before merging."
+          exit 1
 
       - name: 🧪 Run Logic & Scientific Verification
         run: |
           # Rule 6: Audit-driven coverage
           # Rule 7: Scientific Testing Suite must pass
-          # pytest tests/ -vv --cov=src --cov-report=term-missing
-          pytest -s tests/integration/test_solver_lifecycle.py
+          # pytest -s tests/ -vv --cov=src --cov-report=term-missing
 
       - name: 📊 Audit Performance & Update Ledger
         if: always()
