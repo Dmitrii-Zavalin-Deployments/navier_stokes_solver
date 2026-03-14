@@ -274,6 +274,9 @@ class BoundaryConditionManager(ValidatedContainer):
         self.conditions = current
 
 class MaskManager(ValidatedContainer):
+    def to_dict(self):
+        return self._mask.tolist()
+
     __slots__ = ['_mask']
     
     def __init__(self):
