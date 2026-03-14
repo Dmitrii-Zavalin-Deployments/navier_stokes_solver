@@ -261,7 +261,7 @@ class BoundaryConditionManager(ValidatedContainer):
     __slots__ = ["_conditions"]
 
     def to_dict(self):
-        return {"conditions": [c.to_dict() for c in self.conditions]}
+        return [c.to_dict() for c in self.conditions]
 
     def __init__(self):
         self._conditions = None
