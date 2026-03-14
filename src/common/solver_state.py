@@ -341,17 +341,17 @@ class ManifestManager(ValidatedContainer):
 
 class SolverState(ValidatedContainer):
     __slots__ = [
-        '_domain', '_grid', '_fluid', '_initial_conditions', 
-        '_boundary_conditions', '_external_forces', '_sim_params', 
-        '_masks', '_fields', '_stencil_matrix', 
+        '_domain_configuration', '_grid', '_fluid_properties', '_initial_conditions', 
+        '_boundary_conditions', '_external_forces', '_simulation_parameters', 
+        '_mask', '_fields', '_stencil_matrix', 
         '_iteration', '_time', '_ready_for_time_loop', '_manifest'
     ]
 
     def __init__(self):
         super().__init__()
-        self._domain = self._grid = self._fluid = self._initial_conditions = None
-        self._boundary_conditions = self._external_forces = self._sim_params = None
-        self._masks = self._fields = self._stencil_matrix = None
+        self._domain_configuration = self._grid = self._fluid_properties = self._initial_conditions = None
+        self._boundary_conditions = self._external_forces = self._simulation_parameters = None
+        self._mask = self._fields = self._stencil_matrix = None
         self._iteration = 0
         self._time = 0.0
         self._ready_for_time_loop = False

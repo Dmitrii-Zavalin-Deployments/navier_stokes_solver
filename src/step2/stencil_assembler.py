@@ -32,9 +32,9 @@ def assemble_stencil_matrix(state: SolverState) -> list:
         "dx": (grid.x_max - grid.x_min) / nx,
         "dy": (grid.y_max - grid.y_min) / ny,
         "dz": (grid.z_max - grid.z_min) / nz,
-        "dt": state.sim_params.time_step,
-        "rho": state.fluid.density,
-        "mu": state.fluid.viscosity,
+        "dt": state.simulation_parameters.time_step,
+        "rho": state.fluid_properties.density,
+        "mu": state.fluid_properties.viscosity,
         "f_vals": tuple(state.external_forces.force_vector)
     }
 

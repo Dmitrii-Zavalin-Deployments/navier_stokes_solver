@@ -39,23 +39,23 @@ def make_step1_output_dummy(nx: int = 4, ny: int = 4, nz: int = 4) -> SolverStat
     state._grid._z_min, state._grid._z_max = 0.0, 1.0
     state._grid._nx, state._grid._ny, state._grid._nz = nx, ny, nz
     
-    state._domain = DomainManager()
-    state._domain._type = "INTERNAL"
-    state._domain._reference_velocity = np.array([0.0, 0.0, 0.0])
+    state._domain_configuration = DomainManager()
+    state._domain_configuration._type = "INTERNAL"
+    state._domain_configuration._reference_velocity = np.array([0.0, 0.0, 0.0])
     
     # 2. Physics & Foundation: Atomic Constructor Injection
-    state._fluid = FluidPropertiesManager()
-    state._fluid._density = 1000.0
-    state._fluid._viscosity = 0.001
+    state._fluid_properties = FluidPropertiesManager()
+    state._fluid_properties._density = 1000.0
+    state._fluid_properties._viscosity = 0.001
     
     state._initial_conditions = InitialConditionManager()
     state._initial_conditions._velocity = np.array([0.0, 0.0, 0.0])
     state._initial_conditions._pressure = 0.0
     
-    state._sim_params = SimulationParameterManager()
-    state._sim_params._time_step = 0.001
-    state._sim_params._total_time = 1.0
-    state._sim_params._output_interval = 1
+    state._simulation_parameters = SimulationParameterManager()
+    state._simulation_parameters._time_step = 0.001
+    state._simulation_parameters._total_time = 1.0
+    state._simulation_parameters._output_interval = 1
     
     state._external_forces = ExternalForceManager()
     state._external_forces._force_vector = np.array([0.0, 0.0, -9.81])
@@ -65,8 +65,8 @@ def make_step1_output_dummy(nx: int = 4, ny: int = 4, nz: int = 4) -> SolverStat
     state._fields.allocate(nx * ny * nz)
     
     # 4. Topology: Explicit injection
-    state._masks = MaskManager()
-    state._masks._mask = np.ones((nx, ny, nz), dtype=int)
+    state._mask = MaskManager()
+    state._mask._mask = np.ones((nx, ny, nz), dtype=int)
     
     # 5. Boundary Condition Setup: Atomic instantiation
     state._boundary_conditions = BoundaryConditionManager()

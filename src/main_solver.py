@@ -92,10 +92,10 @@ def run_solver(input_path: str) -> str:
                 break
         
         state.iteration += 1
-        state.time += state.sim_params.time_step
+        state.time += state.simulation_parameters.time_step
         state = orchestrate_step5(state, context)
         
-        if state.time >= state.sim_params.total_time:
+        if state.time >= state.simulation_parameters.total_time:
             state.ready_for_time_loop = False
 
     # 5. ARCHIVING TRIGGER (Rule 4: Atomic lifecycle completion)
