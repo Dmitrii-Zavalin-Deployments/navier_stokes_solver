@@ -1,7 +1,6 @@
 # tests/property_integrity/test_lifecycle_allocation_robustness.py
 
 import pytest
-import numpy as np
 
 from src.common.field_schema import FI
 from tests.helpers.solver_output_schema_dummy import make_output_schema_dummy
