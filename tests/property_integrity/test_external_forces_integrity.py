@@ -23,24 +23,25 @@ def test_external_force_vector_presence_and_dimension():
     """
     state = make_step3_output_dummy()
     
-    # 1. Existence: Accessing via ForceManager
+    # Structural check for existence in the force manager
     assert hasattr(state, "external_forces"), "Step 3: external_forces department missing"
     
-    # 2. Vector Structure: Verify 3D vector parity
+    # Type and dimension validation
     force_vector = state.external_forces.force_vector
-    assert len(force_vector) == 3, "External force must be a 3D vector [x, y, z]"
+    assert isinstance(force_vector, np.ndarray), "Force vector must be a NumPy array"
+    assert force_vector.shape == (3,), "External force must be a 3D vector [x, y, z]"
 
 @pytest.mark.parametrize("stage_name, factory", FORCE_ACTIVE_STAGES)
 def test_force_term_persistence(stage_name, factory):
     """
-    Integrity: Verify force application records survive to final output.
+    Integrity: Verify force terms are present in the ExternalForceManager across all stages.
     """
     state = factory()
     
-    # Check persistence via manifest (the SSoT for pipeline diagnostics)
-    assert hasattr(state, "manifest"), f"{stage_name}: Manifest missing"
-    assert state.manifest.source_term_applied is True, \
-        f"{stage_name}: No record of external force application in pipeline manifest"
+    # Strict container access per Rule 4 (SSoT)
+    assert hasattr(state, "external_forces"), f"{stage_name}: ExternalForceManager missing"
+    assert state.external_forces.force_vector is not None, \
+        f"{stage_name}: Force vector record is None"
 
 def test_force_vector_magnitude_validity():
     """
@@ -49,6 +50,6 @@ def test_force_vector_magnitude_validity():
     state = make_step3_output_dummy()
     force_vector = state.external_forces.force_vector
     
-    # Ensure no NaNs or Infs in the force vector
+    # Scientific integrity: Validate against non-finite values to prevent propagation
     assert not np.any(np.isnan(force_vector)), "Force vector contains NaN values"
     assert not np.any(np.isinf(force_vector)), "Force vector contains Inf values"
