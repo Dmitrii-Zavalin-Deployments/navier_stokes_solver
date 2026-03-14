@@ -38,28 +38,37 @@ class ValidatedContainer:
             schema = json.load(f)
             
         try:
-            # Generate the dictionary using whichever to_dict is active
             data_to_validate = self.to_dict()
             jsonschema.validate(instance=data_to_validate, schema=schema)
         except jsonschema.exceptions.ValidationError as e:
-            # Extract high-value diagnostic info for the logs
-            error_message = e.message
-            # Construct a readable path (e.g., "boundary_conditions -> 0 -> values")
+            # 1. Isolate the specific sub-dictionary/value that failed
+            failed_instance = e.instance
+            
+            # 2. Extract Type Metadata: Handle NumPy specifically for Scientific Integrity
+            if hasattr(failed_instance, "shape"):
+                # If it's a NumPy array, identify its dimensions and type
+                received_type = f"numpy.ndarray (shape: {failed_instance.shape}, dtype: {failed_instance.dtype})"
+            else:
+                received_type = type(failed_instance).__name__
+            
+            # 3. Create a descriptive path
             path_to_error = " -> ".join([str(p) for p in e.path]) if e.path else "root"
             
-            # Print a surgical diagnostic report
+            # 4. Generate the Diagnostic Report
             print("\n" + "!" * 60)
             print("❌ SCHEMA VALIDATION FAILED")
-            print(f"CLASS:    {self.__class__.__name__}")
-            print(f"ERROR:    {error_message}")
-            print(f"LOCATION: {path_to_error}")
-            print(f"SCHEMA RULE: {e.validator}")
+            print(f"CLASS:      {self.__class__.__name__}")
+            print(f"LOCATION:   {path_to_error}")
+            print(f"RULE:       {e.validator}: {e.validator_value}")
+            print(f"RECEIVED:   {received_type}")
+            print(f"DATA TRACE: {repr(failed_instance)[:200]}...")
             print("!" * 60 + "\n")
             
-            # Re-raise as a clean ValueError to stop the test suite 
-            # 'from None' suppresses the original 3000-line jsonschema traceback
+            # 5. Raise with precise intent
             raise ValueError(
-                f"\n[Validation Failure] {self.__class__.__name__}: {error_message} at {path_to_error}"
+                f"\n[Validation Failure] {self.__class__.__name__} at '{path_to_error}': "
+                f"Expected {e.validator_value}, but received {received_type}. "
+                f"Data fragment: {repr(failed_instance)[:100]}"
             ) from None
 
     def __setattr__(self, name: str, value: Any):
