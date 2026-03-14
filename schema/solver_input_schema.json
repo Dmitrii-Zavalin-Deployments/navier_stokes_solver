@@ -223,17 +223,13 @@
     },
     "external_forces": {
       "type": "object",
-      "required": [
-        "force_vector"
-      ],
+      "required": ["force_vector"],
       "properties": {
         "force_vector": {
           "type": "array",
           "minItems": 3,
           "maxItems": 3,
-          "items": {
-            "type": "number"
-          }
+          "items": { "type": "number" }
         }
       }
     }
