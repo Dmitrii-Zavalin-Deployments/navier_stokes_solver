@@ -66,7 +66,7 @@ class TestStep5Initialization:
         # DomainManager is now initialized normally as the production code expects.
         domain = DomainManager()
         domain.type = "INTERNAL"
-        state.domain = domain
+        state.domain_configuration = domain
         
         return state, context
 
