@@ -29,7 +29,7 @@ def test_boundary_type_persistence_and_validity(stage_name, factory):
     
     # Adaptive Access: Extract BCs from the object (SSoT-compliant)
     # Using domain_configuration (as defined in SolverState slots)
-    bc_list = state.domain_configuration.boundary_conditions
+    bc_list = state.boundary_conditions
     
     # Structural Integrity: BC definitions must be a list
     assert isinstance(bc_list, list), f"{stage_name}: BC definitions must be a list."
@@ -51,7 +51,7 @@ def test_step2_matrix_bc_logic():
     assert state.stencil_matrix is not None, "Step 2: Stencil Matrix missing in State."
     
     # Access BCs through domain_configuration
-    bc_list = state.domain_configuration.boundary_conditions
+    bc_list = state.boundary_conditions
     bc_count = len(bc_list)
     
     assert bc_count >= 6, f"Step 2: Insufficient BCs for 3D domain. Found {bc_count}."
