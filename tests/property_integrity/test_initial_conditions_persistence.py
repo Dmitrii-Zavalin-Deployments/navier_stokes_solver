@@ -21,9 +21,10 @@ ALL_STAGES = [
 ]
 
 @pytest.mark.parametrize("stage_name, factory", ALL_STAGES)
-def test_initial_velocity_persistence(stage_name, factory):
+def test_initial_conditions_persistence(stage_name, factory):
     """
-    Integrity: Verify initial_conditions manager exists and velocity is a 3D NumPy array.
+    Integrity: Verify initial_conditions manager exists, velocity is a 3D NumPy array,
+    and pressure is a numeric scalar. (Consolidated per Rule 6).
     """
     state = factory()
     
@@ -31,28 +32,35 @@ def test_initial_velocity_persistence(stage_name, factory):
     assert hasattr(state, "_initial_conditions"), f"{stage_name}: _initial_conditions manager missing"
     ic = state._initial_conditions
     
-    # 2. Structural & Type Integrity (Rule 9: Hybrid Memory Foundation)
-    # Using public access if available, otherwise direct attribute access
+    # 2. Velocity Integrity (Hybrid Memory Foundation)
     v0 = getattr(ic, "velocity", ic._velocity)
-    
-    assert v0 is not None, f"{stage_name}: initial velocity is None"
     assert isinstance(v0, np.ndarray), f"{stage_name}: velocity must be a NumPy array"
     assert v0.shape == (3,), f"{stage_name}: velocity must be a 3D vector [u, v, w]"
+    
+    # 3. Pressure Integrity (Atomic Numerical Truth)
+    p0 = getattr(ic, "pressure", ic._pressure)
+    assert isinstance(p0, (float, np.float32, np.float64)), f"{stage_name}: Pressure must be numeric"
 
 def test_initial_conditions_immutability():
     """
-    Physics: Ensure 'initial_conditions.velocity' remains constant.
+    Physics: Ensure 'initial_conditions' (velocity and pressure) remain constant
+    after field evolution (Rule 9: Hybrid Memory Foundation).
     """
     state = make_step3_output_dummy()
-    expected_initial = np.array([0.0, 0.0, 0.0], dtype=np.float32)
     
-    # Access via the manager
+    # Expected immutable values
+    expected_v = np.array([0.0, 0.0, 0.0], dtype=np.float32)
+    expected_p = 0.0
+    
     ic = state._initial_conditions
-    current_velocity = getattr(ic, "velocity", ic._velocity)
     
-    # Direct comparison of the immutable foundation (Rule 9)
+    # Validate Velocity (Machine Precision)
     np.testing.assert_array_almost_equal(
-        current_velocity, 
-        expected_initial,
-        err_msg="Initial conditions corrupted by field updates!"
+        getattr(ic, "velocity", ic._velocity), 
+        expected_v,
+        err_msg="Initial velocity corrupted by field updates!"
     )
+    
+    # Validate Pressure (Machine Precision)
+    p_val = getattr(ic, "pressure", ic._pressure)
+    assert np.isclose(p_val, expected_p), "Initial pressure corrupted by field updates!"
