@@ -181,7 +181,7 @@ class FluidPropertiesManager(ValidatedContainer):
 
 class InitialConditionManager(ValidatedContainer):
     def to_dict(self):
-        return {"force_vector": self.force_vector.tolist()} if self.force_vector is not None else {"force_vector": [0.0, 0.0, 0.0]}
+        return {"velocity": self.velocity.tolist(), "pressure": self.pressure}
 
     __slots__ = ['_velocity', '_pressure']
     
