@@ -23,33 +23,36 @@ ALL_STAGES = [
 @pytest.mark.parametrize("stage_name, factory", ALL_STAGES)
 def test_initial_velocity_persistence(stage_name, factory):
     """
-    Integrity: Verify initial_conditions.velocity attribute exists and is a 3D NumPy array.
+    Integrity: Verify initial_conditions manager exists and velocity is a 3D NumPy array.
     """
     state = factory()
     
-    # 1. Department Existence (Rule 4: SSoT Architecture)
-    assert hasattr(state.config, "initial_conditions"), f"{stage_name}: config.initial_conditions missing"
+    # 1. Direct access via the manager (Rule 4: SSoT Architecture)
+    assert hasattr(state, "_initial_conditions"), f"{stage_name}: _initial_conditions manager missing"
+    ic = state._initial_conditions
     
     # 2. Structural & Type Integrity (Rule 9: Hybrid Memory Foundation)
-    v0 = state.config.initial_conditions.velocity
+    # Using public access if available, otherwise direct attribute access
+    v0 = getattr(ic, "velocity", ic._velocity)
+    
     assert v0 is not None, f"{stage_name}: initial velocity is None"
     assert isinstance(v0, np.ndarray), f"{stage_name}: velocity must be a NumPy array"
     assert v0.shape == (3,), f"{stage_name}: velocity must be a 3D vector [u, v, w]"
 
 def test_initial_conditions_immutability():
     """
-    Physics: Ensure 'initial_conditions.velocity' remains constant and is not 
-    overwritten by evolved field data (U, V, W).
+    Physics: Ensure 'initial_conditions.velocity' remains constant.
     """
-    # Grab a late-stage state where fields have definitely evolved
     state = make_step3_output_dummy()
-    
-    # Expected immutable value
     expected_initial = np.array([0.0, 0.0, 0.0], dtype=np.float32)
+    
+    # Access via the manager
+    ic = state._initial_conditions
+    current_velocity = getattr(ic, "velocity", ic._velocity)
     
     # Direct comparison of the immutable foundation (Rule 9)
     np.testing.assert_array_almost_equal(
-        state.config.initial_conditions.velocity, 
+        current_velocity, 
         expected_initial,
         err_msg="Initial conditions corrupted by field updates!"
     )
