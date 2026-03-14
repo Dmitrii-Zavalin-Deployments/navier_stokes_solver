@@ -19,7 +19,10 @@ def build_core_cell(i: int, j: int, k: int, state: SolverState) -> Cell:
     mask_grid = state.mask.mask
 
     # 2. Index calculation and topology (Rule 9)
-    index = i + grid.nx * (j + grid.ny * k)
+    # Use buffer dimensions (grid.nx + 2) to ensure the flat index 
+    # accounts for the ghost cell halo.
+    nx_buf, ny_buf = grid.nx + 2, grid.ny + 2
+    index = i + nx_buf * (j + ny_buf * k)
     
     # 3. Instantiate the Cell (The Wiring)
     cell = Cell(index=index, fields_buffer=fields.data, is_ghost=False)
