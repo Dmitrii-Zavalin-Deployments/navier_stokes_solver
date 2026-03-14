@@ -1,7 +1,6 @@
 # tests/property_integrity/test_external_forces_integrity.py
 
 import pytest
-import numpy as np
 
 from tests.helpers.solver_output_schema_dummy import make_output_schema_dummy
 from tests.helpers.solver_step3_output_dummy import make_step3_output_dummy
