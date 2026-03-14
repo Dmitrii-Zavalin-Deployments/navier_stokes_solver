@@ -44,6 +44,7 @@ def verify_foundation_integrity(state):
             
             # Verify Pressure (FI.P = 6)
             expected_p = float(c.index) + (float(FI.P) / 10.0)
+            print(f"DEBUG: Checking index {idx}, block.center.index={c.center.index}, num_cells={num_cells}")
             if not np.isclose(c.p, expected_p):
                 raise RuntimeError(
                     f"CRITICAL: Memory Swap! Cell {c.index} P-pointer sees {c.p}, "
