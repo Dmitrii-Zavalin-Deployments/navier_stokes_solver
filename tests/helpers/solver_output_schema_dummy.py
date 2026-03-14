@@ -8,7 +8,7 @@ Compliance:
 - Rule 8: API Minimalism (Primary state only).
 """
 
-from src.solver.solver_state import SolverState
+from src.common.solver_state import SolverState
 from tests.helpers.solver_step5_output_dummy import make_step5_output_dummy
 
 
