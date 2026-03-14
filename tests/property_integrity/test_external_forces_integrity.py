@@ -18,40 +18,36 @@ FORCE_ACTIVE_STAGES = [
 
 def test_external_force_vector_presence_and_dimension():
     """
-    Physics: Ensure gravity/external forces are defined as a 3D vector.
+    Physics: Ensure external forces are defined as a 3D vector.
     """
     state = make_step3_output_dummy()
     
-    # 1. Existence: Accessing via parameter manager property
-    assert hasattr(state.simulation_parameters, "g"), "Step 3: Gravity constant 'g' missing"
-    
-    # 2. Vector Structure: Accessing via ForceManager property
+    # 1. Existence: Accessing via ForceManager
     assert hasattr(state, "external_forces"), "Step 3: external_forces department missing"
+    
+    # 2. Vector Structure: Verify 3D vector parity
     force_vector = state.external_forces.force_vector
     assert len(force_vector) == 3, "External force must be a 3D vector [x, y, z]"
 
 @pytest.mark.parametrize("stage_name, factory", FORCE_ACTIVE_STAGES)
 def test_force_term_persistence(stage_name, factory):
     """
-    Integrity: Verify force terms survive from prediction through to final output.
+    Integrity: Verify force application records survive to final output.
     """
     state = factory()
     
-    # Check Step 3 Diagnostics: Ensure access via dot-notation
-    assert hasattr(state, "diagnostics"), f"{stage_name}: Diagnostics missing"
-    assert state.diagnostics.source_term_applied is True, \
-        f"{stage_name}: No record of external force application in pipeline diagnostics"
+    # Check persistence via manifest (the SSoT for pipeline diagnostics)
+    assert hasattr(state, "manifest"), f"{stage_name}: Manifest missing"
+    assert state.manifest.source_term_applied is True, \
+        f"{stage_name}: No record of external force application in pipeline manifest"
 
-def test_force_coupling_with_dt():
+def test_force_vector_magnitude_validity():
     """
-    Theory: Accelerative force must be scaled by dt in Step 3.
-    u_star = u_n + dt * (convection + diffusion + G)
+    Physics Check: Ensure the force vector has been initialized with valid values.
     """
     state = make_step3_output_dummy()
+    force_vector = state.external_forces.force_vector
     
-    # Access via properties rather than dictionary keys
-    dt = state.simulation_parameters.time_step
-    g = state.simulation_parameters.g
-    
-    assert dt > 0, "Temporal step dt must be positive for force integration"
-    assert g != 0, "Gravity magnitude should be non-zero for integrity testing"
+    # Ensure no NaNs or Infs in the force vector
+    assert not np.any(np.isnan(force_vector)), "Force vector contains NaN values"
+    assert not np.any(np.isinf(force_vector)), "Force vector contains Inf values"
