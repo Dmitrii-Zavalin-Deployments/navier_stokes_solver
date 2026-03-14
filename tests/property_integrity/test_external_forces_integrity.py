@@ -53,3 +53,16 @@ def test_force_vector_magnitude_validity():
     # Scientific integrity: Validate against non-finite values to prevent propagation
     assert not np.any(np.isnan(force_vector)), "Force vector contains NaN values"
     assert not np.any(np.isinf(force_vector)), "Force vector contains Inf values"
+
+def test_external_forces_immutability_logic():
+    """
+    Theory: Ensure the force vector does not change value from start to finish.
+    """
+    s1 = make_step1_output_dummy() # Ensure this is imported
+    s_final = make_output_schema_dummy()
+    
+    np.testing.assert_array_equal(
+        s1.external_forces.force_vector, 
+        s_final.external_forces.force_vector,
+        err_msg="External forces diverged between Step 1 and Final Output."
+    )
