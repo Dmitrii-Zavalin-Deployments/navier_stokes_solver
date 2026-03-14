@@ -75,6 +75,7 @@ jobs:
           # Use --tb=short to minimize traceback noise 
           # Target ONLY the failing test to prevent log truncation
           pytest tests/property_integrity/test_solver_lifecycle.py::TestSolverLifecycle::test_full_solver_pipeline_integrity -s --tb=short
+          pytest tests/property_integrity/test_solver_lifecycle.py -vv
 
       - name: 📊 Audit Performance & Update Ledger
         if: always()
