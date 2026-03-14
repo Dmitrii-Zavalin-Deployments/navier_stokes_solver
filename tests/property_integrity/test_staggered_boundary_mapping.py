@@ -1,6 +1,7 @@
 # tests/property_integrity/test_staggered_boundary_mapping.py
 
 import pytest
+
 from tests.helpers.solver_output_schema_dummy import make_output_schema_dummy
 from tests.helpers.solver_step1_output_dummy import make_step1_output_dummy
 from tests.helpers.solver_step2_output_dummy import make_step2_output_dummy
