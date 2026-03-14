@@ -28,10 +28,10 @@ def make_output_schema_dummy(nx: int = 4, ny: int = 4, nz: int = 4) -> SolverSta
     # 3. Complete Archive Manifest
     # SSoT: Manifest exists within its own dedicated container
     # This prevents the solver state from holding redundant metadata.
-    state.manifest.update_snapshots([
+    state.manifest.saved_snapshots = [
         "output/snapshot_0000.h5",
         "output/snapshot_0500.h5",
         "output/snapshot_1000.h5"
-    ])
+    ]
     
     return state
