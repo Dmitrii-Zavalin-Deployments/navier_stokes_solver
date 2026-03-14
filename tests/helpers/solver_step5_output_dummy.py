@@ -2,6 +2,7 @@
 
 from tests.helpers.solver_step4_output_dummy import make_step4_output_dummy
 
+
 def make_step5_output_dummy(nx: int = 4, ny: int = 4, nz: int = 4):
     """
     Returns a 'frozen' prototype representing the system state after 
