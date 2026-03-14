@@ -180,11 +180,11 @@ class FluidPropertiesManager(ValidatedContainer):
         self._set_safe("viscosity", value, float)
 
 class InitialConditionManager(ValidatedContainer):
+    __slots__ = ["_velocity", "_pressure"]
+
     def to_dict(self):
         return {"velocity": self.velocity.tolist(), "pressure": self.pressure}
 
-    __slots__ = ['_velocity', '_pressure']
-    
     def __init__(self):
         self._velocity = self._pressure = None
 
@@ -258,8 +258,11 @@ class BoundaryCondition(ValidatedContainer):
         self._set_safe("values", value, dict)
 
 class BoundaryConditionManager(ValidatedContainer):
+    __slots__ = ["_conditions"]
+
     def to_dict(self):
         return {"conditions": [c.to_dict() for c in self.conditions]}
+
     def __init__(self):
         self._conditions = None
 
@@ -277,6 +280,8 @@ class BoundaryConditionManager(ValidatedContainer):
         self.conditions = current
 
 class MaskManager(ValidatedContainer):
+    __slots__ = ['_mask']
+    
     def to_dict(self):
         return {"mask": self.mask.tolist()}
     
