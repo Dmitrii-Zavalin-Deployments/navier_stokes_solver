@@ -41,11 +41,6 @@ def run_solver(input_path: str) -> str:
     
     context = _load_simulation_context(input_path)
 
-    # Insert this in src/main_solver.py before the jsonschema.validate line
-    data_to_validate = context.input_data.to_dict()
-    print(f"DEBUG [Main]: Type of boundary_conditions is {type(data_to_validate.get('boundary_conditions'))}")
-    # jsonschema.validate(...)
-    
     # 1. PRE-EXECUTION FIREWALL: Validate Input Schema
     SCHEMA_PATH = BASE_DIR / "schema/solver_input_schema.json"
     try:
