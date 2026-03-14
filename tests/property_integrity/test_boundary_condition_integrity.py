@@ -36,9 +36,13 @@ def test_boundary_type_persistence_and_validity(stage_name, factory):
     assert len(bc_list) > 0, f"{stage_name}: BC list is empty."
 
     for bc in bc_list:
-        assert "location" in bc, f"{stage_name}: BC missing 'location'."
-        assert "type" in bc, f"{stage_name}: BC missing 'type'."
-        assert bc["type"] in VALID_BC_TYPES, f"{stage_name}: Invalid BC type '{bc['type']}'"
+        # 1. Verify existence of attributes
+        assert hasattr(bc, "location"), f"{stage_name}: BC missing 'location'."
+        assert hasattr(bc, "type"), f"{stage_name}: BC missing 'type'."
+        
+        # 2. Access attributes directly via dot notation
+        assert bc.location is not None, f"{stage_name}: BC location is None."
+        assert bc.type in VALID_BC_TYPES, f"{stage_name}: Invalid BC type '{bc.type}'"
 
 def test_step2_matrix_bc_logic():
     """

@@ -32,8 +32,8 @@ def make_step4_output_dummy(nx: int = 4, ny: int = 4, nz: int = 4):
     # we set the expected result for the boundary indices.
     
     # Mask check: For indices where masks.mask == -1, enforce wall conditions
-    # (Assuming the mask is available via state.masks.mask)
-    wall_indices = np.where(state.masks.mask.flatten() == -1)[0]
+    # (Assuming the mask is available via state.mask.mask)
+    wall_indices = np.where(state.mask.mask.flatten() == -1)[0]
     
     data[wall_indices, FI.VX] = 0.0
     data[wall_indices, FI.VY] = 0.0
