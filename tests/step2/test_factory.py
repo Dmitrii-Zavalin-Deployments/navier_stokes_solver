@@ -76,3 +76,16 @@ def test_exhaustive_field_integrity():
                     assert cell.vx == init.velocity[0]
                     assert cell.p == init.pressure
                     assert cell.mask == int(state.mask.mask[i, j, k])
+
+def test_cache_hit_optimization():
+    nx, ny, nz = 4, 4, 4
+    state = make_step1_output_dummy(nx=nx, ny=ny, nz=nz)
+    
+    # First access - should be a MISS
+    cell1 = get_cell(2, 2, 2, state)
+    
+    # Second access - should be a HIT
+    cell2 = get_cell(2, 2, 2, state)
+    
+    assert cell1 is cell2  # Ensure object identity
+    assert id(cell1) == id(cell2)
