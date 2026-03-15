@@ -3,6 +3,7 @@
 from src.common.field_schema import FI
 from src.common.solver_state import SolverState
 from src.common.stencil_block import StencilBlock
+
 from .factory import get_cell
 
 # Rule 7: Granular Traceability

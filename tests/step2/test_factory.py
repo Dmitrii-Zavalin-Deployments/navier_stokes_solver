@@ -6,6 +6,7 @@ import pytest
 from src.step2.factory import clear_cell_cache, get_cell
 from tests.helpers.solver_step1_output_dummy import make_step1_output_dummy
 
+
 @pytest.fixture(autouse=True)
 def reset_cache():
     clear_cell_cache()
