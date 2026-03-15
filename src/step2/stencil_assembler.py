@@ -13,8 +13,8 @@ DEBUG = True
 class CellRegistry:
     """Manages cell lifecycle via a deterministic flat-index cache."""
     def __init__(self, nx: int, ny: int, nz: int):
-        # We need to account for ghost cells: indices range from -1 to nx, ny, nz
-        # This gives a range of size (nx+2) * (ny+2) * (nz+2)
+        # We account for 1 ghost layer on each side: range is [-1, nx], [-1, ny], [-1, nz]
+        # Total size per dimension is N + 2
         self.nx_dim = nx + 2
         self.ny_dim = ny + 2
         self.nz_dim = nz + 2
@@ -23,6 +23,8 @@ class CellRegistry:
     def _get_idx(self, i: int, j: int, k: int) -> int:
         """
         Maps 3D coordinates to a 1D flat index using the SSoT grid_math.
+        Using the full buffer dimensions ensures consistent mapping for 
+        both Core and Ghost cells.
         """
         return get_flat_index(i, j, k, self.nx_dim, self.ny_dim)
 
@@ -37,7 +39,6 @@ def assemble_stencil_matrix(state: SolverState) -> list:
     Assembles a flattened list of StencilBlocks using a deterministic
     Flat Index Engine to ensure persistent topological identity.
     """
-    # 1. Foundation Verification
     if state.fields.data.shape[-1] != FI.num_fields():
         raise RuntimeError(f"Foundation Mismatch: Buffer width {state.fields.data.shape[-1]} "
                            f"!= Schema requirement {FI.num_fields()}.")
@@ -45,7 +46,6 @@ def assemble_stencil_matrix(state: SolverState) -> list:
     grid = state.grid
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     
-    # Initialize the registry engine for this specific domain
     registry = CellRegistry(nx, ny, nz)
     
     physics_params = {
@@ -63,11 +63,10 @@ def assemble_stencil_matrix(state: SolverState) -> list:
 
     local_stencil_list = []
     
-    # 2. Iterate through the Core domain
+    # Iterate through the Core domain
     for i in range(nx):
         for j in range(ny):
             for k in range(nz):
-                # Retrieve unique, registry-managed cells via Flat Index Engine
                 block = StencilBlock(
                     center=registry.get_or_create(i, j, k, state),
                     i_minus=registry.get_or_create(i - 1, j, k, state),
