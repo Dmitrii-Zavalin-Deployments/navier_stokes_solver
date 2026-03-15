@@ -3,8 +3,6 @@
 from src.common.field_schema import FI
 from src.common.solver_state import SolverState
 from src.common.stencil_block import StencilBlock
-
-# Import the unified factory entry point
 from .factory import get_cell
 
 # Rule 7: Granular Traceability
@@ -18,12 +16,12 @@ def assemble_stencil_matrix(state: SolverState) -> list:
     """
     local_stencil_list = []
     
-    # 1. Foundation Verification (Rule 9 & Rule 5)
+    # 1. Foundation Verification
     if state.fields.data.shape[1] != FI.num_fields():
         raise RuntimeError(f"Foundation Mismatch: Buffer width {state.fields.data.shape[1]} "
                            f"!= Schema requirement {FI.num_fields()}.")
 
-    # 2. Physics & Geometry parameters cached from SSoT
+    # 2. Physics & Geometry parameters
     grid = state.grid
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     
@@ -39,17 +37,25 @@ def assemble_stencil_matrix(state: SolverState) -> list:
 
     if DEBUG:
         print(f"DEBUG [Step 2.2]: Stencil Assembly Started for {nx}x{ny}x{nz} Domain")
+        print(f"DEBUG: Using SolverState instance at {id(state)}")
 
-    # 3. Iterate through the Core domain to build the wiring
-    # The factory's global cache ensures we maintain memory identity 
-    # for shared neighbors across StencilBlocks.
+    # 3. Iterate through the Core domain
     for i in range(nx):
         for j in range(ny):
             for k in range(nz):
+                # Retrieve cells for the stencil
+                c_center = get_cell(i, j, k, state)
+                c_i_plus = get_cell(i+1, j, k, state)
+                
+                # Trace identity before assignment
+                if DEBUG and (i == 0 and j == 0 and k == 0):
+                    print(f"DEBUG [Wiring]: Block (0,0,0) center ID: {id(c_center)}")
+                    print(f"DEBUG [Wiring]: Block (0,0,0) i_plus ID: {id(c_i_plus)}")
+
                 block = StencilBlock(
-                    center=get_cell(i, j, k, state),
+                    center=c_center,
                     i_minus=get_cell(i-1, j, k, state), 
-                    i_plus=get_cell(i+1, j, k, state),
+                    i_plus=c_i_plus,
                     j_minus=get_cell(i, j-1, k, state), 
                     j_plus=get_cell(i, j+1, k, state),
                     k_minus=get_cell(i, j, k-1, state), 

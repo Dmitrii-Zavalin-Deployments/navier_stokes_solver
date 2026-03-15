@@ -4,8 +4,14 @@ import numpy as np
 import pytest
 
 from src.step2.stencil_assembler import assemble_stencil_matrix
+from src.step2.factory import clear_cell_cache
 from tests.helpers.solver_step1_output_dummy import make_step1_output_dummy
 
+@pytest.fixture(autouse=True)
+def reset_factory_cache():
+    """Ensure a clean factory state before every test."""
+    clear_cell_cache()
+    yield
 
 def test_stencil_assembly_logic():
     # Setup: 4x4x4 grid
@@ -19,7 +25,6 @@ def test_stencil_assembly_logic():
     assert len(stencil_list) == nx * ny * nz
     
     # 2. Physics Param Verification (Check the math)
-    # dx = (x_max - x_min) / nx. Using dummy defaults: (1.0 - 0.0) / 4 = 0.25
     sample_block = stencil_list[0]
     assert sample_block.dx == 0.25
     assert sample_block.dy == 0.25
@@ -40,7 +45,6 @@ def test_stencil_physics_consistency():
     # Mutate physics
     state.simulation_parameters.time_step = 0.0123
     state.fluid_properties.density = 999.0
-    # Set external forces
     state.external_forces.force_vector = np.array([0.1, 0.2, 0.3])
     
     stencil_list = assemble_stencil_matrix(state)
@@ -48,7 +52,6 @@ def test_stencil_physics_consistency():
     for block in stencil_list:
         assert block.dt == 0.0123
         assert block.rho == 999.0
-        # Verification of f_vals propagation
         assert block.f_vals == (0.1, 0.2, 0.3)
 
 def test_schema_mismatch_raises_error():
@@ -69,9 +72,9 @@ def test_stencil_caching_efficiency():
     stencil_list = assemble_stencil_matrix(state)
     
     # Check flyweight pattern: Cell instances must be shared in memory (identity 'is')
-    block = stencil_list[0]       # (0,0,0)
+    block = stencil_list[0]          # (0,0,0)
     right_neighbor = stencil_list[1] # (1,0,0)
     
     # The cell at (1,0,0) is both the i_plus neighbor of (0,0,0) and the center of (1,0,0)
-    assert block.i_plus is right_neighbor.center
+    assert block.i_plus is right_neighbor.center, f"Identity failure: {id(block.i_plus)} != {id(right_neighbor.center)}"
     print("\nDEBUG: Flyweight pattern verified - Cell instances are shared.")

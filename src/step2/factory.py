@@ -20,11 +20,13 @@ def get_cell(i: int, j: int, k: int, state: SolverState) -> Cell:
     Implements Flyweight caching to ensure topological identity.
     """
     coord = (i, j, k)
+    state_id = id(state)
     
     if coord in _CELL_CACHE:
         cell = _CELL_CACHE[coord]
         if DEBUG:
-            print(f"DEBUG: Returning CACHED {coord} at {id(cell)}")
+            # We track the State ID here to ensure we aren't using a stale cell
+            print(f"DEBUG: CACHE HIT {coord} | Cell ID: {id(cell)} | State ID: {state_id}")
         return cell
     
     # Cache MISS
@@ -40,7 +42,7 @@ def get_cell(i: int, j: int, k: int, state: SolverState) -> Cell:
     _CELL_CACHE[coord] = cell
     
     if DEBUG:
-        print(f"DEBUG: Created NEW {coord} at {id(cell)}")
+        print(f"DEBUG: CACHE MISS {coord} | Created NEW Cell ID: {id(cell)} | State ID: {state_id}")
         
     return cell
 
