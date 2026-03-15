@@ -1,6 +1,7 @@
 # tests/step2/test_factory.py
 
 import numpy as np
+
 from src.step2.factory import build_core_cell, build_ghost_cell
 from tests.helpers.solver_step1_output_dummy import make_step1_output_dummy
 
