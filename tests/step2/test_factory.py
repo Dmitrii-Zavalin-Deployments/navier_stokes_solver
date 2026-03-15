@@ -1,10 +1,10 @@
 # tests/step2/test_factory.py
 
 import numpy as np
-import pytest
 
 from src.step2.factory import get_cell
 from tests.helpers.solver_step1_output_dummy import make_step1_output_dummy
+
 
 def test_factory_wiring_integrity():
     # Setup: 4x4x4 grid (6x6x6 buffer)
