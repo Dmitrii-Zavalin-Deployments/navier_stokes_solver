@@ -44,23 +44,30 @@ def assemble_stencil_matrix(state: SolverState) -> list:
     for i in range(nx):
         for j in range(ny):
             for k in range(nz):
-                # Retrieve cells for the stencil
+                # Pre-fetch ALL neighbors from the cache to ensure identity consistency
+                # These calls will hit the cache for existing objects
                 c_center = get_cell(i, j, k, state)
-                c_i_plus = get_cell(i+1, j, k, state)
+                c_i_m    = get_cell(i-1, j, k, state)
+                c_i_p    = get_cell(i+1, j, k, state)
+                c_j_m    = get_cell(i, j-1, k, state)
+                c_j_p    = get_cell(i, j+1, k, state)
+                c_k_m    = get_cell(i, j, k-1, state)
+                c_k_p    = get_cell(i, j, k+1, state)
                 
-                # Trace identity before assignment
+                # Trace identity before assignment for debugging
                 if DEBUG and (i == 0 and j == 0 and k == 0):
                     print(f"DEBUG [Wiring]: Block (0,0,0) center ID: {id(c_center)}")
-                    print(f"DEBUG [Wiring]: Block (0,0,0) i_plus ID: {id(c_i_plus)}")
+                    print(f"DEBUG [Wiring]: Block (0,0,0) i_plus ID: {id(c_i_p)}")
 
+                # Use pre-fetched variables to ensure memory identity (the 'is' check)
                 block = StencilBlock(
                     center=c_center,
-                    i_minus=get_cell(i-1, j, k, state), 
-                    i_plus=c_i_plus,
-                    j_minus=get_cell(i, j-1, k, state), 
-                    j_plus=get_cell(i, j+1, k, state),
-                    k_minus=get_cell(i, j, k-1, state), 
-                    k_plus=get_cell(i, j, k+1, state),
+                    i_minus=c_i_m, 
+                    i_plus=c_i_p,
+                    j_minus=c_j_m, 
+                    j_plus=c_j_p,
+                    k_minus=c_k_m, 
+                    k_plus=c_k_p,
                     **physics_params
                 )
                 local_stencil_list.append(block)
