@@ -55,13 +55,26 @@ def test_stencil_caching_efficiency():
     
     stencil_list = assemble_stencil_matrix(state)
     
-    # Registry now uses Flat Index Engine; same coord = same pointer
-    block = stencil_list[0]          # (0,0,0)
-    right_neighbor = stencil_list[1] # (1,0,0)
+    # 1. Access the blocks (Assuming list is ordered by index, (0,0,0) is index 0)
+    block = stencil_list[0]          # Should be (0,0,0)
+    right_neighbor = stencil_list[1] # Should be (1,0,0)
     
-    # The right neighbor's center cell must be the same object 
-    # as the current block's i_plus cell.
-    assert block.i_plus.index == right_neighbor.center.index and block.i_plus.fields_buffer is right_neighbor.center.fields_buffer, "Logical identity failure"
+    # 2. Assert coordinates for the 'block' (0,0,0)
+    assert (block.center.i, block.center.j, block.center.k) == (0, 0, 0), \
+        f"Expected block to be at (0,0,0), found ({block.center.i}, {block.center.j}, {block.center.k})"
+    
+    # 3. Assert coordinates for the 'right_neighbor' (1,0,0)
+    assert (right_neighbor.center.i, right_neighbor.center.j, right_neighbor.center.k) == (1, 0, 0), \
+        f"Expected neighbor to be at (1,0,0), found ({right_neighbor.center.i}, {right_neighbor.center.j}, {right_neighbor.center.k})"
+    
+    # 4. Assert Logical identity
+    # Now we verify that the i_plus neighbor of the first block is indeed the 
+    # center cell of the right_neighbor block.
+    assert block.i_plus.index == right_neighbor.center.index, \
+        f"Index mismatch: {block.i_plus.index} != {right_neighbor.center.index}"
+        
+    assert block.i_plus.fields_buffer is right_neighbor.center.fields_buffer, \
+        "Logical identity failure: fields_buffer pointers do not match"
 
 def test_stencil_matrix_topology():
     nx, ny, nz = 4, 4, 4
