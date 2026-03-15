@@ -1,9 +1,11 @@
 # tests/step2/test_stencil_assembler.py
 
-import pytest
 import numpy as np
+import pytest
+
 from src.step2.stencil_assembler import assemble_stencil_matrix
 from tests.helpers.solver_step1_output_dummy import make_step1_output_dummy
+
 
 def test_stencil_assembly_logic():
     # Setup: 4x4x4 grid
