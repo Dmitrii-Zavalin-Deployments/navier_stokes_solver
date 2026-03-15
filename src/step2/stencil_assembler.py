@@ -3,6 +3,7 @@
 from src.common.field_schema import FI
 from src.common.solver_state import SolverState
 from src.common.stencil_block import StencilBlock
+from src.common.grid_math import get_flat_index
 
 from .factory import get_cell
 
@@ -21,10 +22,9 @@ class CellRegistry:
 
     def _get_idx(self, i: int, j: int, k: int) -> int:
         """
-        Maps 3D coordinates to a 1D flat index. 
-        Shifts by +1 to handle ghost indices (e.g., -1 becomes 0).
+        Maps 3D coordinates to a 1D flat index using the SSoT grid_math.
         """
-        return (i + 1) * (self.ny_dim * self.nz_dim) + (j + 1) * self.nz_dim + (k + 1)
+        return get_flat_index(i, j, k, self.nx_dim, self.ny_dim)
 
     def get_or_create(self, i: int, j: int, k: int, state: SolverState):
         idx = self._get_idx(i, j, k)

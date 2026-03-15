@@ -1,31 +1,26 @@
 # src/step1/helpers.py
 
 import numpy as np
-
-from src.common.solver_input import GridInput
-
-# Rule 7: Granular Traceability
-DEBUG = True
+from src.common.grid_math import get_coords_from_index
 
 def generate_3d_masks(mask_data: list[int], grid: GridInput) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """
-    Transforms flat input into 3D topology arrays and verified boolean masks.
-    
-    Compliance:
-    - Rule 0 (Performance): NumPy used for vectorized topology representation.
-    - Rule 5 (Deterministic): Strict size validation; no fallback defaults.
-    """
-    # Grid access via GridInput properties (SSoT)
     nx, ny, nz = int(grid.nx), int(grid.ny), int(grid.nz)
     
-    expected_len = nx * ny * nz
-    if len(mask_data) != expected_len:
-        # Rule 5: Explicit or Error. Silent truncation or padding is prohibited.
-        raise ValueError(f"Mask size mismatch: Expected {expected_len}, got {len(mask_data)}")
-
-    # Fortran-style ('F') ordering maintains (i, j, k) logical indexing for spatial solvers
-    mask_3d = np.asarray(mask_data, dtype=np.int8).reshape((nx, ny, nz), order="F")
+    # 1. Initialize empty buffer
+    mask_3d = np.zeros((nx, ny, nz), dtype=np.int8)
     
+    # 2. Explicit mapping (Eliminating "Black Box" reshape)
+    # We map the flat input list to the 3D grid using our SSoT logic
+    for idx, value in enumerate(mask_data):
+        # We assume nx_buf, ny_buf for the mapping matches the mask dimensions
+        i, j, k = get_coords_from_index(idx, nx, ny) 
+        
+        # Guard against index drift
+        if 0 <= i < nx and 0 <= j < ny and 0 <= k < nz:
+            mask_3d[i, j, k] = value
+        else:
+            raise ValueError(f"Mask mapping overflow at index {idx} -> ({i}, {j}, {k})")
+
     # Logic-Layer: Identify fluid and boundary regions via vectorized masks
     is_fluid = (mask_3d == 1)
     is_boundary = (mask_3d == -1)

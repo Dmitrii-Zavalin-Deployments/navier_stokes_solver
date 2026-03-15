@@ -4,6 +4,7 @@ import numpy as np
 
 from src.common.base_container import ValidatedContainer
 from src.common.field_schema import FI
+from src.common.grid_math import get_coords_from_index
 
 
 class Cell(ValidatedContainer):
@@ -26,15 +27,15 @@ class Cell(ValidatedContainer):
     # --- Coordinate Properties (SSoT compliant derivation) ---
     @property
     def i(self) -> int:
-        return (self.index % (self.nx_buf * self.ny_buf)) % self.nx_buf - 1
+        return get_coords_from_index(self.index, self.nx_buf, self.ny_buf)[0]
 
     @property
     def j(self) -> int:
-        return ((self.index % (self.nx_buf * self.ny_buf)) // self.nx_buf) - 1
+        return get_coords_from_index(self.index, self.nx_buf, self.ny_buf)[1]
 
     @property
     def k(self) -> int:
-        return (self.index // (self.nx_buf * self.ny_buf)) - 1
+        return get_coords_from_index(self.index, self.nx_buf, self.ny_buf)[2]
 
     # --- Schema-Locked Foundation Access (Rule 9) ---
     def get_field(self, field_id: int) -> float:

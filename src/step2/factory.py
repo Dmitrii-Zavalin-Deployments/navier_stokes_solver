@@ -2,6 +2,7 @@
 
 from src.common.cell import Cell
 from src.common.solver_state import SolverState
+from src.common.grid_math import get_flat_index
 
 # Rule 7: Granular Traceability
 DEBUG = True 
@@ -40,7 +41,7 @@ def _build_core_cell(i: int, j: int, k: int, state: SolverState) -> Cell:
     mask_grid = state.mask.mask
 
     nx_buf, ny_buf = grid.nx + 2, grid.ny + 2
-    index = (i + 1) + nx_buf * ((j + 1) + ny_buf * (k + 1))
+    index = get_flat_index(i, j, k, nx_buf, ny_buf)
     
     cell = Cell(index=index, fields_buffer=fields.data, nx_buf=nx_buf, ny_buf=ny_buf, is_ghost=False)
     cell.vx, cell.vy, cell.vz = init.velocity
@@ -54,7 +55,7 @@ def _build_ghost_cell(i: int, j: int, k: int, state: SolverState) -> Cell:
     grid = state.grid
     nx_buf, ny_buf = grid.nx + 2, grid.ny + 2
     
-    index = (i + 1) + nx_buf * ((j + 1) + ny_buf * (k + 1))
+    index = get_flat_index(i, j, k, nx_buf, ny_buf)
     
     cell = Cell(index=index, fields_buffer=state.fields.data, nx_buf=nx_buf, ny_buf=ny_buf, is_ghost=True)
     cell.vx, cell.vy, cell.vz = GHOST_VELOCITY

@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from src.step2.stencil_assembler import assemble_stencil_matrix
+from src.step2.stencil_assembler import assemble_stencil_matrix, CellRegistry
 from tests.helpers.solver_step1_output_dummy import make_step1_output_dummy
 from tests.helpers.solver_step2_output_dummy import make_step2_output_dummy
 
@@ -84,3 +84,34 @@ def test_stencil_matrix_topology():
         nx_buf, ny_buf = nx + 2, ny + 2
         expected_idx = (i + 1) + nx_buf * ((j + 1) + ny_buf * (k + 1))
         assert block.center.index == expected_idx
+
+def test_registry_cache_hit():
+    """
+    Verifies that the registry returns the exact same object instance
+    for the same (i, j, k) coordinates, proving the cache is working.
+    """
+    nx, ny, nz = 2, 2, 2
+    state = make_step1_output_dummy(nx=nx, ny=ny, nz=nz)
+    
+    # We assemble the matrix to populate the registry cache
+    stencil_list = assemble_stencil_matrix(state)
+    
+    # Now we manually trigger another retrieval for the same (0,0,0)
+    # We must access the registry inside the assembler.
+    # To test this without modifying the assembler, we can create a temporary 
+    # registry instance or add a small helper. 
+    # Here is the direct test of the logic:
+    
+    from src.step2.stencil_assembler import CellRegistry
+    registry = CellRegistry(nx, ny, nz)
+    
+    cell1 = registry.get_or_create(0, 0, 0, state)
+    cell2 = registry.get_or_create(0, 0, 0, state)
+    
+    # This must be the SAME object instance in memory
+    assert cell1 is cell2, "Cache Miss: Registry created a new instance instead of returning cached one"
+    assert id(cell1) == id(cell2), "Cache Identity failure"
+
+    # Now test a different coordinate
+    cell3 = registry.get_or_create(1, 1, 1, state)
+    assert cell1 is not cell3, "Registry error: Different coordinates returned same instance"
