@@ -57,7 +57,8 @@ def _build_core_cell(i: int, j: int, k: int, state: SolverState) -> Cell:
     nx_buf, ny_buf = grid.nx + 2, grid.ny + 2
     index = (i + 1) + nx_buf * ((j + 1) + ny_buf * (k + 1))
     
-    cell = Cell(index=index, fields_buffer=fields.data, is_ghost=False)
+    # Updated: Pass nx_buf and ny_buf for coordinate derivation
+    cell = Cell(index=index, fields_buffer=fields.data, nx_buf=nx_buf, ny_buf=ny_buf, is_ghost=False)
     cell.vx, cell.vy, cell.vz = init.velocity
     cell.p = init.pressure
     cell.mask = int(mask_grid[i, j, k])
@@ -71,7 +72,8 @@ def _build_ghost_cell(i: int, j: int, k: int, state: SolverState) -> Cell:
     
     index = (i + 1) + nx_buf * ((j + 1) + ny_buf * (k + 1))
     
-    cell = Cell(index=index, fields_buffer=state.fields.data, is_ghost=True)
+    # Updated: Pass nx_buf and ny_buf for coordinate derivation
+    cell = Cell(index=index, fields_buffer=state.fields.data, nx_buf=nx_buf, ny_buf=ny_buf, is_ghost=True)
     cell.vx, cell.vy, cell.vz = GHOST_VELOCITY
     cell.p = GHOST_PRESSURE
     cell.mask = GHOST_MASK

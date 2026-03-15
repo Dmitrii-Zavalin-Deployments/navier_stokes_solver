@@ -3,7 +3,6 @@
 from src.common.field_schema import FI
 from src.common.solver_state import SolverState
 from src.common.stencil_block import StencilBlock
-
 from .factory import get_cell
 
 # Rule 7: Granular Traceability
@@ -26,7 +25,6 @@ def assemble_stencil_matrix(state: SolverState) -> list:
     grid = state.grid
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     
-    # Corrected attribute access paths following the hierarchy
     physics_params = {
         "dx": grid.dx,
         "dy": grid.dy,
@@ -44,6 +42,7 @@ def assemble_stencil_matrix(state: SolverState) -> list:
     for i in range(nx):
         for j in range(ny):
             for k in range(nz):
+                # The Factory now handles coordinate-context injection
                 c_center = get_cell(i, j, k, state)
                 c_i_m    = get_cell(i - 1, j, k, state)
                 c_i_p    = get_cell(i + 1, j, k, state)
@@ -63,5 +62,8 @@ def assemble_stencil_matrix(state: SolverState) -> list:
                     **physics_params
                 )
                 local_stencil_list.append(block)
+    
+    if DEBUG:
+        print(f"DEBUG [Step 2.2]: Successfully assembled {len(local_stencil_list)} StencilBlocks.")
     
     return local_stencil_list
