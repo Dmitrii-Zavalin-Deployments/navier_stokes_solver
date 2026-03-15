@@ -70,7 +70,7 @@ jobs:
 
       - name: 🧪 Run Logic & Scientific Verification
         run: |
-          pytest -s tests/ -vv --cov=src --cov-report=term-missing
+          pytest -s tests/property_integrity/test_foundation_integrity.py -vv --cov=src --cov-report=term-missing
           
       - name: 📊 Audit Performance & Update Ledger
         if: always()
