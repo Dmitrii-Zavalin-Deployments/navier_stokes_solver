@@ -29,6 +29,7 @@ class CellRegistry:
         return get_flat_index(i, j, k, self.nx_dim, self.ny_dim)
 
     def get_or_create(self, i: int, j: int, k: int, state: SolverState):
+        print(f"DEBUG: Registry checking ({i}, {j}, {k}) -> {self.nx_dim}x{self.ny_dim}")
         idx = self._get_idx(i, j, k)
         if self._cache[idx] is None:
             self._cache[idx] = get_cell(i, j, k, state)
