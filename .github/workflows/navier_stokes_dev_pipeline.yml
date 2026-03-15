@@ -70,18 +70,14 @@ jobs:
 
       - name: 🧪 Run Logic & Scientific Verification
         run: |
-          # 1. Diagnostic: Check cache state before tests
-          echo "Cache size before tests:"
-          python3 -c "from src.step2.stencil_assembler import registry; print(len(registry._cache))"
+          # 1. Diagnostic: Check assembly logic (Removed registry access)
+          echo "Running stencil assembly diagnostic..."
+          python3 -c "from src.step2.stencil_assembler import assemble_stencil_matrix; print('Assembler loaded successfully')"
           
           # 2. Run the actual tests
           # pytest -s tests/step2/test_stencil_assembler.py -vv --cov=src --cov-report=term-missing
           pytest -s tests/step2/test_stencil_assembler.py -vv
           
-          # 3. Diagnostic: Check cache state after tests
-          echo "Cache size after tests:"
-          python3 -c "from src.step2.stencil_assembler import registry; print(len(registry._cache))"
-
       - name: 📊 Audit Performance & Update Ledger
         if: always()
         env:
