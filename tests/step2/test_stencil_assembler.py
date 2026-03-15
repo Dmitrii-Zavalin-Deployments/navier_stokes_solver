@@ -77,6 +77,8 @@ def test_stencil_caching_efficiency():
     block = stencil_list[0]          # (0,0,0)
     right_neighbor = stencil_list[1] # (1,0,0)
     
+    print(f"DEBUG: Assertion check | Block 0 i_plus ID: {id(block.i_plus)}")
+    print(f"DEBUG: Assertion check | Block 1 center ID: {id(right_neighbor.center)}")
     # The cell at (1,0,0) is both the i_plus neighbor of (0,0,0) and the center of (1,0,0)
     assert block.i_plus is right_neighbor.center, f"Identity failure: {id(block.i_plus)} != {id(right_neighbor.center)}"
 
