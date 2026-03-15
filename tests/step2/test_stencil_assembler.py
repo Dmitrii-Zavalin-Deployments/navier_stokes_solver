@@ -6,6 +6,7 @@ import pytest
 from src.step2.factory import clear_cell_cache
 from src.step2.stencil_assembler import assemble_stencil_matrix
 from tests.helpers.solver_step1_output_dummy import make_step1_output_dummy
+from tests.helpers.solver_step2_output_dummy import make_step2_output_dummy
 
 
 @pytest.fixture(autouse=True)
@@ -25,7 +26,7 @@ def test_stencil_assembly_logic():
     # 1. Integrity Check: Count (Should be nx * ny * nz = 64)
     assert len(stencil_list) == nx * ny * nz
     
-    # 2. Physics Param Verification (Check the math)
+    # 2. Physics Param Verification
     sample_block = stencil_list[0]
     assert sample_block.dx == 0.25
     assert sample_block.dy == 0.25
@@ -78,31 +79,29 @@ def test_stencil_caching_efficiency():
     
     # The cell at (1,0,0) is both the i_plus neighbor of (0,0,0) and the center of (1,0,0)
     assert block.i_plus is right_neighbor.center, f"Identity failure: {id(block.i_plus)} != {id(right_neighbor.center)}"
-    print("\nDEBUG: Flyweight pattern verified - Cell instances are shared.")
 
-def test_stencil_topology_identity(state):
+def test_stencil_matrix_topology():
     """
-    Verifies that neighboring StencilBlocks share identical Cell object references.
+    Verifies that the assembled stencil matrix maintains correct memory
+    identity for neighbor cross-referencing (Flyweight/Topology Check).
     """
-    from src.step2.stencil_assembler import assemble_stencil_matrix
+    nx, ny, nz = 4, 4, 4
+    state = make_step2_output_dummy(nx=nx, ny=ny, nz=nz)
     
-    # 1. Assemble the matrix
-    stencils = assemble_stencil_matrix(state)
+    # Run the Assembler
+    stencil_matrix = assemble_stencil_matrix(state)
     
-    # 2. Reshape to map coordinates to blocks
-    stencil_grid = {}
-    for block in stencils:
-        stencil_grid[(block.center.i, block.center.j, block.center.k)] = block
-        
-    # 3. Check internal consistency for a sample point
-    i, j, k = 1, 1, 1
-    # Ensure the neighbor exists in the grid before asserting
-    if (i+1, j, k) in stencil_grid:
-        current_block = stencil_grid[(i, j, k)]
-        neighbor_block = stencil_grid[(i+1, j, k)]
-        
-        # ASSERTION: Topological identity verification
-        assert id(current_block.i_plus) == id(neighbor_block.center), \
-            f"Topological Mismatch at ({i},{j},{k}): i_plus cell != neighbor's center cell"
-            
-        print(f"Verified topological link at ({i},{j},{k}) -> ({i+1},{j},{k})")
+    # Map the list to a 3D dict for coordinate verification
+    matrix_3d = {(b.center.i, b.center.j, b.center.k): b for b in stencil_matrix}
+
+    # Verify Topology Identity
+    for (i, j, k), block in matrix_3d.items():
+        if i + 1 < nx:
+            assert block.i_plus is matrix_3d[(i + 1, j, k)].center, \
+                f"Topology mismatch at ({i},{j},{k}) i_plus"
+        if j + 1 < ny:
+            assert block.j_plus is matrix_3d[(i, j + 1, k)].center, \
+                f"Topology mismatch at ({i},{j},{k}) j_plus"
+        if k + 1 < nz:
+            assert block.k_plus is matrix_3d[(i, j, k + 1)].center, \
+                f"Topology mismatch at ({i},{j},{k}) k_plus"
