@@ -46,9 +46,9 @@ def assemble_stencil_matrix(state: SolverState) -> list:
                 # The Factory now handles coordinate-context injection
                 c_center = get_cell(i, j, k, state)
                 print(f"DEBUG: Checking ({i},{j},{k}) | ID: {id(c_center)}")
-                print(f"DEBUG: Checking i_plus ID at ({i},{j},{k}) | ID: {id(c_i_p)}")
                 c_i_m    = get_cell(i - 1, j, k, state)
                 c_i_p    = get_cell(i + 1, j, k, state)
+                print(f"DEBUG: Checking i_plus ID at ({i},{j},{k}) | ID: {id(c_i_p)}")
                 c_j_m    = get_cell(i, j - 1, k, state)
                 c_j_p    = get_cell(i, j + 1, k, state)
                 c_k_m    = get_cell(i, j, k - 1, state)
