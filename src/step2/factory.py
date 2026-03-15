@@ -4,13 +4,12 @@ from src.common.cell import Cell
 from src.common.solver_state import SolverState
 
 # Rule 7: Granular Traceability
-DEBUG = True # Enabled for diagnostic tracking
+DEBUG = True 
 
 # Centralized cache for Flyweight pattern
-# Key structure: (i, j, k, state_id)
 _CELL_CACHE = {}
 
-# Explicit constants for ghost cell initialization (Rule 5 compliance)
+# Explicit constants for ghost cell initialization
 GHOST_VELOCITY = (0.0, 0.0, 0.0)
 GHOST_PRESSURE = 0.0
 GHOST_MASK = 0
@@ -18,21 +17,21 @@ GHOST_MASK = 0
 def get_cell(i: int, j: int, k: int, state: SolverState) -> Cell:
     """
     Unified entry point for Cell retrieval. 
-    Implements Flyweight caching with state-aware keys to ensure topological identity.
+    Implements Flyweight caching with state-aware keys and type-normalized coordinates.
     """
+    # Root Cause Fix: Normalize coordinates to standard Python ints to ensure 
+    # hash consistency across different sources (NumPy scalars vs standard ints)
+    i, j, k = int(i), int(j), int(k)
+    
     state_id = id(state)
     coord = (i, j, k)
     cache_key = (coord, state_id)
     
     if cache_key in _CELL_CACHE:
-        cell = _CELL_CACHE[cache_key]
-        if DEBUG:
-            print(f"DEBUG: CACHE HIT {coord} | Cell ID: {id(cell)} | State ID: {state_id}")
-        return cell
+        return _CELL_CACHE[cache_key]
     
     # Cache MISS
     grid = state.grid
-    # Determine if we are building a Core or Ghost cell based on grid bounds
     is_core = (0 <= i < grid.nx) and (0 <= j < grid.ny) and (0 <= k < grid.nz)
     
     if is_core:
@@ -43,7 +42,8 @@ def get_cell(i: int, j: int, k: int, state: SolverState) -> Cell:
     _CELL_CACHE[cache_key] = cell
     
     if DEBUG:
-        print(f"DEBUG: CACHE MISS {coord} | Created NEW Cell ID: {id(cell)} | State ID: {state_id}")
+        # Only log misses to identify topology build-out without log flooding
+        print(f"DEBUG: CACHE MISS {coord} | New Cell Created.")
         
     return cell
 
@@ -57,7 +57,6 @@ def _build_core_cell(i: int, j: int, k: int, state: SolverState) -> Cell:
     nx_buf, ny_buf = grid.nx + 2, grid.ny + 2
     index = (i + 1) + nx_buf * ((j + 1) + ny_buf * (k + 1))
     
-    # Updated: Pass nx_buf and ny_buf for coordinate derivation
     cell = Cell(index=index, fields_buffer=fields.data, nx_buf=nx_buf, ny_buf=ny_buf, is_ghost=False)
     cell.vx, cell.vy, cell.vz = init.velocity
     cell.p = init.pressure
@@ -72,7 +71,6 @@ def _build_ghost_cell(i: int, j: int, k: int, state: SolverState) -> Cell:
     
     index = (i + 1) + nx_buf * ((j + 1) + ny_buf * (k + 1))
     
-    # Updated: Pass nx_buf and ny_buf for coordinate derivation
     cell = Cell(index=index, fields_buffer=state.fields.data, nx_buf=nx_buf, ny_buf=ny_buf, is_ghost=True)
     cell.vx, cell.vy, cell.vz = GHOST_VELOCITY
     cell.p = GHOST_PRESSURE
@@ -82,6 +80,6 @@ def _build_ghost_cell(i: int, j: int, k: int, state: SolverState) -> Cell:
 
 def clear_cell_cache():
     """Utility to reset cache between simulation steps."""
-    if DEBUG:
-        print(f"DEBUG: Clearing cache. Current size: {len(_CELL_CACHE)}")
+    if DEBUG and len(_CELL_CACHE) > 0:
+        print(f"DEBUG: Clearing cache. Size: {len(_CELL_CACHE)}")
     _CELL_CACHE.clear()

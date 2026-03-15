@@ -94,14 +94,25 @@ def test_stencil_matrix_topology():
     # Map the list to a 3D dict for coordinate verification
     matrix_3d = {(b.center.i, b.center.j, b.center.k): b for b in stencil_matrix}
 
-    # Verify Topology Identity
+    # Verify Topology Identity: 
+    # Check that a cell acts as neighbor to its 6 adjacent blocks AND 
+    # that those neighbor references are identical to the 'center' of those blocks.
     for (i, j, k), block in matrix_3d.items():
+        # Check i-direction
         if i + 1 < nx:
-            assert block.i_plus is matrix_3d[(i + 1, j, k)].center, \
-                f"Topology mismatch at ({i},{j},{k}) i_plus"
+            assert block.i_plus is matrix_3d[(i + 1, j, k)].center
+            assert matrix_3d[(i + 1, j, k)].i_minus is block.center
+        
+        # Check j-direction
         if j + 1 < ny:
-            assert block.j_plus is matrix_3d[(i, j + 1, k)].center, \
-                f"Topology mismatch at ({i},{j},{k}) j_plus"
+            assert block.j_plus is matrix_3d[(i, j + 1, k)].center
+            assert matrix_3d[(i, j + 1, k)].j_minus is block.center
+            
+        # Check k-direction
         if k + 1 < nz:
-            assert block.k_plus is matrix_3d[(i, j, k + 1)].center, \
-                f"Topology mismatch at ({i},{j},{k}) k_plus"
+            assert block.k_plus is matrix_3d[(i, j, k + 1)].center
+            assert matrix_3d[(i, j, k + 1)].k_minus is block.center
+            
+        # Optional: Verify Memory Index Consistency (SSoT Check)
+        assert block.center.index == ( (i + 1) + (nx + 2) * ((j + 1) + (ny + 2) * (k + 1)) ), \
+            f"Index mapping failed at ({i}, {j}, {k})"
