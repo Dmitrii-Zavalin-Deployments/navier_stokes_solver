@@ -79,7 +79,7 @@ jobs:
 
           # Run the test suite
           # pytest -s tests/ -vv --cov=src --cov-report=term-missing
-          pytest -s tests/common/test_grid_math.py -vv
+          pytest -s tests/common/test_factory.py -vv
           
       - name: 📊 Audit Performance & Update Ledger
         if: always()
