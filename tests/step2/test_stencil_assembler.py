@@ -17,6 +17,19 @@ def test_stencil_assembly_logic():
     nx, ny, nz = 4, 4, 4
     state = make_step1_output_dummy(nx=nx, ny=ny, nz=nz)
     
+    # 1. Print registry dimensions
+    print(f"Registry dims: {registry.nx_dim}, {registry.ny_dim}, {registry.nz_dim}")
+    
+    # 2. Check the buffer size of the solver state
+    # This assumes state.fields_buffer or equivalent exists
+    buffer_capacity = state.fields_buffer.shape[0] 
+    print(f"Buffer capacity: {buffer_capacity}")
+    
+    # 3. Force an assertion to catch the math error
+    expected_capacity = registry.nx_dim * registry.ny_dim * registry.nz_dim
+    assert buffer_capacity >= expected_capacity, \
+        f"Mismatch! Registry needs {expected_capacity} slots, but buffer only has {buffer_capacity}"
+    
     stencil_list = assemble_stencil_matrix(state)
 
     # 1. Inspect the Registry limits
