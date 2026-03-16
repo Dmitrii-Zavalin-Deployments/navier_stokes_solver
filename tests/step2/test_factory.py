@@ -2,7 +2,7 @@
 
 import pytest
 
-from src.step2.factory import get_cell
+from src.step2.factory import get_cell, get_flat_index
 from tests.helpers.solver_step1_output_dummy import make_step1_output_dummy
 
 
@@ -104,3 +104,28 @@ def test_variable_grid_dimension_integrity():
     nx_buf, ny_buf = nx + 2, ny + 2
     expected_index = (i + 1) + nx_buf * ((j + 1) + ny_buf * (k + 1))
     assert cell.index == expected_index
+
+def test_factory_index_calculation_logic():
+    # 1. Define the parameters
+    nx, ny, nz = 4, 4, 4
+    nx_buf, ny_buf = nx + 2, ny + 2
+    
+    # 2. Define the specific coordinate (i, j, k) being tested
+    i, j, k = 2, 2, 2
+    
+    # 3. Define the EXPECTED padded/buffered coordinates
+    # The factory should be shifting these internally to account for ghost cells
+    i_buf, j_buf, k_buf = i + 1, j + 1, k + 1
+    
+    # 4. Define the expected result (129 in this case)
+    expected_index = i_buf + (nx_buf * j_buf) + (nx_buf * ny_buf * k_buf)
+    
+    # 5. Perform the check
+    # Capture the actual result from the Factory's specific logic
+    actual_index = get_flat_index(i_buf, j_buf, k_buf, nx_buf, ny_buf)
+    
+    # Assertions
+    assert i_buf == 3, f"Buffer padding offset error: Expected i_buf=3, got {i_buf}"
+    assert actual_index == expected_index, f"Factory indexing error: Expected {expected_index}, got {actual_index}"
+    
+    print(f"DEBUG: Successfully verified Factory index {actual_index} for coord ({i_buf}, {j_buf}, {k_buf})")
