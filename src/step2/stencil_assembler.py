@@ -23,9 +23,9 @@ class CellRegistry:
         Maps 3D coordinates to a 1D flat index.
         The SSoT grid_math now correctly handles the 3D stride internally.
         """
-            # No clamping: ghost cells (-1) map to index 0. 
-            # We use an offset of 1 to shift range [-1, nx] into [0, nx+1].
-            return get_flat_index(i, j, k, self.nx_dim, self.ny_dim, offset=1)
+        # No clamping: ghost cells (-1) map to index 0. 
+        # We use an offset of 1 to shift range [-1, nx] into [0, nx+1].
+        return get_flat_index(i, j, k, self.nx_dim, self.ny_dim, offset=1)
 
     def get_or_create(self, i: int, j: int, k: int, state: SolverState):
         idx = self._get_idx(i, j, k)
