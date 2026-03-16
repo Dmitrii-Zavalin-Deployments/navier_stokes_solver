@@ -62,9 +62,9 @@ def assemble_stencil_matrix(state: SolverState) -> list:
     
     # Iterate through the Core domain in K-J-I order.
     # This ensures that list index increments monotonically with get_flat_index.
-    for k in range(nz):
-        for j in range(ny):
-            for i in range(nx):
+    for k in range(-1, nz + 1):
+        for j in range(-1, ny + 1):
+            for i in range(-1, nx + 1):
                 block = StencilBlock(
                     center=registry.get_or_create(i, j, k, state),
                     i_minus=registry.get_or_create(i - 1, j, k, state),
