@@ -21,7 +21,7 @@ def verify_foundation_integrity(state):
     # 1. Prime the foundation with the Identity Signature
     # Formula: Value = Index + (Field_ID / 10.0)
     for field_id in FI:
-        state.fields.data[:, field_id] = np.arange(state.grid.nx * state.grid.ny * state.grid.nz) + (float(field_id) / 10.0)
+        state.fields.data[:, field_id] = np.arange(state.fields.data.shape[0]) + (float(field_id) / 10.0)
         
     # 2. Verify via object-pointer graph (The Sentinel Test)
     # Skip wiring check if Step 2 is not yet complete
