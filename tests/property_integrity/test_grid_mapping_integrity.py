@@ -1,9 +1,10 @@
 # tests/property_integrity/test_grid_mapping_integrity.py
 
-import pytest
 import numpy as np
+
+from src.common.grid_math import get_coords_from_index, get_flat_index
 from src.step1.helpers import generate_3d_masks
-from src.common.grid_math import get_flat_index, get_coords_from_index
+
 
 class MockGrid:
     def __init__(self, nx, ny, nz):
@@ -36,7 +37,7 @@ def test_mask_mapping_integrity_roundtrip():
     buf_nx, buf_ny = nx + 2, ny + 2
     
     # Simulate a foundation buffer (monolithic)
-    foundation_buffer = np.zeros(((nx+2) * (ny+2) * (nz+2)))
+    foundation_buffer = np.zeros((nx+2) * (ny+2) * (nz+2))
     
     for i in range(nx):
         for j in range(ny):
