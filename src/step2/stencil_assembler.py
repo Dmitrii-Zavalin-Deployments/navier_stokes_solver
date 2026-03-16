@@ -11,19 +11,22 @@ from .factory import get_cell
 DEBUG = True
 
 class CellRegistry:
-    """Manages cell lifecycle via a deterministic flat-index cache."""
     def __init__(self, nx: int, ny: int, nz: int):
-        self.nx_dim = nx + 2 # Correct for coordinates -1 through nx
+        # Store these as instance attributes
+        self.nx = nx
+        self.ny = ny
+        self.nz = nz
+        
+        # 2-Tier Architecture: Padding set to +2
+        self.nx_dim = nx + 2
         self.ny_dim = ny + 2
         self.nz_dim = nz + 2
         self._cache = [None] * (self.nx_dim * self.ny_dim * self.nz_dim)
 
     def _get_idx(self, i: int, j: int, k: int) -> int:
-        # If coordinates are outside [-1, nx], this is an invalid access
-        if not (-1 <= i < nx + 1 and -1 <= j < ny + 1 and -1 <= k < nz + 1):
-             # This indicates your stencil loop is trying to access a 
-             # second layer of ghost cells, which violates the 2-tier topology.
-             raise IndexError(f"Stencil accessing out-of-bounds ghost: ({i}, {j}, {k})")
+        # Access them via self.nx, self.ny, self.nz
+        if not (-1 <= i < self.nx + 1 and -1 <= j < self.ny + 1 and -1 <= k < self.nz + 1):
+             raise IndexError(f"Stencil accessing out-of-bounds: ({i}, {j}, {k})")
         return get_flat_index(i, j, k, self.nx_dim, self.ny_dim, offset=1)
 
     def get_or_create(self, i: int, j: int, k: int, state: SolverState):
