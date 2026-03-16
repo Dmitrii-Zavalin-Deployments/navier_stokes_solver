@@ -73,7 +73,8 @@ def orchestrate_step1(context: SimulationContext) -> SolverState:
     state.fields = FieldManager()
     n_cells = (state.grid.nx + 2) * (state.grid.ny + 2) * (state.grid.nz + 2)
     state.fields.allocate(n_cells)
-    state.fields.data[:, FI.MASK] = mask_3d.flatten()
+    padded_mask = np.pad(mask_3d, pad_width=1, mode="constant", constant_values=0)
+    state.fields.data[:, FI.MASK] = padded_mask.flatten()
 
     state.mask = MaskManager()
     state.mask.mask = mask_3d
