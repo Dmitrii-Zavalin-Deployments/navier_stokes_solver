@@ -1,9 +1,11 @@
 # tests/step1/test_helpers.py
 
-import pytest
 import numpy as np
-from src.step1.helpers import generate_3d_masks
+import pytest
+
 from src.common.solver_input import GridInput
+from src.step1.helpers import generate_3d_masks
+
 
 def test_generate_3d_masks_basic():
     """Verify that a simple 2x2x2 mask maps correctly."""
