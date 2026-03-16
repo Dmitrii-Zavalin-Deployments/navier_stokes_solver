@@ -1,7 +1,8 @@
 # tests/common/test_grid_math.py
 
 import pytest
-from src.common.grid_math import get_flat_index, get_coords_from_index
+
+from src.common.grid_math import get_coords_from_index, get_flat_index
 
 # Test configuration
 NX, NY, NZ = 4, 4, 4
