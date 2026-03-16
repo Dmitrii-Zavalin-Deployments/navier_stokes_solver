@@ -64,4 +64,5 @@ def test_ghost_cell_allocation_logic():
         state = factory(nx=nx, ny=ny, nz=nz)
         # If P_EXT/U_EXT are not in FI, we cannot access them via state.fields.data[:, FI...]
         # Verify the architecture if these fields are supposed to exist in the monolithic buffer
-        assert state.fields.data.shape[0] == (nx * ny * nz), f"Failure at {stage_name}: Capacity mismatch"
+        expected_capacity = (nx + 2) * (ny + 2) * (nz + 2)
+        assert state.fields.data.shape[0] == expected_capacity, f"Failure at {stage_name}: Capacity mismatch"
