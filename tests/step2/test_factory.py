@@ -1,7 +1,8 @@
 import pytest
-import numpy as np
+
 from src.step2.factory import get_cell
 from tests.helpers.solver_step1_output_dummy import make_step1_output_dummy
+
 
 def test_factory_topology_zones():
     """
