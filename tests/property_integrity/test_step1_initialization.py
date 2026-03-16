@@ -50,5 +50,6 @@ class TestStep1Initialization:
         """Rule 0: Scale Guard (Memory Locality)."""
         state, _ = setup_data
         assert state.fields.data.flags['C_CONTIGUOUS'], "Memory foundation must be C-contiguous."
-        expected_shape = (64, FI.num_fields()) # 4*4*4 = 64
+        n_cells = (state.grid.nx + 2) * (state.grid.ny + 2) * (state.grid.nz + 2)
+        expected_shape = (n_cells, FI.num_fields())
         assert state.fields.data.shape == expected_shape
