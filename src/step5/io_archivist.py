@@ -37,6 +37,7 @@ def save_snapshot(state) -> None:
 
     with h5py.File(filename, 'w') as h5f:
         # Physical Fields: Direct, schema-locked slicing (Rule 9)
+        print(f"DEBUG: Data shape is {data.shape}")
         h5f.create_dataset("vx", data=data[:, FI.VX].reshape(nx+2, ny+2, nz+2)[1:-1, 1:-1, 1:-1])
         h5f.create_dataset("vy", data=data[:, FI.VY].reshape(nx+2, ny+2, nz+2)[1:-1, 1:-1, 1:-1])
         h5f.create_dataset("vz", data=data[:, FI.VZ].reshape(nx+2, ny+2, nz+2)[1:-1, 1:-1, 1:-1])
