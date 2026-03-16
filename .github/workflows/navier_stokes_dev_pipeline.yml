@@ -71,9 +71,8 @@ jobs:
       - name: 🧪 Run Logic & Scientific Verification
         run: |
           # Pre-flight check: Verify buffer geometry against expectation
-          python3 -c "from src.common.grid_math import get_flat_index; \
-          print(f'Max Index for 4x4x4 (nx=4, ny=4, nz=4, offset=1): {get_flat_index(3, 3, 3, 6, 6, offset=1)}')"
-          
+          python3 -c "from src.common.solver_state import SolverState; from tests.helpers.solver_step1_output_dummy import make_step1_output_dummy; state = make_step1_output_dummy(nx=4, ny=4, nz=4); print(f'Total buffer elements: {state.fields.data.shape[0]}')"
+
           # Run the test suite
           # pytest -s tests/ -vv --cov=src --cov-report=term-missing
           pytest -s tests/step2/test_stencil_assembler.py -vv --cov=src --cov-report=term-missing
