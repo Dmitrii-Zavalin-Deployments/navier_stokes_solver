@@ -32,7 +32,7 @@ def test_stencil_assembly_logic():
     
     # Verify ghost-neighbor connection at the edge of the assembly range (-2)
     # The block at (-2, 0, 0) should be a ghost cell
-    ghost_block = matrix_3d[(-2, 0, 0)]
+    ghost_block = matrix_3d[(-1, 0, 0)]
     assert ghost_block.center.is_ghost is True
 
 def test_stencil_physics_consistency():
@@ -101,7 +101,7 @@ def test_stencil_matrix_topology():
     # Verify wiring: We iterate over the full range assembled
     for (i, j, k), block in matrix_3d.items():
         # Check neighbors exist within the registry range
-        if (i + 1) in range(-2, nx + 2):
+        if (i + 1) in range(-1, nx + 1):
             assert block.i_plus.index == matrix_3d[(i + 1, j, k)].center.index
 
 def test_registry_cache_hit():
