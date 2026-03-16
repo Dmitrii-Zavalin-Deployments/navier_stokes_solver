@@ -106,8 +106,8 @@ def test_variable_grid_dimension_integrity():
     assert cell.index == expected_index
 
 def test_factory_index_calculation_logic():
-    # 1. Define the parameters
-    nx, ny, nz = 4, 4, 4
+    # 1. Define only what is actually used
+    nx, ny = 4, 4
     nx_buf, ny_buf = nx + 2, ny + 2
     
     # 2. Define the specific coordinate (i, j, k) being tested
