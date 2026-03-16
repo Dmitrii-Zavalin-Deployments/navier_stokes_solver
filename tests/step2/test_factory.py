@@ -38,10 +38,14 @@ def test_factory_wiring_integrity():
     i, j, k = 2, 2, 2
     cell = get_cell(i, j, k, state)
     
-    # Explicit mapping: (i+1) + (nx+2) * ((j+1) + (ny+2) * (k+1))
-    nx_buf, ny_buf = nx + 2, ny + 2
-    expected_index = (i + 1) + nx_buf * ((j + 1) + ny_buf * (k + 1))
-    
+    # Use the actual buffer dimensions (nx+2, ny+2, nz+2)
+    nx_buf, ny_buf, nz_buf = nx + 2, ny + 2, nz + 2
+
+    # Flattening formula: i + nx_buf * j + (nx_buf * ny_buf) * k
+    # With offsets (+1) for the ghost cell padding
+    i_buf, j_buf, k_buf = i + 1, j + 1, k + 1
+    expected_index = i_buf + nx_buf * j_buf + (nx_buf * ny_buf) * k_buf
+
     assert cell.index == expected_index
     assert cell.is_ghost is False
     assert cell.mask == int(state.mask.mask[i, j, k])
