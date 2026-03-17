@@ -17,15 +17,23 @@ from tests.helpers.solver_step1_output_dummy import make_step1_output_dummy
 class SimpleCellMock:
     """
     Lightweight Mock Cell that mimics the pointer-behavior of the real Cell class.
-    This ensures that integrity checks on the global fields_buffer reflect 
-    correctly through the 'cell' views.
+    
+    Compliance:
+    - Rule 0: __slots__ mandatory for memory footprint parity.
+    - Rule 9: Hybrid Memory Foundation (Pointer-to-Buffer).
     """
+    __slots__ = ['index', 'is_ghost', 'fields_buffer']
+
     def __init__(self, index, is_ghost, fields_buffer):
         self.index = index
         self.is_ghost = is_ghost
         self.fields_buffer = fields_buffer
 
-    # Primary Velocity Fields
+    def set_field(self, field_idx, value): 
+        self.fields_buffer[self.index, field_idx] = value 
+
+    # --- Field Accessors (Rule 9 Bridge) ---
+
     @property
     def vx(self) -> float: return self.fields_buffer[self.index, FI.VX]
     @vx.setter
@@ -41,18 +49,15 @@ class SimpleCellMock:
     @vz.setter
     def vz(self, val): self.fields_buffer[self.index, FI.VZ] = val
 
-    # Pressure Field (The cause of the 'Memory Swap' error)
     @property
     def p(self) -> float: return self.fields_buffer[self.index, FI.P]
     @p.setter
     def p(self, val): self.fields_buffer[self.index, FI.P] = val
 
-    # Mask Field
     @property
     def mask(self) -> float: return self.fields_buffer[self.index, FI.MASK]
     @mask.setter
     def mask(self, val): self.fields_buffer[self.index, FI.MASK] = val
-
 
 def make_step2_output_dummy(nx: int = 4, ny: int = 4, nz: int = 4):
     """
