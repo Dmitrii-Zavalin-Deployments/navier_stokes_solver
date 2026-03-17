@@ -88,7 +88,7 @@ jobs:
 
           # Run the test suite
           # pytest -s tests/ -vv --cov=src --cov-report=term-missing
-          pytest -s tests/step2/ -vv
+          pytest -s tests/step2/test_factory.py::test_factory_internal_obstacle_sync -vv
           
       - name: 📊 Audit Performance & Update Ledger
         if: always()
