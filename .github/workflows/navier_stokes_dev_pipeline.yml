@@ -71,18 +71,19 @@ jobs:
       - name: 🧪 Run Logic & Scientific Verification
         run: |
           # Pre-flight check: Verify buffer geometry against expectation
-          # Run this in your terminal to check the Registry's math
+          # 1. Compare the index calculation for (0,0,0) between the two stride systems
           python3 -c "
           from src.common.grid_math import get_flat_index
-          nx_dim = 6 # 4 + 2
-          ny_dim = 6
+          nx = 4; ny = 4
 
-          idx_ghost = get_flat_index(-1 + 1, 0 + 1, 0 + 1, nx_dim, ny_dim)
-          idx_core  = get_flat_index( 0 + 1, 0 + 1, 0 + 1, nx_dim, ny_dim)
+          # What the Registry/Factory uses:
+          idx_registry = get_flat_index(0+1, 0+1, 0+1, nx+2, ny+2)
 
-          print(f'Ghost Index: {idx_ghost}')
-          print(f'Core Index:  {idx_core}')
-          if idx_ghost == idx_core: print('COLLISION DETECTED!')
+          # What the Buffer was actually allocated with (per dummy helper):
+          idx_buffer   = get_flat_index(0+1, 0+1, 0+1, nx+4, ny+4)
+
+          print(f'Registry Index (Stride 6): {idx_registry}')
+          print(f'Buffer Index   (Stride 8): {idx_buffer}')
           "
 
           # Run the test suite
