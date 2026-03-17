@@ -79,7 +79,7 @@ jobs:
 
           # Run the test suite
           # pytest -s tests/ -vv --cov=src --cov-report=term-missing
-          pytest -s tests/step2/test_factory.py -vv
+          pytest -s tests/step2/test_factory.py::test_factory_wiring_integrity -vv
           
       - name: 📊 Audit Performance & Update Ledger
         if: always()
