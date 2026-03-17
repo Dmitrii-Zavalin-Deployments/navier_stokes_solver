@@ -20,8 +20,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 def _load_simulation_context(input_path: str) -> SimulationContext:
     """Assembles physical input and numerical config into a unified context."""
-    full_input_path = BASE_DIR / input_path
-    config_path = BASE_DIR / "config.json"
+    # Force re-evaluation of BASE_DIR from the current module state
+    import src.main_solver
+    current_base = src.main_solver.BASE_DIR
+    
+    full_input_path = Path(current_base) / input_path
+    config_path = Path(current_base) / "config.json"
     
     # Rule 5: Explicit or Error. No fallbacks/defaults.
     if not full_input_path.exists():
