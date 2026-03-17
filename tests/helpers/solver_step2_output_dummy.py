@@ -59,6 +59,14 @@ class SimpleCellMock:
     @mask.setter
     def mask(self, val): self.fields_buffer[self.index, FI.MASK] = val
 
+    def to_dict(self):
+        """Converts the mock to a dict to match the real Cell.to_dict() behavior."""
+        return {
+            "index": self.index,
+            "is_ghost": self.is_ghost,
+            "fields_buffer": self.fields_buffer.tolist() # Rule 9: Ensure serializable
+        }
+
 def make_step2_output_dummy(nx: int = 4, ny: int = 4, nz: int = 4):
     """
     Returns a 'frozen' prototype representing a successful Step 2 completion.
