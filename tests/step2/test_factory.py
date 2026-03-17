@@ -159,3 +159,31 @@ def test_factory_internal_obstacle_sync():
     # doesn't accidentally inherit the obstacle mask.
     ghost_neighbor = get_cell(-1, 2, 2, state)
     assert ghost_neighbor.mask == 0 # GHOST_MASK is 0 by definition in factory.py
+
+def test_factory_mask_alignment_drift_simulation():
+    """
+    SIMULATION OF DANGER:
+    This test proves that if we 'drift' the indexing by even 1 unit, 
+    the mask data becomes garbage.
+    """
+    nx, ny, nz = 4, 4, 4
+    state = make_step1_output_dummy(nx=nx, ny=ny, nz=nz)
+
+    # 1. Place a unique 'Signature Obstacle' at a specific spot
+    target_coord = (1, 2, 3)
+    state.mask.mask[target_coord] = 0 # The Obstacle
+    
+    # 2. Retrieve the cell
+    cell = get_cell(*target_coord, state)
+    
+    # 3. VERIFICATION OF CURRENT SUCCESS
+    assert cell.mask == 0, "Current logic is correct."
+
+    # 4. SIMULATE THE DANGER: 
+    # If we incorrectly used 'buffered' coordinates (i+1) on the mask:
+    dangerous_mask_value = state.mask.mask[target_coord[0] + 1, target_coord[1], target_coord[2]]
+    
+    # This will be '1' (Fluid) instead of '0' (Obstacle) 
+    # because it's looking at the neighbor's mask value!
+    assert dangerous_mask_value == 1 
+    print(f"\n[DANGER SIMULATED]: If we shifted the mask index, we'd see {dangerous_mask_value} instead of 0")
