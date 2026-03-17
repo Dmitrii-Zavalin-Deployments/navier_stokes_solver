@@ -25,17 +25,25 @@ class Cell(ValidatedContainer):
         object.__setattr__(self, 'ny_buf', ny_buf)
 
     # --- Coordinate Properties (SSoT compliant derivation) ---
+    # Rule 9 Architecture: The 'index' represents the memory location in the 
+    # padded buffer [nx+2, ny+2, nz+2]. To return the logical Physics Coordinate
+    # used in simulation logic and tests, we must subtract the ghost-layer 
+    # offset (1) from the unflattened buffer indices.
+    
     @property
     def i(self) -> int:
-        return get_coords_from_index(self.index, self.nx_buf, self.ny_buf)[0]
+        """Returns the logical X-coordinate by reversing the buffer shift."""
+        return get_coords_from_index(self.index, self.nx_buf, self.ny_buf)[0] - 1
 
     @property
     def j(self) -> int:
-        return get_coords_from_index(self.index, self.nx_buf, self.ny_buf)[1]
+        """Returns the logical Y-coordinate by reversing the buffer shift."""
+        return get_coords_from_index(self.index, self.nx_buf, self.ny_buf)[1] - 1
 
     @property
     def k(self) -> int:
-        return get_coords_from_index(self.index, self.nx_buf, self.ny_buf)[2]
+        """Returns the logical Z-coordinate by reversing the buffer shift."""
+        return get_coords_from_index(self.index, self.nx_buf, self.ny_buf)[2] - 1
 
     # --- Schema-Locked Foundation Access (Rule 9) ---
     def get_field(self, field_id: int) -> float:
