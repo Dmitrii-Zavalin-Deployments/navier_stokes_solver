@@ -1,10 +1,10 @@
 # tests/property_integrity/test_solver_lifecycle.py
 
 import json
-import os
-import pytest
 from pathlib import Path
-from src.main_solver import run_solver, BASE_DIR
+
+from src.main_solver import BASE_DIR, run_solver
+
 
 class TestSolverLifecycle:
     """
