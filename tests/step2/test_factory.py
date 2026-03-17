@@ -129,3 +129,33 @@ def test_factory_index_calculation_logic():
     assert actual_index == expected_index, f"Factory indexing error: Expected {expected_index}, got {actual_index}"
     
     print(f"DEBUG: Successfully verified Factory index {actual_index} for coord ({i_buf}, {j_buf}, {k_buf})")
+
+def test_factory_internal_obstacle_sync():
+    """
+    SRED Compliance Rule 4: SSoT Synchronization.
+    Verifies that internal obstacles (non-fluid mask values) in the state
+    are correctly mapped to the allocated Cell instances.
+    """
+    nx, ny, nz = 4, 4, 4
+    state = make_step1_output_dummy(nx=nx, ny=ny, nz=nz)
+
+    # 1. Create a "Wall" obstacle at physical coordinate (2, 2, 2)
+    # 1 = Fluid, 0 = Obstacle/Wall
+    state.mask.mask[2, 2, 2] = 0 
+    
+    # 2. Create a "Fluid" cell at (1, 1, 1)
+    state.mask.mask[1, 1, 1] = 1
+
+    # 3. Retrieve cells from factory
+    obstacle_cell = get_cell(2, 2, 2, state)
+    fluid_cell = get_cell(1, 1, 1, state)
+
+    # 4. Assertions: If the factory math is shifted, the obstacle cell 
+    # will wrongly report '1' because it's looking at the wrong part of the mask.
+    assert obstacle_cell.mask == 0, f"Factory failed to detect obstacle at (2,2,2)"
+    assert fluid_cell.mask == 1, f"Factory wrongly marked fluid at (1,1,1) as obstacle"
+    
+    # 5. Boundary check: Ensure a ghost cell neighbor of the obstacle 
+    # doesn't accidentally inherit the obstacle mask.
+    ghost_neighbor = get_cell(-1, 2, 2, state)
+    assert ghost_neighbor.mask == 0 # GHOST_MASK is 0 by definition in factory.py
