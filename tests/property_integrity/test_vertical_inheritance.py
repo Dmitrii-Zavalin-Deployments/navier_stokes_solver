@@ -1,7 +1,5 @@
 # tests/property_integrity/test_vertical_inheritance.py
 
-import pytest
-import numpy as np
 
 # Core Logic
 from src.step1.orchestrate_step1 import orchestrate_step1
@@ -9,6 +7,7 @@ from src.step1.orchestrate_step1 import orchestrate_step1
 # Factory Functions (The "Recipes")
 from tests.helpers.solver_input_schema_dummy import create_validated_input
 from tests.helpers.solver_step1_output_dummy import make_step1_output_dummy
+
 
 class TestVerticalIntegrity:
     """
