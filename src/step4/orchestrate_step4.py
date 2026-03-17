@@ -26,7 +26,7 @@ def orchestrate_step4(
         block, 
         {bc.location: bc for bc in state_bc_manager.conditions},
         state_grid, 
-        context.input_data.domain_configuration.type
+        context.input_data.domain_configuration.to_dict()
     )
     
     # 2. Apply updates
