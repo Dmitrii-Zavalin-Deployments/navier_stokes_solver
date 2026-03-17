@@ -9,7 +9,7 @@ from tests.helpers.solver_step1_output_dummy import make_step1_output_dummy
 
 def get_matrix_3d(stencil_list):
     """Helper to maintain SSoT for coordinate-based testing."""
-    return {(b.center.i, b.center.j, b.center.k): b for b in stencil_list}
+    return {(b.center.i - 1, b.center.j - 1, b.center.k - 1): b for b in stencil_list}
 
 def test_stencil_assembly_logic():
     nx, ny, nz = 4, 4, 4
