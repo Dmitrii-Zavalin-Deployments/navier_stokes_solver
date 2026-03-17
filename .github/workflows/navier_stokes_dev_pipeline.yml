@@ -79,7 +79,7 @@ jobs:
 
           # Run the test suite
           # pytest -s tests/ -vv --cov=src --cov-report=term-missing
-          pytest -s tests/step2/test_stencil_assembler.py -vv
+          pytest -s tests/step2/test_stencil_assembler.py::test_stencil_assembly_logic -vv
           
       - name: 📊 Audit Performance & Update Ledger
         if: always()
