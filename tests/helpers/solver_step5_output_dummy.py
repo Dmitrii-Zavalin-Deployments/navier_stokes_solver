@@ -1,11 +1,12 @@
 # tests/helpers/solver_step5_output_dummy.py
 
-from src.common.solver_config import SolverConfig
-from src.common.simulation_context import SimulationContext
 from src.common.field_schema import FI
+from src.common.simulation_context import SimulationContext
+from src.common.solver_config import SolverConfig
 from src.step1.orchestrate_step1 import orchestrate_step1
 from src.step2.orchestrate_step2 import orchestrate_step2
 from tests.helpers.solver_input_schema_dummy import create_validated_input
+
 
 def make_step5_output_dummy(nx: int = 4, ny: int = 4, nz: int = 4):
     """
