@@ -70,14 +70,22 @@ jobs:
 
       - name: 🧪 Run Logic & Scientific Verification
         run: |
-          # Pre-flight check: Verify buffer geometry against expectation
+          # 1. Structural Audit (Rule 4 Compliance)
+          echo "--- [DEBUG] Current Directory ---"
+          pwd
+          echo "--- [DEBUG] Full File Tree ---"
+          ls -R /home/runner/work/navier_stokes_solver_sred/navier_stokes_solver_sred/
+          
+          # 2. Pre-flight check: Verify buffer geometry against expectation
           python3 -c "from tests.helpers.solver_step2_output_dummy import SimpleCellMock; import numpy as np; m = SimpleCellMock(0, False, np.zeros((1,5))); print('Has __dict__:', hasattr(m, '__dict__'))"
+
+          # 3. Run the targeted test
+          pytest tests/property_integrity/test_solver_lifecycle.py::TestSolverLifecycle::test_full_solver_pipeline_integrity -v
 
           # Run the test suite
           # pytest -s tests/ -vv --cov=src --cov-report=term-missing
           # pytest -s tests/property_integrity/test_solver_lifecycle.py -vv
-          pytest tests/property_integrity/test_solver_lifecycle.py::TestSolverLifecycle::test_full_solver_pipeline_integrity -v
-          
+
       - name: 📊 Audit Performance & Update Ledger
         if: always()
         env:
