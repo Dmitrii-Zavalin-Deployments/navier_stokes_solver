@@ -134,3 +134,45 @@ class TestVerticalIntegrity:
         assert_structural_parity(actual_block.to_dict(), expected_block_dummy.to_dict())
         
         print("✅ Step 3 Structural Parity Secured (Predictor Pass)")
+
+def test_step3_to_step4_pipeline(self):
+        """
+        Phase 4: Validates Step 3 -> Step 4 Orchestration (Boundary Enforcement).
+        Ensures the micro-level StencilBlock maintains schema parity after 
+        applying physical boundary constraints (u, v, w, p).
+        """
+        NX, NY, NZ = 4, 4, 4
+        
+        # 1. Setup Context (Rule 4: SSoT)
+        # We need the full context to provide the BC definitions and domain type
+        input_dummy = create_validated_input(nx=NX, ny=NY, nz=NZ)
+        config_obj = SolverConfig(**MOCK_CONFIG)
+        context = SimulationContext(input_data=input_dummy, config=config_obj)
+        
+        # 2. Assemble State up to Step 2
+        # This gives us the live 'grid' and 'boundary_conditions' manager objects
+        state = orchestrate_step2(orchestrate_step1(context))
+        
+        # 3. Target: Select the first StencilBlock
+        # In the real solver, this happens inside the 'for block in state.stencil_matrix' loop
+        sample_block = state.stencil_matrix[0]
+        
+        # 4. EXECUTE: Step 4 Orchestrator
+        # This triggers the Dispatcher and Applier logic (Rule 9: In-place mutation)
+        actual_block = orchestrate_step4(
+            block=sample_block,
+            context=context,
+            state_grid=state.grid,
+            state_bc_manager=state.boundary_conditions
+        )
+        
+        # 5. AUDIT: Compare against the Step 4 Micro-Dummy
+        print(f"\n" + "-"*30)
+        print(f"AUDIT: Step 3 -> Step 4 (Boundary Enforcement Parity)")
+        
+        expected_block_dummy = make_step4_output_dummy(nx=NX, ny=NY, nz=NZ, block_index=0)
+        
+        # Verification: Both should be StencilBlock dictionaries with identical keys/slots
+        assert_structural_parity(actual_block.to_dict(), expected_block_dummy.to_dict())
+        
+        print("✅ Step 4 Structural Parity Secured")
