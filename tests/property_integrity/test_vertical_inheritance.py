@@ -1,7 +1,5 @@
 # tests/property_integrity/test_vertical_inheritance.py
 
-import pytest
-import numpy as np
 import json
 
 # Core Orchestrators
@@ -11,6 +9,7 @@ from src.step1.orchestrate_step1 import orchestrate_step1
 # Assuming these are imported as the instantiated objects/results
 from tests.helpers.solver_input_schema_dummy import INPUT_DUMMY
 from tests.helpers.solver_step1_output_dummy import STEP1_DUMMY
+
 
 class TestVerticalInheritance:
     """
