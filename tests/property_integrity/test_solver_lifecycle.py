@@ -3,7 +3,7 @@
 import json
 import os
 from pathlib import Path
-
+import zipfile
 from src.main_solver import run_solver
 from tests.helpers.solver_input_schema_dummy import create_validated_input
 
@@ -61,3 +61,27 @@ class TestSolverLifecycle:
         
         # Log success for the audit trail
         print(f"\nDEBUG [Audit]: Successfully archived {archive.name}")
+
+    def test_full_solver_pipeline_integrity(self, tmp_path, monkeypatch):
+        # ... (all your existing setup and run_solver call) ...
+        zip_path = run_solver("input_test.json")
+
+        # 1. Verify Archive Existence
+        assert os.path.exists(zip_path), "Archiver failed to create the final ZIP."
+
+        # 2. Verify Snapshot Math (Rule 4: Atomic lifecycle)
+        # Total time: 0.002, Step: 0.001 -> Expect exactly 2 snapshots
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            contents = zip_ref.namelist()
+            
+            # Filter for .h5 files
+            h5_files = [f for f in contents if f.endswith('.h5')]
+            
+            # In this specific test setup (2 steps), we expect 2 files
+            assert len(h5_files) == 2, f"Expected 2 snapshots, found {len(h5_files)}: {h5_files}"
+            
+            # 3. Path Integrity Check
+            # Verify files are inside an 'output/' or 'navier_stokes_output/' folder
+            # matching your manifest expectations
+            for file_path in h5_files:
+                assert "navier_stokes_output" in file_path or "output" in file_path

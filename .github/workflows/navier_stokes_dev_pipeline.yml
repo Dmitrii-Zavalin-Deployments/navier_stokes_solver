@@ -75,8 +75,8 @@ jobs:
 
           # Run the test suite
           # pytest -s tests/ -vv --cov=src --cov-report=term-missing
-          # pytest -s tests/property_integrity/test_solver_lifecycle.py -vv
-          pytest tests/property_integrity/test_solver_lifecycle.py::TestSolverLifecycle::test_full_solver_pipeline_integrity -v
+          pytest -s tests/property_integrity/test_solver_lifecycle.py -vv
+          # pytest tests/property_integrity/test_solver_lifecycle.py::TestSolverLifecycle::test_full_solver_pipeline_integrity -v
           
       - name: 📊 Audit Performance & Update Ledger
         if: always()
