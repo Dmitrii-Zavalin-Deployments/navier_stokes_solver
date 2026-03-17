@@ -3,6 +3,7 @@
 from src.common.field_schema import FI
 from tests.helpers.solver_step3_output_dummy import make_step3_output_dummy
 
+
 def make_step4_output_dummy(nx: int = 4, ny: int = 4, nz: int = 4, block_index: int = 0):
     """
     Returns a 'frozen' prototype representing the output of orchestrate_step4.
