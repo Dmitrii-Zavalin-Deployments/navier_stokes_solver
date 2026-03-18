@@ -1,8 +1,8 @@
 # tests/quality_gates/physics_gate/test_corrector.py
 
-import copy
 
 import pytest
+
 from src.common.field_schema import FI
 from src.step3.corrector import apply_local_velocity_correction
 from tests.helpers.solver_step2_output_dummy import SimpleCellMock
