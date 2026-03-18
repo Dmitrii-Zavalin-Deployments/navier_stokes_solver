@@ -73,10 +73,15 @@ jobs:
       - name: 🧪 Run Logic & Scientific Verification
         run: |
           # Structural Audit (Rule 4 Compliance)
-          # echo "--- [DEBUG] Current Directory ---"
-          # pwd
-          # echo "--- [DEBUG] Full File Tree ---"
-          # ls -R
+          echo "--- [DEBUG] Current Directory ---"
+          python3 -c "from tests.helpers.solver_step3_output_dummy import make_step3_output_dummy; \
+          from src.step3.ops.gradient import compute_local_gradient_p; \
+          from src.common.field_schema import FI; \
+          block = make_step3_output_dummy(); \
+          block.i_plus.set_field(FI.P_NEXT, 2.0); \
+          block.i_minus.set_field(FI.P_NEXT, 0.0); \
+          object.__setattr__(block, '_dx', 1.0); \
+          print(f'Calculated Gradient: {compute_local_gradient_p(block, FI.P_NEXT)}')"
 
           # Run the test suite
           # pytest -s tests/ -vv --cov=src --cov-report=term-missing
