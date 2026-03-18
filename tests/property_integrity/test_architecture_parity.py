@@ -70,7 +70,7 @@ def test_lifecycle_grid_dimensions_match_fields(stage_name, factory):
 def test_block_allocation_integrity(stage_name, factory):
     """Validation: Verify StencilBlocks allocate individual component arrays correctly."""
     nx, ny, nz = 5, 5, 5
-    n_cells = (nx + 2) * (ny + 2) * (nz + 2)
+    (nx + 2) * (ny + 2) * (nz + 2)
     block = factory(nx=nx, ny=ny, nz=nz)
     
     for attr in ["u", "v", "w", "p"]:
