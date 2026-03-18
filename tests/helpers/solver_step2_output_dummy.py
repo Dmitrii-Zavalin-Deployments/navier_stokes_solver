@@ -35,6 +35,9 @@ class SimpleCellMock:
     def set_field(self, field_idx, value): 
         self.fields_buffer[self.index, field_idx] = value 
 
+    def get_field(self, field_idx):
+        return self.fields_buffer[self.index, field_idx]
+
     # --- Field Accessors (Rule 9 Bridge) ---
 
     @property

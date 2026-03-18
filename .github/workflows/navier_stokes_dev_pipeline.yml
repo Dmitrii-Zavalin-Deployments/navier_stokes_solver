@@ -84,8 +84,8 @@ jobs:
           print(f'Calculated Gradient: {compute_local_gradient_p(block, FI.P_NEXT)}')"
 
           # Run the test suite
-          # pytest -s tests/ -vv --cov=src --cov-report=term-missing
-          pytest -s tests/quality_gates/physics_gate/test_corrector.py -vv
+          pytest -s tests/ -vv --cov=src --cov-report=term-missing
+          # pytest -s tests/quality_gates/physics_gate/test_corrector.py -vv
 
       - name: 📊 Audit Performance & Update Ledger
         if: always()
