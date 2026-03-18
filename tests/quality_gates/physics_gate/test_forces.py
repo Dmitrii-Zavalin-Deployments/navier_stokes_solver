@@ -1,8 +1,10 @@
 # tests/quality_gates/physics_gate/test_forces.py
 
 import pytest
+
 from src.step3.ops.forces import get_local_body_force
 from tests.helpers.solver_step3_output_dummy import make_step3_output_dummy
+
 
 def setup_force_block(block, force_tuple):
     """
