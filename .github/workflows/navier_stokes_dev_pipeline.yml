@@ -80,8 +80,8 @@ jobs:
           # python3 -c "from tests.helpers.solver_step2_output_dummy import SimpleCellMock; import numpy as np; m = SimpleCellMock(0, False, np.zeros((1,5))); print('Has __dict__:', hasattr(m, '__dict__'))"
 
           # 3. Run the test suite
-          # pytest -s tests/ -vv --cov=src --cov-report=term-missing
-          pytest -s tests/property_integrity/test_architecture_parity.py -vv
+          pytest -s tests/ -vv --cov=src --cov-report=term-missing
+          # pytest -s tests/property_integrity/test_architecture_parity.py -vv
 
       - name: 📊 Audit Performance & Update Ledger
         if: always()
