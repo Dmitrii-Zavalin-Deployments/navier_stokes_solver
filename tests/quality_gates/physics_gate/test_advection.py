@@ -1,9 +1,12 @@
 # tests/ quality_gates/physics_gate/test_advection.py
 
-import pytest
 import copy
+
 from src.common.field_schema import FI
-from src.step3.ops.advection import compute_local_advection, compute_local_advection_vector
+from src.step3.ops.advection import (
+    compute_local_advection,
+    compute_local_advection_vector,
+)
 from tests.helpers.solver_step3_output_dummy import make_step3_output_dummy
 
 # --- Local Stencil Utility (Bypass Wedged Dummies) ---
