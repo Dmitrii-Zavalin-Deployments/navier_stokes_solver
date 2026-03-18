@@ -1,12 +1,14 @@
 # tests/property_integrity/test_schema_contracts.py
 
 import json
+from pathlib import Path
+
 import jsonschema
 import pytest
-from pathlib import Path
 
 from tests.helpers.solver_input_schema_dummy import create_validated_input
 from tests.helpers.solver_output_schema_dummy import make_output_schema_dummy
+
 
 # Instead of importing a non-existent utility, we define how to find the schemas
 def load_schema(schema_name: str) -> dict:
@@ -18,7 +20,7 @@ def load_schema(schema_name: str) -> dict:
     if not schema_path.exists():
         pytest.fail(f"Schema not found at {schema_path}")
         
-    with open(schema_path, "r") as f:
+    with open(schema_path) as f:
         return json.load(f)
 
 class TestSchemaContracts:
