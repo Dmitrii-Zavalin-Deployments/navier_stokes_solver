@@ -83,8 +83,8 @@ class SimpleCellMock:
 
 def make_step2_output_dummy(nx: int = 4, ny: int = 4, nz: int = 4):
     """
-    Returns a 'frozen' prototype representing a successful Step 2 completion.
-    Wires mock cells to the real monolithic buffer to satisfy integrity validations.
+    Fixed Step 2 Dummy: Complies with Rule 7 (Offset 1 Topology).
+    Maps Core [0...nx-1] to Memory Indices [1...nx].
     """
     state = make_step1_output_dummy(nx=nx, ny=ny, nz=nz)
     
@@ -95,34 +95,41 @@ def make_step2_output_dummy(nx: int = 4, ny: int = 4, nz: int = 4):
     }
     
     state.stencil_matrix = []
-    nx_buf, ny_buf = nx + 2, ny + 2
-    
-    # Grab the actual buffer from the state created by Step 1
+    # Rule 7.2: 4x4x4 core maps to 6x6x6 memory structure
+    nx_buf, ny_buf, nz_buf = nx + 2, ny + 2, nz + 2
     buffer = state.fields.data
     
-    for k in range(nz + 2):
-        for j in range(ny + 2):
-            for i in range(nx + 2):
-                # Manual index calculation
-                index = i + nx_buf * (j + ny_buf * k)
-                is_ghost = (i == 0 or i == nx + 1 or 
-                            j == 0 or j == ny + 1 or 
-                            k == 0 or k == nz + 1)
+    def get_idx(i, j, k):
+        return i + nx_buf * (j + ny_buf * k)
+
+    # We iterate ONLY over the CORE cells (Memory Indices 1 to nx)
+    # This aligns with Rule 7.3: Memory Index 1 is Coordinate 0.
+    for k in range(1, nz + 1):
+        for j in range(1, ny + 1):
+            for i in range(1, nx + 1):
                 
-                # Mock cell construction - now passing the buffer reference
-                cell = SimpleCellMock(index=index, is_ghost=is_ghost, fields_buffer=buffer)
+                # Center is always a Core cell in this loop
+                cell_c = SimpleCellMock(get_idx(i, j, k), False, buffer)
                 
-                # Manual StencilBlock construction
+                # Neighbors pull from the Unified Foundation
+                # If i-1 == 0, it correctly hits the Ghost at Coordinate -1
+                cell_im = SimpleCellMock(get_idx(i-1, j, k), (i-1 == 0), buffer)
+                cell_ip = SimpleCellMock(get_idx(i+1, j, k), (i+1 == nx+1), buffer)
+                
+                cell_jm = SimpleCellMock(get_idx(i, j-1, k), (j-1 == 0), buffer)
+                cell_jp = SimpleCellMock(get_idx(i, j+1, k), (j+1 == ny+1), buffer)
+                
+                cell_km = SimpleCellMock(get_idx(i, j, k-1), (k-1 == 0), buffer)
+                cell_kp = SimpleCellMock(get_idx(i, j, k+1), (k+1 == nz+1), buffer)
+                
                 block = StencilBlock(
-                    center=cell,
-                    i_minus=cell, i_plus=cell,
-                    j_minus=cell, j_plus=cell,
-                    k_minus=cell, k_plus=cell,
+                    center=cell_c,
+                    i_minus=cell_im, i_plus=cell_ip,
+                    j_minus=cell_jm, j_plus=cell_jp,
+                    k_minus=cell_km, k_plus=cell_kp,
                     **physics_params
                 )
                 state.stencil_matrix.append(block)
     
-    # This trigger now performs the verify_foundation_integrity() call
     state.ready_for_time_loop = True
-    
     return state
