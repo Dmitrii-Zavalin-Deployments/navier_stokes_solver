@@ -19,43 +19,24 @@ SimpleCellMock.get_field = get_field
 
 def setup_integration_block(block, dt=1.0, rho=1.0, dx=1.0):
     """
-    Directly injects physics and FORCES shared memory via method monkeypatching.
+    Wires unique neighbor cells to the StencilBlock to enable non-zero gradients.
     """
-    def force_set(obj, attr, val):
-        object.__setattr__(obj, f"_{attr}", float(val))
-
-    # 1. Create the TRUTH buffer
+    # 1. Create a Shared Foundation Buffer
     shared_buffer = np.zeros((20, FI.num_fields()))
 
-    # 2. Inject Physics
-    force_set(block, 'dt', dt)
-    force_set(block, 'rho', rho)
-    force_set(block, 'dx', dx)
-    force_set(block, 'dy', dx)
-    force_set(block, 'dz', dx)
-    
-    # 3. The "Nuclear" Memory Bind
-    # We define new methods that are HARD-BOUND to our shared_buffer
-    def patched_set(self, field_idx, value):
-        shared_buffer[self.index, field_idx] = value
+    # 2. Re-map Physics Constants (Standardized for the gate)
+    for attr, val in [('dt', dt), ('rho', rho), ('dx', dx), ('dy', dx), ('dz', dx)]:
+        object.__setattr__(block, f"_{attr}", float(val))
 
-    def patched_get(self, field_idx):
-        return shared_buffer[self.index, field_idx]
-
-    stencil_mapping = [
-        (block.center, 10),
-        (block.i_minus, 9), (block.i_plus, 11),
-        (block.j_minus, 8), (block.j_plus, 12),
-        (block.k_minus, 7), (block.k_plus, 13)
-    ]
-    
-    for cell, idx in stencil_mapping:
-        cell.index = idx
-        # Bind the patched methods to this specific instance
-        cell.set_field = patched_set.__get__(cell, SimpleCellMock)
-        cell.get_field = patched_get.__get__(cell, SimpleCellMock)
-        # Also set the attribute just in case the operator accesses it directly
-        cell.fields_buffer = shared_buffer
+    # 3. Create UNIQUE neighbor instances (Breaking the 'All-is-Center' bug)
+    # We assign them unique indices [7-13] in our shared_buffer
+    block.center  = SimpleCellMock(index=10, is_ghost=False, fields_buffer=shared_buffer)
+    block.i_minus = SimpleCellMock(index=9,  is_ghost=True,  fields_buffer=shared_buffer)
+    block.i_plus  = SimpleCellMock(index=11, is_ghost=True,  fields_buffer=shared_buffer)
+    block.j_minus = SimpleCellMock(index=8,  is_ghost=True,  fields_buffer=shared_buffer)
+    block.j_plus  = SimpleCellMock(index=12, is_ghost=True,  fields_buffer=shared_buffer)
+    block.k_minus = SimpleCellMock(index=7,  is_ghost=True,  fields_buffer=shared_buffer)
+    block.k_plus  = SimpleCellMock(index=13, is_ghost=True,  fields_buffer=shared_buffer)
     
     return block
 
