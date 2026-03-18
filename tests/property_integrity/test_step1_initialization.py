@@ -94,7 +94,12 @@ class TestStep1Initialization:
         total_time, dt = 0.05, 0.01
         state, _ = orchestrate_step1(SimulationContext(
             input_data=create_validated_input(nx=4), 
-            config=SolverConfig(ppe_tolerance=1e-6)
+            config=SolverConfig(
+                ppe_tolerance=1e-6, 
+                ppe_atol=1e-12, 
+                ppe_max_iter=100, 
+                ppe_omega=1.0
+            )
         ))
         
         state._simulation_parameters.total_time = total_time

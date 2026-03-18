@@ -53,7 +53,7 @@ def get_explicit_solver_config(nx: int, ny: int, nz: int) -> dict[str, Any]:
         ],
         "mask": [1] * (nx * ny * nz),
         "external_forces": {
-            "force_vector": [0.0, -9.81, 0.0]
+            "force_vector": [0.0, 0.0, -9.81]
         },
     }
 

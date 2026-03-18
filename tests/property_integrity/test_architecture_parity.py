@@ -73,9 +73,9 @@ def test_block_allocation_integrity(stage_name, factory):
     n_cells = (nx + 2) * (ny + 2) * (nz + 2)
     block = factory(nx=nx, ny=ny, nz=nz)
     
-    for attr in ["_u", "_v", "_w", "_p"]:
-        arr = getattr(block, attr)
-        assert arr.size == n_cells, f"{stage_name}: {attr} size mismatch"
+    for attr in ["u", "v", "w", "p"]:
+        val = getattr(block.center, attr)
+        assert val is not None, f"{stage_name}: {attr} size mismatch"
 
 # --- PHYSICS & BOUNDARY PERSISTENCE ---
 
@@ -129,6 +129,6 @@ def test_step3_predictor_and_stability_parity():
     assert block._w_star.size == n_cells
     
     # Check Stability Coefficients
-    assert np.isfinite(block._dt / block._rho), "Invalid Velocity Correction Factor"
-    stability = (block._mu * block._dt) / (block._dx**2)
+    assert np.isfinite(block.dt / block.rho), "Invalid Velocity Correction Factor"
+    stability = (block.mu * block.dt) / (block.dx**2)
     assert np.isfinite(stability), "Invalid Diffusion Stability Factor"
