@@ -8,25 +8,22 @@ from tests.helpers.solver_step2_output_dummy import make_step2_output_dummy
 
 
 def setup_predictor_block(dt=1.0, rho=1.0, mu=1.0, dx=1.0):
-    """
-    Standardizes a StencilBlock for Predictor teamwork testing.
-    """
     state = make_step2_output_dummy(nx=4, ny=4, nz=4)
-    block = state.stencil_matrix[10] # Central block
+    block = state.stencil_matrix[10]
 
-    # Bypass read-only slots to force Unit Physics
+    # 1. FORCE UNIT PHYSICS
+    for obj in [block, block.i_plus, block.i_minus, block.j_plus, block.j_minus, block.k_plus, block.k_minus]:
+        object.__setattr__(obj, '_dx', float(dx))
+        object.__setattr__(obj, '_dy', float(dx))
+        object.__setattr__(obj, '_dz', float(dx))
+
     object.__setattr__(block, '_dt', float(dt))
     object.__setattr__(block, '_rho', float(rho))
     object.__setattr__(block, '_mu', float(mu))
-    object.__setattr__(block, '_dx', float(dx))
-    object.__setattr__(block, '_dy', float(dx))
-    object.__setattr__(block, '_dz', float(dx))
-    
-    # Also ensure gravity is set in f_vals (usually a tuple in block)
-    object.__setattr__(block, '_f_vals', (0.0, 0.0, 10.0)) # Gravity in Z
+    object.__setattr__(block, '_f_vals', (0.0, 0.0, 10.0))
 
-    # Clean the buffer
-    block.center.fields_buffer.fill(0.0)
+    # 2. NEUTRALIZE ENTIRE BUFFER (The essential fix)
+    block.center.fields_buffer.fill(0.0) 
     
     return block
 
