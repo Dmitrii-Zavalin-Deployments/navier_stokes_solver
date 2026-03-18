@@ -15,10 +15,10 @@ from src.common.solver_state import (
     SolverState,
 )
 from src.step5.orchestrate_step5 import orchestrate_step5
-from tests.helpers.solver_input_schema_dummy import (
-    create_validated_input,
-    make_output_schema_dummy,
-)
+
+# --- MANDATE: Vertical Integrity Dummy Imports ---
+from tests.helpers.solver_input_schema_dummy import create_validated_input
+from tests.helpers.solver_output_schema_dummy import make_output_schema_dummy
 from tests.helpers.solver_step5_output_dummy import make_step5_output_dummy
 
 
