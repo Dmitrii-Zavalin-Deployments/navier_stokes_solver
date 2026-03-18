@@ -1,6 +1,5 @@
 # tests/property_integrity/test_architecture_parity.py
 
-import numpy as np
 import pytest
 
 from src.common.field_schema import FI
