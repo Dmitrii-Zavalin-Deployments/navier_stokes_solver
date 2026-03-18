@@ -80,7 +80,7 @@ jobs:
 
           # Run the test suite
           # pytest -s tests/ -vv --cov=src --cov-report=term-missing
-          pytest -s tests/quality_gates/physics_gate/test_forces.py -vv
+          pytest -s tests/quality_gates/physics_gate/test_gradient.py -vv
 
       - name: 📊 Audit Performance & Update Ledger
         if: always()
