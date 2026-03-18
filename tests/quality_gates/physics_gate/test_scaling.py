@@ -45,8 +45,12 @@ def test_scaling_division_by_zero_protection():
     Validates Rule 5 (Deterministic Initialization Mandate).
     """
     block = make_step3_output_dummy()
-    # Explicitly leave _dt and _rho as None or uninitialized
-    # Accessing them should trigger an AttributeError or ZeroDivisionError
     
+    # FORCE CORRUPTION: Overwrite the valid values from the dummy with None
+    # This simulates a failure in the configuration/assembly pipeline.
+    object.__setattr__(block, '_dt', None)
+    object.__setattr__(block, '_rho', None)
+    
+    # Now it MUST raise a TypeError because you can't divide NoneType
     with pytest.raises((AttributeError, TypeError, ZeroDivisionError)):
         get_dt_over_rho(block)
