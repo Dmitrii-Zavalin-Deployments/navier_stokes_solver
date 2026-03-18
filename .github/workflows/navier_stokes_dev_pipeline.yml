@@ -15,15 +15,17 @@ jobs:
       APP_KEY: ${{ secrets.APP_KEY }}
       APP_SECRET: ${{ secrets.APP_SECRET }}
       REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
+      # Opt-in to Node.js 24 runtime now to clear deprecation warnings
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true 
 
     steps:
       - name: 🗂️ Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4  # Updated from v3
         with:
           fetch-depth: 0
 
       - name: 🐍 Setup Python 3.11
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5 # Updated from v4
         with:
           python-version: "3.11"
 
