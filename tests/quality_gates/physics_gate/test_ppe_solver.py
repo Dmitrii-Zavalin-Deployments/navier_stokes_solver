@@ -1,10 +1,11 @@
 # tests/quality_gates/physics_gate/test_ppe_solver.py
 
 import pytest
-import numpy as np
+
 from src.common.field_schema import FI
 from src.step3.ppe_solver import solve_pressure_poisson_step
 from tests.helpers.solver_step2_output_dummy import make_step2_output_dummy
+
 
 def setup_ppe_block(dt=1.0, rho=1.0, dx=1.0):
     """
