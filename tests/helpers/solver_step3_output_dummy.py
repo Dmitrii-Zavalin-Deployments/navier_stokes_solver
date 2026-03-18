@@ -43,6 +43,4 @@ def make_step3_output_dummy(nx: int = 4, ny: int = 4, nz: int = 4, block_index: 
 
     # 3. Extraction
     # Returns the StencilBlock to match orchestrate_step3's return signature.
-    block = state.stencil_matrix[block_index]
-    block._bc_list = getattr(state, "_boundary_conditions", None)
-    return block
+    return state.stencil_matrix[block_index]
