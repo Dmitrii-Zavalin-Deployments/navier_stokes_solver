@@ -62,6 +62,16 @@ class SimpleCellMock:
     @mask.setter
     def mask(self, val): self.fields_buffer[self.index, FI.MASK] = val
 
+    # Added for Rule 9 Parity
+    @property
+    def u(self): return self.get_field(FI.VX)
+    @property
+    def v(self): return self.get_field(FI.VY)
+    @property
+    def w(self): return self.get_field(FI.VZ)
+    @property
+    def p(self): return self.get_field(FI.P)
+
     def to_dict(self):
         return {
             "index": self.index,

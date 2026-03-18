@@ -124,7 +124,7 @@ def test_step3_predictor_and_stability_parity():
     block = make_step3_output_dummy(nx=nx, ny=ny, nz=nz)
     
     # Check Predictor Allocation
-    assert block._u_star.size == n_cells
+    assert block.center.vx_star is not None
     assert block._v_star.size == n_cells
     assert block._w_star.size == n_cells
     

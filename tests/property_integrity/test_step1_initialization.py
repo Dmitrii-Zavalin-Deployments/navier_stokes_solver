@@ -92,7 +92,7 @@ class TestStep1Initialization:
     def test_termination_math_precision(self):
         """Validates floating point exit condition: current_time >= total_time."""
         total_time, dt = 0.05, 0.01
-        state, _ = orchestrate_step1(SimulationContext(
+        state = orchestrate_step1(SimulationContext(
             input_data=create_validated_input(nx=4), 
             config=SolverConfig(
                 ppe_tolerance=1e-6, 
