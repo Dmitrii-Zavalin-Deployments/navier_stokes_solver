@@ -23,29 +23,29 @@ def setup_integration_block(block, dt=1.0, rho=1.0, dx=1.0):
     def force_set(obj, attr, val):
         object.__setattr__(obj, f"_{attr}", float(val))
 
-    # 1. Create a single, shared Foundation Buffer (Rule 9)
-    # We need enough rows to cover our indices (0-13)
+    # 1. Create a single, shared Foundation Buffer (Rule 9 Compliance)
+    # 20 rows is plenty for our neighbor indices.
     shared_buffer = np.zeros((20, FI.num_fields()))
 
-    # 2. Physics Constants
+    # 2. Inject Physics Constants
     force_set(block, 'dt', dt)
     force_set(block, 'rho', rho)
     force_set(block, 'dx', dx)
     force_set(block, 'dy', dx)
     force_set(block, 'dz', dx)
     
-    # 3. REWIRE INDICES & UNIFY MEMORY
-    # We iterate through all cells in the stencil and point them to the same array
-    cells = [
+    # 3. REWIRE INDICES & UNIFY MEMORY foundation
+    # Mapping each stencil position to a unique row in the shared_buffer
+    stencil_mapping = [
         (block.center, 10),
         (block.i_minus, 9), (block.i_plus, 11),
         (block.j_minus, 8), (block.j_plus, 12),
         (block.k_minus, 7), (block.k_plus, 13)
     ]
     
-    for cell, idx in cells:
+    for cell, idx in stencil_mapping:
         cell.index = idx
-        # This is the "Magic" line: overwrite the independent buffers with the shared one
+        # CRITICAL: Point the mock cell to the shared memory array
         cell.fields_buffer = shared_buffer
     
     return block
@@ -59,7 +59,7 @@ def test_corrector_zero_gradient_preservation():
     block.center.set_field(FI.VY_STAR, 0.5)
     block.center.set_field(FI.VZ_STAR, 0.2)
     
-    # All neighbors share the same buffer; setting one affects what the gradient reads
+    # Uniform pressure: all rows in the shared buffer get 10.0 for P_NEXT
     for cell in [block.i_plus, block.i_minus, block.j_plus, block.j_minus, block.k_plus, block.k_minus]:
         cell.set_field(FI.P_NEXT, 10.0)
     
@@ -69,15 +69,19 @@ def test_corrector_zero_gradient_preservation():
     assert block.center.get_field(FI.VY) == 0.5
     assert block.center.get_field(FI.VZ) == 0.2
 
-# --- Scenario 2: Standard Pressure Correction ---
+# --- Scenario 2: Standard Pressure Correction (Analytical Gate) ---
 def test_corrector_analytical_correction():
     """
-    Expected v_x = v_star - (dt/rho) * ((P_ip - P_im) / 2dx)
-    1.0 - (0.1/1.0) * ((2.0 - 0.0) / 2.0) = 0.9
+    Verifies: v = v* - (dt/rho) * grad(P)
+    v_star = (1.0, 0, 0) | dt=0.1, rho=1.0
+    grad(P)_x = (2.0 - 0.0) / (2*1.0) = 1.0
+    Expected v_x = 1.0 - (0.1/1.0)*1.0 = 0.9
     """
     block = setup_integration_block(make_step3_output_dummy(), dt=0.1, rho=1.0)
     
     block.center.set_field(FI.VX_STAR, 1.0)
+    
+    # These calls now write to indices 11 and 9 of the SAME array
     block.i_plus.set_field(FI.P_NEXT, 2.0)
     block.i_minus.set_field(FI.P_NEXT, 0.0)
 
@@ -87,6 +91,7 @@ def test_corrector_analytical_correction():
 
 # --- Scenario 3: High Density Inertia ---
 def test_corrector_density_scaling():
+    """Higher rho must result in a dampened velocity correction."""
     block = setup_integration_block(make_step3_output_dummy(), dt=1.0, rho=10.0)
     
     block.center.set_field(FI.VX_STAR, 1.0)
@@ -99,6 +104,7 @@ def test_corrector_density_scaling():
 
 # --- Scenario 4: Full 3D Vector Correction ---
 def test_corrector_3d_alignment():
+    """Checks that all 3 components are corrected via their respective gradients."""
     block = setup_integration_block(make_step3_output_dummy(), dt=1.0, rho=1.0)
     
     block.center.set_field(FI.VX_STAR, 0.0)
