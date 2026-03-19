@@ -33,6 +33,6 @@ def apply_local_velocity_correction(block: StencilBlock) -> None:
         block.center.get_field(FI.VZ_STAR)
     )
     
-    block.center.set_field(FI.VX, v_star[0] - (scaling * grad_p[0]))
-    block.center.set_field(FI.VY, v_star[1] - (scaling * grad_p[1]))
-    block.center.set_field(FI.VZ, v_star[2] - (scaling * grad_p[2]))
+    block.center.set_field(FI.VX_STAR, v_star[0] - (scaling * grad_p[0]))
+    block.center.set_field(FI.VY_STAR, v_star[1] - (scaling * grad_p[1]))
+    block.center.set_field(FI.VZ_STAR, v_star[2] - (scaling * grad_p[2]))

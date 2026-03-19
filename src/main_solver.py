@@ -8,6 +8,7 @@ import jsonschema
 
 from src.common.archive_service import archive_simulation_artifacts
 from src.common.simulation_context import SimulationContext
+from src.engine.elasticity import ElasticManager
 from src.step1.orchestrate_step1 import orchestrate_step1
 from src.step2.orchestrate_step2 import orchestrate_step2
 from src.step3.orchestrate_step3 import orchestrate_step3
@@ -41,7 +42,7 @@ def _load_simulation_context(input_path: str) -> SimulationContext:
     return SimulationContext.create(input_data, config_data)
 
 def run_solver(input_path: str) -> str:
-    """Orchestrates the physics pipeline using the unified SimulationContext."""
+    """Main Orchestrator with Elastic Stability. Orchestrates the physics pipeline using the unified SimulationContext."""
     
     context = _load_simulation_context(input_path)
 
@@ -74,35 +75,59 @@ def run_solver(input_path: str) -> str:
         path_str = '.'.join([str(p) for p in e.path])
         print(f"!!! CONTRACT VIOLATION at {path_str}: {e.message}")
         raise
-
-    # 4. MAIN EXECUTION LOOP
-    state.ready_for_time_loop = True
     
+    # 4. ELASTICITY ENGINE
+    elastic = ElasticManager(context.config)
+
+    # 5. MAIN EXECUTION LOOP
     while state.ready_for_time_loop:
-        # A. PREDICTOR PASS
-        for block in state.stencil_matrix:
-            block, _ = orchestrate_step3(block, context=context, is_first_pass=True)
-            block = orchestrate_step4(block, context, state.grid, state.boundary_conditions)
-        
-        # B. ITERATIVE SOLVER & BOUNDARY PASS
-        for _ in range(context.config.ppe_max_iter):
-            max_delta = 0.0
+        try:
+            # Source elastic parameters for this specific 'Attempt'
+            run_dt = elastic.current_dt
+            run_omega = elastic.current_omega
+            run_max_iter = elastic.current_max_iter
+
+            # A. PREDICTOR PASS
             for block in state.stencil_matrix:
-                block, delta = orchestrate_step3(block, context=context, is_first_pass=False)
+                block, _ = orchestrate_step3(block, context=context, is_first_pass=True)
                 block = orchestrate_step4(block, context, state.grid, state.boundary_conditions)
-                max_delta = max(max_delta, delta)
             
-            if max_delta < context.config.ppe_tolerance:
-                break
+            # B. ITERATIVE SOLVER & BOUNDARY PASS
+            for _ in range(run_max_iter):
+                max_delta = 0.0
+                for block in state.stencil_matrix:
+                    block, delta = orchestrate_step3(block, context=context, is_first_pass=False)
+                    block = orchestrate_step4(block, context, state.grid, state.boundary_conditions)
+                    max_delta = max(max_delta, delta)
+                
+                if max_delta < context.config.ppe_tolerance:
+                    break
+            
+            # --- PHASE C: VALIDATE & COMMIT (The RAM-Git Gate) ---
+            # We only move Trial Fields -> Foundation if the math is sane
+            if not elastic.validate_and_commit(state):
+                raise ArithmeticError("Instability detected in block calculations.")
         
-        state.iteration += 1
-        state.time += state.simulation_parameters.time_step
-        state = orchestrate_step5(state, context)
+            # --- PHASE D: ADVANCE ---
+            state.iteration += 1
+            state.time += run_dt
+            state = orchestrate_step5(state, context)
+            
+            # Heal parameters if previously in panic
+            elastic.gradual_recovery()
+
+        except (ArithmeticError, ValueError) as e:
+            # ROLLBACK: If it failed, we never called validate_and_commit.
+            # state.vx and state.p are still safe.
+            if DEBUG:
+                print(f"DEBUG [Main]: ⚠️  Stability failure. Scaling down. Reason: {e}")
+            elastic.apply_panic_mode()
+            continue
         
         if state.time >= state.simulation_parameters.total_time:
             state.ready_for_time_loop = False
 
-    # 5. ARCHIVING TRIGGER (Rule 4: Atomic lifecycle completion)
+    # 6. ARCHIVING TRIGGER (Rule 4: Atomic lifecycle completion)
     return archive_simulation_artifacts(state)
 
 if __name__ == "__main__":

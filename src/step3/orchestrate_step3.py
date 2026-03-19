@@ -36,10 +36,5 @@ def orchestrate_step3(
     # 3. CORRECT: Project v* -> v^{n+1}
     # Performs in-place mutation of the velocity Foundation buffers
     apply_local_velocity_correction(block)
-
-    # 4. SYNCHRONIZE: Update p^n = p^{n+1}
-    # Explicit schema-locked assignment ensures Foundation integrity via Field Schema (FI)
-    p_next_val = block.center.get_field(FI.P_NEXT)
-    block.center.set_field(FI.P, p_next_val)
     
     return block, delta
