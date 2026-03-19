@@ -5,11 +5,10 @@ import sys
 from pathlib import Path
 
 import jsonschema
-import numpy as np
 
 from src.common.archive_service import archive_simulation_artifacts
-from src.common.simulation_context import SimulationContext
 from src.common.elasticity import ElasticManager  # Moved to common
+from src.common.simulation_context import SimulationContext
 from src.step1.orchestrate_step1 import orchestrate_step1
 from src.step2.orchestrate_step2 import orchestrate_step2
 from src.step3.orchestrate_step3 import orchestrate_step3
