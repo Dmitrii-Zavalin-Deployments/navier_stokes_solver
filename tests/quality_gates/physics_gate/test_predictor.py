@@ -1,6 +1,7 @@
 # tests/quality_gates/physics_gate/test_predictor.py
 
 import pytest
+
 from src.common.field_schema import FI
 from src.step3.predictor import compute_local_predictor_step
 from tests.helpers.solver_step2_output_dummy import make_step2_output_dummy
