@@ -2,38 +2,39 @@
 
 from src.common.simulation_context import SimulationContext
 from src.common.stencil_block import StencilBlock
+from src.common.elasticity import ElasticManager  # Now in common!
 from src.step3.corrector import apply_local_velocity_correction
 from src.step3.ppe_solver import solve_pressure_poisson_step
 from src.step3.predictor import compute_local_predictor_step
 
-
 def orchestrate_step3(
     block: StencilBlock, 
     context: SimulationContext, 
+    elasticity: ElasticManager, # Explicit secondary state
     is_first_pass: bool = False
 ) -> tuple[StencilBlock, float]:
     """
-    Step 3 Orchestrator: Projection Method pipeline (Phase C Compliant).
-    
-    Compliance:
-    - Rule 4 (SSoT): Numerical settings (omega) are pulled from context.config.
-    - Rule 9 (Hybrid Memory): Logic-data (StencilBlock) mediates buffer access.
+    Step 3 Orchestrator. 
+    Uses ElasticManager to override block-level time-stepping.
     """
     if block.center.is_ghost:
         return block, 0.0
 
-    # 1. PREDICT: Run on first pass only
+    # Rule 4: Sync the Block's DT with the Elastic Manager
+    # We save the original to keep the StencilBlock object 're-usable'
+    original_dt = block.dt
+    block.dt = elasticity.dt
+
     if is_first_pass:
         compute_local_predictor_step(block)
+        block.dt = original_dt
         return block, 0.0
 
-    # 2. SOLVE: PPE SOR step
-    # Numerical omega is now strictly sourced from the SimulationConfig container
-    omega = context.config.ppe_omega
-    delta = solve_pressure_poisson_step(block, omega)
+    # SOLVE using elastic omega
+    delta = solve_pressure_poisson_step(block, elasticity.omega)
 
-    # 3. CORRECT: Project v* -> v^{n+1}
-    # Performs in-place mutation of the velocity Foundation buffers
+    # CORRECT using synced block.dt
     apply_local_velocity_correction(block)
     
+    block.dt = original_dt
     return block, delta

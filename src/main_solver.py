@@ -5,10 +5,11 @@ import sys
 from pathlib import Path
 
 import jsonschema
+import numpy as np
 
 from src.common.archive_service import archive_simulation_artifacts
 from src.common.simulation_context import SimulationContext
-from src.engine.elasticity import ElasticManager
+from src.common.elasticity import ElasticManager  # Moved to common
 from src.step1.orchestrate_step1 import orchestrate_step1
 from src.step2.orchestrate_step2 import orchestrate_step2
 from src.step3.orchestrate_step3 import orchestrate_step3
@@ -21,12 +22,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 def _load_simulation_context(input_path: str) -> SimulationContext:
     """Assembles physical input and numerical config into a unified context."""
-    # Force re-evaluation of BASE_DIR from the current module state
-    import src.main_solver
-    current_base = src.main_solver.BASE_DIR
-    
-    full_input_path = Path(current_base) / input_path
-    config_path = Path(current_base) / "config.json"
+    full_input_path = BASE_DIR / input_path
+    config_path = BASE_DIR / "config.json"
     
     # Rule 5: Explicit or Error. No fallbacks/defaults.
     if not full_input_path.exists():
@@ -42,7 +39,7 @@ def _load_simulation_context(input_path: str) -> SimulationContext:
     return SimulationContext.create(input_data, config_data)
 
 def run_solver(input_path: str) -> str:
-    """Main Orchestrator with Elastic Stability. Orchestrates the physics pipeline using the unified SimulationContext."""
+    """Main Orchestrator with Elastic Stability."""
     
     context = _load_simulation_context(input_path)
 
@@ -55,7 +52,6 @@ def run_solver(input_path: str) -> str:
         if DEBUG:
             print(f"DEBUG [Main]: ✅ Input schema validation passed.")
     except jsonschema.exceptions.ValidationError as e:
-        # Rule 5/7: Explicit reporting for deterministic debugging
         print(f"!!! CONTRACT VIOLATION: {e.message}")
         raise
 
@@ -64,61 +60,64 @@ def run_solver(input_path: str) -> str:
     state = orchestrate_step2(state)
 
     # 3. FIREWALL: State Contract Validation (Post-Assembly, Rule 4/SSoT)
-    # Validates current state against the SSoT schema
-    SCHEMA_PATH = Path("schema/solver_input_schema.json")
     try:
         state.validate_against_schema(str(SCHEMA_PATH))
         if DEBUG:
             print("DEBUG [Main]: ✅ State validation passed.")
     except jsonschema.exceptions.ValidationError as e:
-        # Extract specific path for Rule 7 granular debugging
         path_str = '.'.join([str(p) for p in e.path])
         print(f"!!! CONTRACT VIOLATION at {path_str}: {e.message}")
         raise
     
-    # 4. ELASTICITY ENGINE
-    elastic = ElasticManager(context)
+    # 4. ELASTICITY ENGINE (Numerical SSoT)
+    # We pass context.config directly as elasticity manages numerical behavior
+    elasticity = ElasticManager(context.config)
 
     # 5. MAIN EXECUTION LOOP
     while state.ready_for_time_loop:
         try:
-            # Source elastic parameters for this specific 'Attempt'
-            elastic.current_dt
-            elastic.current_omega
-            elastic.current_max_iter
-
             # A. PREDICTOR PASS
+            # Rule 4: block.dt is internally synced with elasticity.dt
             for block in state.stencil_matrix:
-                orchestrate_step3(block, elastic, is_first_pass=True)
-                # Step 4 stays clean—doesn't need to know about elasticity
+                orchestrate_step3(block, context, elasticity, is_first_pass=True)
                 orchestrate_step4(block, context, state.grid, state.boundary_conditions)
             
-            # B. ITERATIVE SOLVER (Uses elastic.max_iter)
-            for _ in range(elastic.max_iter):
+            # B. ITERATIVE SOLVER (PPE)
+            for _ in range(elasticity.max_iter):
                 max_delta = 0.0
                 for block in state.stencil_matrix:
-                    _, delta = orchestrate_step3(block, elastic, is_first_pass=False)
+                    _, delta = orchestrate_step3(block, context, elasticity, is_first_pass=False)
                     orchestrate_step4(block, context, state.grid, state.boundary_conditions)
                     max_delta = max(max_delta, delta)
                 
+                # Performance optimization: Exit PPE loop if tolerance met
                 if max_delta < context.config.ppe_tolerance:
                     break
             
             # C. VALIDATE & COMMIT (Transactional Gate)
-            if not elastic.validate_and_commit(state):
-                raise ArithmeticError("Numerical instability.")
+            # Rule 4/9: Merges trial buffers only if the time-step is numerically valid
+            if not elasticity.validate_and_commit(state):
+                raise ArithmeticError("Numerical instability detected in trial buffers.")
         
-            # D. ADVANCE
+            # D. ADVANCE (Physical & Temporal)
             state.iteration += 1
-            state.time += elastic.dt 
+            state.time += elasticity.dt 
             state = orchestrate_step5(state, context)
-            elastic.gradual_recovery()
+            
+            # Heal parameters if simulation is running smoothly
+            elasticity.gradual_recovery()
 
-        except ArithmeticError:
-            elastic.apply_panic_mode()
-            continue # Retry time-step
+            if DEBUG and state.iteration % 10 == 0:
+                print(f"DEBUG [Main]: Step {state.iteration} | Time {state.time:.4f} | dt {elasticity.dt:.2e}")
+
+        except ArithmeticError as e:
+            if DEBUG:
+                print(f"DEBUG [Main]: ⚠️ {str(e)} -> Triggering Panic Mode.")
+            elasticity.apply_panic_mode()
+            continue # Retry the same time-step with safer parameters
         
-        if state.time >= state.simulation_parameters.total_time:
+        # Termination check
+        if state.time >= context.input_data.simulation_parameters.total_time:
             state.ready_for_time_loop = False
 
     # 6. ARCHIVING TRIGGER (Rule 4: Atomic lifecycle completion)
@@ -126,13 +125,15 @@ def run_solver(input_path: str) -> str:
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Error: Input file path required.")
+        print("Usage: python src/main_solver.py <input_json_path>")
         sys.exit(1)
     
     try:
         zip_path = run_solver(sys.argv[1])
-        print(f"Pipeline complete. Artifacts: {zip_path}")
+        print(f"Pipeline complete. Artifacts archived at: {zip_path}")
         sys.exit(0)
     except Exception as e:
         print(f"FATAL PIPELINE ERROR: {str(e)}", file=sys.stderr)
+        import traceback
+        traceback.print_exc()
         sys.exit(1)
