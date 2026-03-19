@@ -1,13 +1,16 @@
 # tests/quality_gates/physics_gate/test_predictor.py
 
 import pytest
+
 from src.common.field_schema import FI
-from src.step3.predictor import compute_local_predictor_step
+
 # Import the sub-operators to diagnose the "leak"
 from src.step3.ops.advection import compute_local_advection
-from src.step3.ops.laplacian import compute_local_laplacian
 from src.step3.ops.gradient import compute_local_gradient
+from src.step3.ops.laplacian import compute_local_laplacian
+from src.step3.predictor import compute_local_predictor_step
 from tests.helpers.solver_step2_output_dummy import make_step2_output_dummy
+
 
 def setup_predictor_block(dt=1.0, rho=1.0, mu=1.0, dx=1.0):
     state = make_step2_output_dummy(nx=4, ny=4, nz=4)
