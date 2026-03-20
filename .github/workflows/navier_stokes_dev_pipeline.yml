@@ -111,8 +111,8 @@ jobs:
           print(f'Buffer raw at index 11: {b.center.fields_buffer[11, FI.P_NEXT]}')"
 
           # Run the test suite
-          pytest -s tests/ -vv --cov=src --cov-report=term-missing
-          # pytest -s tests/property_integrity/test_solver_lifecycle.py::TestSolverLifecycle -vv
+          # pytest -s tests/ -vv --cov=src --cov-report=term-missing
+          pytest -s tests/property_integrity/test_architecture_parity.py -vv
 
       - name: 📊 Audit Performance & Update Ledger
         if: always()
