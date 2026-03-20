@@ -24,7 +24,7 @@ class SimulationContext:
         
         # 2. Extract the base time_step from physical input
         # This becomes the 'Target DT' for the ElasticManager
-        base_dt = input_data.simulation_parameters.time_step
+        input_data.simulation_parameters.time_step
         
         # 3. Inject it into the numerical config
         # Even if it's 'unchanged' elsewhere, it MUST exist here 
