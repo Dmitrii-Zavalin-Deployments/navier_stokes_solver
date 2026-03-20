@@ -62,7 +62,7 @@ def verify_foundation_integrity(state):
                     f"Expected P: {expected_p}, Got: {c.p}"
                 )
 
-        print("✅ POST SUCCESS: Foundation wiring verified and 'Frozen'.")
+        # print("✅ POST SUCCESS: Foundation wiring verified and 'Frozen'.")
 
     finally:
         # 3. Restore actual simulation data
