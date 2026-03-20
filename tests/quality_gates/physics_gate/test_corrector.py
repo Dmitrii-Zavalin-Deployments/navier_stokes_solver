@@ -51,9 +51,9 @@ def test_corrector_zero_gradient_preservation():
     
     apply_local_velocity_correction(block)
     
-    assert block.center.get_field(FI.VX) == 1.0
-    assert block.center.get_field(FI.VY) == 0.5
-    assert block.center.get_field(FI.VZ) == 0.2
+    assert block.center.get_field(FI.VX_STAR) == 1.0
+    assert block.center.get_field(FI.VY_STAR) == 0.5
+    assert block.center.get_field(FI.VZ_STAR) == 0.2
 
 # --- Scenario 2: Standard Pressure Correction (Analytical Gate) ---
 def test_corrector_analytical_correction():
@@ -76,7 +76,7 @@ def test_corrector_analytical_correction():
     block.center.set_field(FI.VX_STAR, 1.0)
     apply_local_velocity_correction(block)
     
-    assert block.center.get_field(FI.VX) == pytest.approx(0.9, abs=1e-15)
+    assert block.center.get_field(FI.VX_STAR) == pytest.approx(0.9, abs=1e-15)
 
 # --- Scenario 3: High Density Inertia ---
 def test_corrector_density_scaling():
@@ -90,7 +90,7 @@ def test_corrector_density_scaling():
     
     apply_local_velocity_correction(block)
     
-    assert block.center.get_field(FI.VX) == pytest.approx(0.9, abs=1e-15)
+    assert block.center.get_field(FI.VX_STAR) == pytest.approx(0.9, abs=1e-15)
 
 # --- Scenario 4: Full 3D Vector Correction ---
 def test_corrector_3d_alignment():
@@ -111,6 +111,6 @@ def test_corrector_3d_alignment():
     
     apply_local_velocity_correction(block)
     
-    assert block.center.get_field(FI.VX) == -1.0
-    assert block.center.get_field(FI.VY) == -1.0
-    assert block.center.get_field(FI.VZ) == -1.0
+    assert block.center.get_field(FI.VX_STAR) == -1.0
+    assert block.center.get_field(FI.VY_STAR) == -1.0
+    assert block.center.get_field(FI.VZ_STAR) == -1.0
