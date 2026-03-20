@@ -61,7 +61,7 @@ class TestHeavyElasticityLifecycle:
             config_path.write_text(json.dumps(config_data))
 
             # Set log level to capture ElasticManager warnings
-            with caplog.at_level(logging.WARNING, logger="Elasticity"):
+            with caplog.at_level(logging.WARNING):
                 # 5. EXECUTE
                 zip_path_str = run_solver(input_filename)
                 zip_path = Path(zip_path_str)
