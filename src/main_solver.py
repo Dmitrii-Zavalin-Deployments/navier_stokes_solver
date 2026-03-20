@@ -2,6 +2,7 @@
 
 import json
 import sys
+import logging
 
 import numpy as np
 
@@ -21,6 +22,7 @@ from src.step5.orchestrate_step5 import orchestrate_step5
 
 # Global Debug Toggle: Rule 7 requires high-res logging for math
 DEBUG = False
+logger = logging.getLogger("Solver.Main")
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 def _load_simulation_context(input_path: str) -> SimulationContext:
@@ -114,8 +116,7 @@ def run_solver(input_path: str) -> str:
                 print(f"DEBUG [Main]: Step {state.iteration} | Time {state.time:.4f} | dt {elasticity.dt:.2e}")
 
         except ArithmeticError as e:
-            if DEBUG:
-                print(f"DEBUG [Main]: ⚠️ {str(e)} -> Triggering Panic Mode.")
+            logger.warning(f"PANIC: Numerical instability detected ({str(e)}). Triggering Elastic Recovery.")
             elasticity.apply_panic_mode()
             continue # Retry the same time-step with safer parameters
         
