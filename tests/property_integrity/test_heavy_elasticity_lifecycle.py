@@ -4,8 +4,11 @@ import json
 import logging
 import zipfile
 from pathlib import Path
+
 import pytest
+
 from src.main_solver import BASE_DIR, run_solver
+
 
 class TestHeavyElasticityLifecycle:
     """
