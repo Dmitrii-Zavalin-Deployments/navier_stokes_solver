@@ -1,7 +1,6 @@
 # src/common/stencil_block.py
 
 from src.common.base_container import ValidatedContainer
-
 from .cell import Cell
 
 
@@ -75,7 +74,18 @@ class StencilBlock(ValidatedContainer):
     def dz(self) -> float: return self._dz
     
     @property
-    def dt(self) -> float: return self._dt
+    def dt(self) -> float: 
+        return self._dt
+
+    @dt.setter
+    def dt(self, value: float):
+        """
+        Rule 4 Sync Gate: Allows ElasticityManager to update the block's time-step.
+        Uses object.__setattr__ to bypass ValidatedContainer's strict write-protection.
+        """
+        if value <= 0:
+            raise ValueError(f"Numerical Instability: dt must be positive, got {value}")
+        object.__setattr__(self, '_dt', float(value))
     
     @property
     def rho(self) -> float: return self._rho
