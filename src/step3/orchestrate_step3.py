@@ -1,9 +1,10 @@
 # src/step3/orchestrate_step3.py
 
 import math
+
+from src.common.elasticity import ElasticManager
 from src.common.simulation_context import SimulationContext
 from src.common.stencil_block import StencilBlock
-from src.common.elasticity import ElasticManager
 from src.step3.corrector import apply_local_velocity_correction
 from src.step3.ppe_solver import solve_pressure_poisson_step
 from src.step3.predictor import compute_local_predictor_step

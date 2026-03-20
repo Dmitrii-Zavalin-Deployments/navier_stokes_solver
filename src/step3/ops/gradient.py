@@ -1,6 +1,7 @@
 # src/step3/ops/gradient.py
 
 import math
+
 from src.common.field_schema import FI
 from src.common.stencil_block import StencilBlock
 
