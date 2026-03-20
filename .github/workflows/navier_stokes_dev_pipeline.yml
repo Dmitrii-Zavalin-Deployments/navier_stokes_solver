@@ -17,6 +17,8 @@ jobs:
       APP_KEY: ${{ secrets.APP_KEY }}
       APP_SECRET: ${{ secrets.APP_SECRET }}
       REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
+      # Define the 'Gold Standard' test command here (e.g. # pytest -s tests/ -vv --cov=src --cov-report=term-missing)
+      TEST_COMMAND: "pytest -s tests/property_integrity/test_heavy_elasticity_lifecycle.py -vv"
 
     steps:
       - name: 🗂️ Checkout Repository
@@ -69,13 +71,12 @@ jobs:
           echo "CRITICAL: Dead code detected in src/. Review the Vulture logs above."
           echo "Rule 2 (Zero-Debt Mandate) violation: Delete unused code before merging."
           exit 1
-
+       
       - name: 🧪 Run Logic & Scientific Verification
         run: |
-          # Run the test suite
-          # pytest -s tests/ -vv --cov=src --cov-report=term-missing
-          pytest -s tests/property_integrity/test_heavy_elasticity_lifecycle.py -vv
-       
+          echo "🚀 Initiating: $TEST_COMMAND"
+          $TEST_COMMAND
+      
       - name: 🔍 Forensic Audit
         if: always()
         run: |
@@ -101,11 +102,11 @@ jobs:
             fi
 
             echo "------------------------------------------------------------"
-            echo "📉 FINAL FAILURE SUMMARY (Pytest Short-Trace)"
+            echo "📉 RE-RUNNING FAILED TEST FOR FINAL SIGNAL"
             echo "------------------------------------------------------------"
             
-            # 2. High-Signal Pytest Run (Quiet mode, only show failures)
-            pytest -s -q --tb=short --no-header tests/ || true
+            # This calls the variable defined at the top
+            $TEST_COMMAND || true
           fi
 
       - name: 📊 Audit Performance & Update Ledger
