@@ -2,6 +2,7 @@
 
 import numpy as np
 import pytest
+
 from src.common.elasticity import ElasticManager
 from src.common.field_schema import FI
 from src.common.simulation_context import SimulationContext
