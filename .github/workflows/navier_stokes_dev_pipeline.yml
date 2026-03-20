@@ -72,47 +72,23 @@ jobs:
 
       - name: 🧪 Run Logic & Scientific Verification
         run: |
-          # Structural Audit (Rule 4 Compliance)
-          echo "--- [DEBUG] Python test ---"
-          python3 -c "from tests.helpers.solver_step3_output_dummy import make_step3_output_dummy; \
-          from src.step3.ops.gradient import compute_local_gradient_p; \
-          from src.common.field_schema import FI; \
-          block = make_step3_output_dummy(); \
-          block.i_plus.set_field(FI.P_NEXT, 2.0); \
-          block.i_minus.set_field(FI.P_NEXT, 0.0); \
-          object.__setattr__(block, '_dx', 1.0); \
-          print(f'Calculated Gradient: {compute_local_gradient_p(block, FI.P_NEXT)}')"
-
-          python3 -c "from tests.helpers.solver_step3_output_dummy import make_step3_output_dummy; \
-          from src.step3.corrector import apply_local_velocity_correction; \
-          from src.common.field_schema import FI; \
-          block = make_step3_output_dummy(); \
-          block.center.fields_buffer.fill(0.0); \
-          object.__setattr__(block, '_dt', 0.1); \
-          object.__setattr__(block, '_rho', 1.0); \
-          object.__setattr__(block, '_dx', 1.0); \
-          block.center.set_field(FI.VX_STAR, 1.0); \
-          block.i_plus.set_field(FI.P_NEXT, 2.0); \
-          apply_local_velocity_correction(block); \
-          print(f'Final VX: {block.center.get_field(FI.VX)}')"
-
-          python3 -c "from tests.helpers.solver_step3_output_dummy import make_step3_output_dummy; \
-          b = make_step3_output_dummy(); \
-          print(f'Center Index: {b.center.index}'); \
-          print(f'I+ Index: {b.i_plus.index}'); \
-          print(f'I- Index: {b.i_minus.index}')"
-
-          python3 -c "from tests.helpers.solver_step3_output_dummy import make_step3_output_dummy; \
-          from src.common.field_schema import FI; \
-          b = make_step3_output_dummy(); \
-          b.i_plus.index = 11; b.center.index = 10; \
-          b.i_plus.set_field(FI.P_NEXT, 2.0); \
-          print(f'I+ Value: {b.i_plus.get_field(FI.P_NEXT)}'); \
-          print(f'Buffer raw at index 11: {b.center.fields_buffer[11, FI.P_NEXT]}')"
-
           # Run the test suite
           # pytest -s tests/ -vv --cov=src --cov-report=term-missing
           pytest -s tests/property_integrity/test_heavy_elasticity_lifecycle.py -vv
+       
+      - name: 🔍 Inspect Artifacts on Failure
+        if: failure()
+        run: |
+          echo "--- Searching for generated ZIPs ---"
+          find . -name "*.zip"
+          
+          # Attempt to list contents of the specific test zip
+          if [ -f "integration_input.zip" ]; then
+            echo "Listing integration_input.zip:"
+            unzip -l integration_input.zip
+          else
+            echo "integration_input.zip was NEVER CREATED."
+          fi
 
       - name: 📊 Audit Performance & Update Ledger
         if: always()
