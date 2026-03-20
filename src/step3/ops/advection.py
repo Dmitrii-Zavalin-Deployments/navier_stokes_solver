@@ -34,8 +34,8 @@ def compute_local_advection(block: StencilBlock, field_id: FI) -> float:
         df_dx = (f_ip - f_im) / (2.0 * block.dx)
         df_dy = (f_jp - f_jm) / (2.0 * block.dy)
         df_dz = (f_kp - f_km) / (2.0 * block.dz)
-    except ZeroDivisionError:
-        raise ValueError(f"Zero grid spacing detected at {block.center.i}, {block.center.j}")
+    except ZeroDivisionError as e:
+        raise ValueError(f"Zero grid spacing detected at {block.center.i}, {block.center.j}") from e
 
     # 2. Compute cell-centered velocities
     u_c = block.center.get_field(FI.VX)

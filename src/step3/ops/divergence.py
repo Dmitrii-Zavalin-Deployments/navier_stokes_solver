@@ -37,8 +37,8 @@ def compute_local_divergence_v_star(block: StencilBlock) -> float:
         div_x = (u_ip - u_im) / (2.0 * block.dx)
         div_y = (v_jp - v_jm) / (2.0 * block.dy)
         div_z = (w_kp - w_km) / (2.0 * block.dz)
-    except ZeroDivisionError:
-        raise ValueError(f"Zero grid spacing at ({block.center.i}, {block.center.j})")
+    except ZeroDivisionError as e:
+        raise ValueError(f"Zero grid spacing at ({block.center.i}, {block.center.j})") from e
     
     divergence_val = div_x + div_y + div_z
 
