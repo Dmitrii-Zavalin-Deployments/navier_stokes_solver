@@ -80,10 +80,16 @@ jobs:
         if: always()
         run: |
           if [[ "${{ job.status }}" == "success" ]]; then
-            echo "✅ No smoking gun detected. System state is nominal."
+            echo "✅ All systems nominal. No anomalies detected in solver lifecycle."
           else
-            echo "⚠️ Failure detected. Initiating Deep Forensic Audit..."
-            bash src/debug/smoking_gun_search.sh
+            echo "⚠️ CI Failure Detected. Initiating Deep Forensic Audit..."
+            # Ensure the script exists and is executable before running
+            if [ -f "src/debug/forensic_audit.sh" ]; then
+              bash src/debug/forensic_audit.sh
+            else
+              echo "❌ Critical: Diagnostic script 'src/debug/forensic_audit.sh' not found."
+              exit 1
+            fi
           fi
 
       - name: 📊 Audit Performance & Update Ledger
