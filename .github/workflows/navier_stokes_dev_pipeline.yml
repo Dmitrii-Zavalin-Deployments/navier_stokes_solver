@@ -117,6 +117,7 @@ jobs:
           exit 0
           EOF
             echo "🧹 Diagnostic script has been reset to Waiting mode."
+            exit 1
           fi
 
       - name: 📊 Audit Performance & Update Ledger
