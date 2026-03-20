@@ -18,7 +18,7 @@ def verify_foundation_integrity(state):
     if state.fields is None or state.fields.data is None:
         raise RuntimeError("POST FAILED: Fields buffer not initialized.")
         
-    print("🚀 POST: Initiating Pre-Flight Memory Integrity Check...")
+    # print("🚀 POST: Initiating Pre-Flight Memory Integrity Check...")
     
     # 1. Structural Synchronicity Check
     # We allow the stencil_matrix to be smaller than the buffer (to accommodate 
