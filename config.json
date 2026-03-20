@@ -1,8 +1,0 @@
-{
-  "dt_min_limit": 0.01,
-  "ppe_tolerance": 1e-6,
-  "ppe_atol": 1e-10,
-  "ppe_max_iter": 1000,
-  "ppe_omega": 1.1,
-  "divergence_threshold": 1e6
-}
