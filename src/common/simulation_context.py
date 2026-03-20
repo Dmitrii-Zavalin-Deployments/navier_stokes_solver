@@ -30,6 +30,6 @@ class SimulationContext:
         # Even if it's 'unchanged' elsewhere, it MUST exist here 
         # so Elasticity can compare self._dt against self.config.dt
         config_dict.pop("dt", None)
-        config = SolverConfig(dt=base_dt, **config_dict)
+        config = SolverConfig(**config_dict)
         
         return cls(input_data=input_data, config=config)
