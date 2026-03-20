@@ -123,8 +123,9 @@ class TestVerticalIntegrity:
         # 4. Execute Step 3 Orchestrator (Predictor Pass / is_first_pass=True)
         # Based on main_solver.py: orchestrate_step3(block, context, is_first_pass)
         actual_block, delta = orchestrate_step3(
-            block=sample_block, 
-            context=context, 
+            block=sample_block,
+            context=context,
+            elasticity=step2_state_dummy.elasticity,
             is_first_pass=True
         )
         
@@ -212,7 +213,7 @@ class TestVerticalIntegrity:
         # 2. SIMULATE ONE TIME-LOOP ITERATION (Rule 9: In-place mutation)
         # We process the entire matrix through Step 3 AND Step 4
         for block in state.stencil_matrix:
-            # A. Predictor Pass (Step 3)
+            block, _ = orchestrate_step3(block, context=context, elasticity=state.elasticity, is_first_pass=True)
             block, _ = orchestrate_step3(block, context=context, is_first_pass=True)
             
             # B. Boundary Enforcement (Step 4)
