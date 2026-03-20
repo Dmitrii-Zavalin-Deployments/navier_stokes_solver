@@ -61,6 +61,12 @@ class TestHeavyElasticityLifecycle:
             input_path.write_text(json.dumps(input_data))
             config_path.write_text(json.dumps(config_data))
 
+            with caplog.at_level(logging.WARNING):
+                # If you expect it to eventually fail due to extreme inputs:
+                with pytest.raises(RuntimeError) as excinfo:
+                    run_solver(input_filename)
+                assert "Solver cannot recover" in str(excinfo.value)
+
             # Set log level to capture ElasticManager warnings
             with caplog.at_level(logging.WARNING):
                 # 5. EXECUTE

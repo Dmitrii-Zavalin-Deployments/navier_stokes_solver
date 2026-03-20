@@ -76,19 +76,51 @@ jobs:
           # pytest -s tests/ -vv --cov=src --cov-report=term-missing
           pytest -s tests/property_integrity/test_heavy_elasticity_lifecycle.py -vv
        
-      - name: 🔍 Inspect Artifacts on Failure
+      - name: 🔍 Deep Forensic Audit on Failure
         if: failure()
         run: |
-          echo "--- Searching for generated ZIPs ---"
-          find . -name "*.zip"
+          echo "=== 1. FILE SYSTEM STATE ==="
+          echo "Current Directory: $(pwd)"
+          echo "Listing all ZIP files in workspace:"
+          find . -maxdepth 4 -name "*.zip"
           
-          # Attempt to list contents of the specific test zip
-          if [ -f "integration_input.zip" ]; then
-            echo "Listing integration_input.zip:"
-            unzip -l integration_input.zip
+          echo "=== 2. SOURCE CODE INTEGRITY (RUNNER VIEW) ==="
+          echo "Checking archive_service.py for writing logic:"
+          grep -nE "ZipFile|writestr|write|close" src/common/archive_service.py || echo "❌ NO ZIP LOGIC FOUND IN SOURCE"
+          
+          echo "Checking for the string 'simulation_state.json' in source:"
+          grep -rn "simulation_state.json" src/ || echo "❌ FILENAME NOT FOUND IN ANY SOURCE FILE"
+
+          echo "=== 3. DYNAMIC PATH ANALYSIS (PYTHON) ==="
+          python3 -c "
+          import os
+          from pathlib import Path
+          try:
+              from src.main_solver import BASE_DIR
+              print(f'Solver BASE_DIR: {BASE_DIR}')
+              data_dir = Path(BASE_DIR) / 'data' / 'testing-input-output'
+              print(f'Expected Output Dir: {data_dir}')
+              if data_dir.exists():
+                  print(f'Contents of Output Dir: {os.listdir(data_dir)}')
+              else:
+                  print('❌ Output Directory does not exist on disk.')
+          except Exception as e:
+              print(f'Error during path audit: {e}')
+          "
+
+          echo "=== 4. ZIP CONTENT INSPECTION ==="
+          # Find the most recently modified zip if integration_input.zip isn't there
+          ACTUAL_ZIP=$(find . -name "*.zip" | head -n 1)
+          if [ -n "$ACTUAL_ZIP" ]; then
+            echo "Inspecting $ACTUAL_ZIP:"
+            unzip -l "$ACTUAL_ZIP"
           else
-            echo "integration_input.zip was NEVER CREATED."
+            echo "❌ No ZIP files found anywhere to inspect."
           fi
+
+          echo "=== 5. SIMULATION LOG TAIL ==="
+          # Check if the solver actually finished or was killed
+          if [ -f "solver.log" ]; then tail -n 20 solver.log; fi
 
       - name: 📊 Audit Performance & Update Ledger
         if: always()
