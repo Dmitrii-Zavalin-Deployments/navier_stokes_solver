@@ -27,7 +27,8 @@ class TestHeavyElasticityLifecycle:
             "ppe_tolerance": 1e-4,
             "ppe_atol": 1e-6,
             "ppe_max_iter": 50,
-            "ppe_omega": 1.7       # Aggressive over-relaxation
+            "ppe_omega": 1.7,       # Aggressive over-relaxation
+            "divergence_threshold": 1e6
         }
 
         # 3. Input: High-velocity 3D grid to trigger ArithmeticError
