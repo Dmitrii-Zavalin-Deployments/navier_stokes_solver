@@ -84,11 +84,11 @@ jobs:
             echo "✅ All systems nominal. No anomalies detected in solver lifecycle."
             # Reset the audit script to a clean, dormant state on success
             cat <<EOF > src/debug/forensic_audit.sh
-          #!/bin/bash
-          # Description: Automated forensic audit for Navier-Stokes solver failures.
-          # Status: Dormant (All systems nominal)
-          exit 0
-          EOF
+            #!/bin/bash
+            # Description: Automated forensic audit for Navier-Stokes solver failures.
+            # Status: Dormant (All systems nominal)
+            exit 0
+            EOF
             chmod +x src/debug/forensic_audit.sh
             echo "🧹 Diagnostic script has been reset to Dormant mode."
           else
@@ -107,6 +107,15 @@ jobs:
             
             # This calls the variable defined at the top
             $TEST_COMMAND || true
+
+            # Cleanup the diagnostic file
+            # Note: EOF is shifted to the left margin to ensure shell compatibility
+            cat <<EOF > src/debug/forensic_audit.sh
+            #!/bin/bash
+            # Description: Automated forensic audit for Navier-Stokes solver failures.
+            # Status: Waiting for the next payload
+            exit 0
+            EOF
           fi
 
       - name: 📊 Audit Performance & Update Ledger
