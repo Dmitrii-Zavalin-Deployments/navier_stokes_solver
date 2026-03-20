@@ -2,7 +2,7 @@
 
 import numpy as np
 import pytest
-
+from src.common.elasticity import ElasticManager
 from src.common.field_schema import FI
 from src.common.simulation_context import SimulationContext
 from src.common.solver_config import SolverConfig
@@ -28,29 +28,29 @@ class TestStep3Initialization:
             dt=input_data.simulation_parameters.time_step
         )
         context = SimulationContext(input_data=input_data, config=config)
-        
+        elasticity = ElasticManager(config)
         state = orchestrate_step1(context)
         state = orchestrate_step2(state)
-        return state, context
+        return state, context, elasticity
 
     def test_ghost_cell_immunity(self, setup_state):
         """Rule 9: Ensure Step 3 logic ignores ghost cell pointers."""
-        state, context = setup_state
+        state, context, elasticity = setup_state
         ghost_block = state.stencil_matrix[0]
         
         # Access via public property (is_ghost) to respect __slots__ integrity
         ghost_block.center.is_ghost = True 
         
-        _, delta = orchestrate_step3(ghost_block, context, is_first_pass=False)
+        _, delta = orchestrate_step3(ghost_block, context, elasticity, is_first_pass=False)
         assert delta == 0.0, "Ghost cells must return 0 delta in projection."
 
     def test_foundation_mutation_consistency(self, setup_state):
         """Rule 9: Verify buffer mutation remains schema-compliant."""
-        state, context = setup_state
+        state, context, elasticity = setup_state
         block = state.stencil_matrix[len(state.stencil_matrix) // 2]
         
         # Execute corrector/synchronization step
-        orchestrate_step3(block, context, is_first_pass=False)
+        orchestrate_step3(block, context, elasticity, is_first_pass=False)
         
         # Verify schema integrity using FI
         assert block.center.get_field(FI.P) is not None, "Pressure field unreachable."
@@ -60,12 +60,12 @@ class TestStep3Initialization:
 
     def test_omega_parameter_ingress(self, setup_state):
         """Rule 4: Verify numerical parameter (omega) is sourced from context."""
-        state, context = setup_state
+        state, context, elasticity = setup_state
         # Inject custom omega to verify it propagates through the context
         context.config.ppe_omega = 1.5
         
         block = state.stencil_matrix[len(state.stencil_matrix) // 2]
         
         # Execute and check for execution path (Side effect validation)
-        _, delta = orchestrate_step3(block, context, is_first_pass=False)
+        _, delta = orchestrate_step3(block, context, elasticity, is_first_pass=False)
         assert isinstance(delta, float), "Orchestrator must return a scalar residual (delta)."
