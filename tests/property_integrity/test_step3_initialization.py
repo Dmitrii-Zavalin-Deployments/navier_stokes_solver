@@ -21,10 +21,11 @@ class TestStep3Initialization:
         input_data = create_validated_input(nx=4, ny=4, nz=4)
         # Deterministic Initialization: Explicit parameters required by Rule 5
         config = SolverConfig(
-            ppe_tolerance=1e-5, 
-            ppe_atol=1e-9, 
-            ppe_max_iter=100, 
-            ppe_omega=1.0
+            ppe_tolerance=1e-5,
+            ppe_atol=1e-9,
+            ppe_max_iter=100,
+            ppe_omega=1.0,
+            dt=input_data.simulation_parameters.time_step
         )
         context = SimulationContext(input_data=input_data, config=config)
         
