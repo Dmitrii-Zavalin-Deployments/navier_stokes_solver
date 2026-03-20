@@ -112,7 +112,7 @@ jobs:
 
           # Run the test suite
           # pytest -s tests/ -vv --cov=src --cov-report=term-missing
-          pytest -s tests/property_integrity/test_step1_initialization.py -vv
+          pytest -s tests/property_integrity/test_step4_initialization.py -vv
 
       - name: 📊 Audit Performance & Update Ledger
         if: always()
