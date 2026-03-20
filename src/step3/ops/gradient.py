@@ -32,7 +32,7 @@ def compute_local_gradient_p(block: StencilBlock, field_id: FI = FI.P) -> tuple[
         grad_x = (p_ip - p_im) / (2.0 * block.dx)
         grad_y = (p_jp - p_jm) / (2.0 * block.dy)
         grad_z = (p_kp - p_km) / (2.0 * block.dz)
-    except ZeroDivisionError as e:
+    except ZeroDivisionError:
         raise ValueError(f"Zero grid spacing at ({block.center.i}, {block.center.j})")
     
     grad = (grad_x, grad_y, grad_z)
