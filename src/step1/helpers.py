@@ -6,7 +6,7 @@ from src.common.grid_math import get_coords_from_index
 from src.common.solver_input import GridInput
 
 # Rule 7: Granular Traceability
-DEBUG = True
+DEBUG = False
 
 
 def generate_3d_masks(mask_data: list[int], grid: GridInput) -> tuple[np.ndarray, np.ndarray, np.ndarray]:

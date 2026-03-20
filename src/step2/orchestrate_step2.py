@@ -4,7 +4,7 @@ from src.common.solver_state import SolverState
 from src.step2.stencil_assembler import assemble_stencil_matrix
 
 # Rule 7: Granular Traceability
-DEBUG = True
+DEBUG = False
 
 def orchestrate_step2(state: SolverState) -> SolverState:
     """

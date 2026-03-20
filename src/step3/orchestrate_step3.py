@@ -10,7 +10,7 @@ from src.step3.ppe_solver import solve_pressure_poisson_step
 from src.step3.predictor import compute_local_predictor_step
 
 # Rule 7: Granular Traceability for GitHub Actions
-DEBUG = True
+DEBUG = False
 
 def orchestrate_step3(
     block: StencilBlock, 

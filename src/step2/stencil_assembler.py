@@ -6,7 +6,7 @@ from src.common.stencil_block import StencilBlock
 from .factory import get_cell
 
 # Rule 7: Granular Traceability
-DEBUG = True
+DEBUG = False
 
 class CellRegistry:
     def __init__(self, nx: int, ny: int, nz: int):

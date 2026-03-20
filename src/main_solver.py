@@ -16,7 +16,7 @@ from src.step4.orchestrate_step4 import orchestrate_step4
 from src.step5.orchestrate_step5 import orchestrate_step5
 
 # Global Debug Toggle: Rule 7 requires high-res logging for math
-DEBUG = True
+DEBUG = False
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 def _load_simulation_context(input_path: str) -> SimulationContext:

@@ -23,7 +23,7 @@ from src.common.solver_state import (
 from .helpers import generate_3d_masks
 
 # Rule 7: Granular Traceability
-DEBUG = True
+DEBUG = False
 
 def orchestrate_step1(context: SimulationContext) -> SolverState:
     """
