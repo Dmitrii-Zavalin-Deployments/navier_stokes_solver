@@ -26,13 +26,14 @@ class TestStep4Initialization:
         Ensures the orchestrator handles the SSoT components without failure.
         """
         # Deterministic Initialization: Explicit parameters required
+        input_data = create_validated_input(nx=4, ny=4, nz=4)
         config = SolverConfig(
             ppe_tolerance=1e-6, 
             ppe_atol=1e-9, 
             ppe_max_iter=1000, 
-            ppe_omega=1.0
+            ppe_omega=1.0,
+            dt=input_data.simulation_parameters.time_step
         )
-        input_data = create_validated_input(nx=4, ny=4, nz=4)
         # Fixed: Removed unused 'context' variable assignment to satisfy Ruff F841
         SimulationContext(input_data=input_data, config=config)
         
