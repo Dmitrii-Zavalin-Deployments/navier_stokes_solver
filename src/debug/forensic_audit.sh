@@ -1,13 +1,14 @@
-# 1. Check the Caller: See how SimulationContext is still trying to inject 'dt'
-grep -n "dt=" src/common/simulation_context.py
+# 1. Confirm the illegal assignment in Config
+cat -n src/common/solver_config.py | sed -n '20,30p'
 
-# 2. Check the Constructor: See the forbidden 'self.dt' assignment
-cat -n src/common/solver_config.py | head -n 30
+# 2. Confirm the unused variable in Context
+cat -n src/common/simulation_context.py | sed -n '25,35p'
 
-# 3. Check the Base: Verify why Memory Leak Prevention triggered
-cat -n src/common/base_container.py | sed -n '80,95p'
+# 3. Verify Slots in Config
+grep "__slots__" -A 5 src/common/solver_config.py
 
-# Fix 1: Update SolverConfig to stop accepting/setting 'dt'
+# 1. Strip 'dt' from SolverConfig __init__ (Lines 20-30)
+# This removes the attempt to set an unslotted attribute.
 cat << 'EOF' > src/common/solver_config.py
 from dataclasses import dataclass
 from src.common.base_container import ValidatedContainer
@@ -16,7 +17,7 @@ from src.common.base_container import ValidatedContainer
 class SolverConfig(ValidatedContainer):
     """
     Static numerical configuration for the Navier-Stokes solver.
-    Rule 4 & 0: ONLY solver-static limits. NO 'dt'.
+    Rule 4 & 0: ONLY solver-static limits. NO 'dt' here.
     """
     __slots__ = [
         '_ppe_tolerance', '_ppe_atol', '_ppe_max_iter', 
@@ -24,7 +25,7 @@ class SolverConfig(ValidatedContainer):
     ]
 
     def __init__(self, **kwargs):
-        # Rule 5: Explicit initialization. We IGNORE 'dt' if passed.
+        # We explicitly ignore 'dt' if it is passed in the kwargs
         self.dt_min_limit = kwargs.get('dt_min_limit')
         self.ppe_tolerance = kwargs.get('ppe_tolerance')
         self.ppe_atol = kwargs.get('ppe_atol')
@@ -32,13 +33,10 @@ class SolverConfig(ValidatedContainer):
         self.ppe_omega = kwargs.get('ppe_omega')
         self.divergence_threshold = kwargs.get('divergence_threshold')
         
-        required_fields = [
-            'dt_min_limit', 'ppe_tolerance', 'ppe_atol', 
-            'ppe_max_iter', 'ppe_omega', 'divergence_threshold'
-        ]
-        for field in required_fields:
+        # Rule 5: Explicit validation
+        for field in [f.strip('_') for f in self.__slots__]:
             if getattr(self, field) is None:
-                raise AttributeError(f"CONTRACT VIOLATION: '{field}' must be in JSON.")
+                raise AttributeError(f"CONTRACT VIOLATION: '{field}' missing in JSON.")
 
     @property
     def dt_min_limit(self) -> float: return self._get_safe("dt_min_limit")
@@ -71,8 +69,10 @@ class SolverConfig(ValidatedContainer):
     def divergence_threshold(self, v: float): self._set_safe("divergence_threshold", v, float)
 EOF
 
-# Fix 2: Remove the dt injection from SimulationContext
+# 2. Fix SimulationContext: Remove the unused base_dt assignment and the 'dt=' injection
+# This satisfies Ruff and prevents the AttributeError.
+sed -i '/base_dt = input_data.simulation_parameters.time_step/d' src/common/simulation_context.py
 sed -i 's/config = SolverConfig(dt=base_dt, \*\*config_dict)/config = SolverConfig(\*\*config_dict)/' src/common/simulation_context.py
 
-# Fix 3: Normalize whitespace for Ruff
+# 3. Final Lint & Format Check
 ruff check src/common/solver_config.py src/common/simulation_context.py --fix
