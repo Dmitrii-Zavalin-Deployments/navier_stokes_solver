@@ -1,6 +1,7 @@
 import json
-from pathlib import Path
 import shutil
+from pathlib import Path
+
 from src.main_solver import BASE_DIR, run_solver
 
 
