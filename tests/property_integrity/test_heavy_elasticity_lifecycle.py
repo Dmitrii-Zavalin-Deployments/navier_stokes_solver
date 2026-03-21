@@ -28,6 +28,7 @@ class TestHeavyElasticityLifecycle:
         input_path = Path(BASE_DIR) / input_filename
         config_path = Path(BASE_DIR) / config_filename
 
+        test_data_dir = Path(BASE_DIR) / "data" / "testing-input-output"
         production_output_dir = Path(BASE_DIR) / "output"
         
         # 2. Config: Numerical Solver settings (Rule 5 compliance)

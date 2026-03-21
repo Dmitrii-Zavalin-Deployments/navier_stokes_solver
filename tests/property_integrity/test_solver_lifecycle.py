@@ -19,6 +19,7 @@ class TestSolverLifecycle:
         input_path = Path(BASE_DIR) / test_filename
         config_path = Path(BASE_DIR) / config_filename
 
+        test_data_dir = Path(BASE_DIR) / "data" / "testing-input-output"
         production_output_dir = Path(BASE_DIR) / "output"
         
         # 2. Payload A: Numerical Configuration (Required for Elasticity)
