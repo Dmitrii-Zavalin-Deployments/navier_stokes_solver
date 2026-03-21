@@ -23,7 +23,6 @@ DEBUG = False
 logger = logging.getLogger("Solver.Main")
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
 def _load_simulation_context(input_path: str) -> SimulationContext:
     """Assembles physical input and numerical config into a unified context."""
     full_input_path = BASE_DIR / input_path
@@ -41,13 +40,11 @@ def _load_simulation_context(input_path: str) -> SimulationContext:
 
     return SimulationContext.create(input_data, config_data)
 
-
 def run_solver(input_path: str) -> str:
     """Main Orchestrator with Unified Elastic Stability."""
-
     context = _load_simulation_context(input_path)
 
-    # 1. PRE-EXECUTION FIREWALL: Validate Input Schema
+    # 1. VALIDATE INPUT
     SCHEMA_PATH = BASE_DIR / "schema/solver_input_schema.json"
     try:
         with open(SCHEMA_PATH) as f:
@@ -81,52 +78,48 @@ def run_solver(input_path: str) -> str:
 
     # 5. MAIN EXECUTION LOOP
     while state.ready_for_time_loop:
-        # A. PREDICTOR PASS
-        for block in state.stencil_matrix:
-            orchestrate_step3(block, context, elasticity, is_first_pass=True)
-            orchestrate_step4(block, context, state.grid, state.boundary_conditions)
-
-        # B. PPE ITERATION
-        for _ in range(elasticity.max_iter):
-            max_delta = 0.0
+        try:
+            # A. PREDICTOR PASS
             for block in state.stencil_matrix:
-                _, delta = orchestrate_step3(block, context, elasticity, is_first_pass=False)
+                orchestrate_step3(block, context, elasticity, is_first_pass=True)
                 orchestrate_step4(block, context, state.grid, state.boundary_conditions)
-                max_delta = max(max_delta, delta)
 
-            if max_delta < context.config.ppe_tolerance:
-                break
+            # B. PPE ITERATION
+            for _ in range(elasticity.max_iter):
+                max_delta = 0.0
+                for block in state.stencil_matrix:
+                    _, delta = orchestrate_step3(block, context, elasticity, is_first_pass=False)
+                    orchestrate_step4(block, context, state.grid, state.boundary_conditions)
+                    max_delta = max(max_delta, delta)
 
-        # C. UNIFIED GOVERNOR: Validate, Commit, and Recovery Logic
-        # Returns True to advance, False to retry (after internal apply_panic_mode)
-        # Raises RuntimeError internally if dt hits floor.
-        if not elasticity.sync_state(state):
+                if max_delta < context.config.ppe_tolerance:
+                    break
+
+            # SUCCESS PATH
+            elasticity.stabilization(is_needed=False)
+            
+            # C. ADVANCE
+            state.iteration += 1
+            state.time += elasticity.dt
+            state = orchestrate_step5(state, context)
+
+            if DEBUG and state.iteration % 10 == 0:
+                print(f"DEBUG [Main]: Step {state.iteration} | Time {state.time:.4f} | dt {elasticity.dt:.2e}")
+
+            if state.time >= context.input_data.simulation_parameters.total_time:
+                state.ready_for_time_loop = False
+
+        except ArithmeticError:
+            # FAILURE PATH: Update dt and retry the SAME time step
+            elasticity.stabilization(is_needed=True)
             continue
 
-        # D. ADVANCE (Reached only on valid success path)
-        state.iteration += 1
-        state.time += elasticity.dt
-        state = orchestrate_step5(state, context)
-
-        if DEBUG and state.iteration % 10 == 0:
-            print(
-                f"DEBUG [Main]: Step {state.iteration} | "
-                f"Time {state.time:.4f} | dt {elasticity.dt:.2e}"
-            )
-
-        # Termination check
-        if state.time >= context.input_data.simulation_parameters.total_time:
-            state.ready_for_time_loop = False
-
-    # 6. ARCHIVING TRIGGER
     return archive_simulation_artifacts(state)
-
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Usage: python src/main_solver.py <input_json_path>")
         sys.exit(1)
-
     try:
         zip_path = run_solver(sys.argv[1])
         print(f"Pipeline complete. Artifacts archived at: {zip_path}")
@@ -134,6 +127,5 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"FATAL PIPELINE ERROR: {str(e)}", file=sys.stderr)
         import traceback
-
         traceback.print_exc()
         sys.exit(1)

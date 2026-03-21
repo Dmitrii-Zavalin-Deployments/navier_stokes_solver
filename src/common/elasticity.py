@@ -1,70 +1,52 @@
 import logging
-
 import numpy as np
-
 from src.common.field_schema import FI
 
-
 class ElasticManager:
-    __slots__ = ['config', 'logger', '_dt', '_omega', '_max_iter', 'is_in_panic', 'dt_floor', '_target_dt', '_iteration']
+    __slots__ = ['config', 'logger', '_dt', 'dt_floor', '_iteration', '_runs', '_dt_range', '_omega']
 
     def __init__(self, config, initial_dt: float):
         self.config = config
         self.logger = logging.getLogger("Elasticity")
-        self._dt = initial_dt 
-        self._target_dt = initial_dt
-        self.dt_floor = self.config.dt_min_limit 
-        self._omega = self.config.ppe_omega
-        self._max_iter = self.config.ppe_max_iter
-        self.is_in_panic = False
-        self._iteration = 0
-
-    @property
-    def dt(self) -> float: return self._dt
-    @property
-    def omega(self) -> float: return self._omega
-    @property
-    def max_iter(self) -> int: return self._max_iter
-
-    def sync_state(self, state) -> bool:
-        limit = self.config.divergence_threshold 
-        audit_fields = [FI.VX_STAR, FI.VY_STAR, FI.VZ_STAR, FI.P_NEXT]
-        data_slice = state.fields.data[:, audit_fields]
         
-        # 1. VALIDATE
-        is_sane = np.isfinite(data_slice).all() and \
-                  data_slice.max() <= limit and \
-                  data_slice.min() >= -limit
+        # Current operating states
+        self._dt = initial_dt 
+        self.dt_floor = self.config.dt_min_limit
+        self._omega = self.config.ppe_omega
+        self._iteration = 0
+        self._runs = 10
+        
+        # Linear range from initial_dt down to dt_floor
+        self._dt_range = [initial_dt + i * (self.dt_floor - initial_dt) / self._runs for i in range(self._runs + 1)]
 
-        if not is_sane:
-            # 2. TRIGGER PANIC
-            self.is_in_panic = True
-            self._iteration = 0 # Reset streak immediately
-            self._dt *= 0.5
-            
-            if self._dt < self.dt_floor:
-                raise RuntimeError(f"FATAL: dt ({self._dt:.2e}) dropped below floor {self.dt_floor:.2e}")
-            
-            self._omega = max(0.5, self._omega - 0.2)
-            self._max_iter = 5000
-            self.logger.warning(f"PANIC: dt reduced to {self._dt:.2e}. Retrying step...")
-            return False
+    @property
+    def dt(self) -> float: 
+        return self._dt
+    
+    @property
+    def omega(self) -> float: 
+        return self._omega
 
-        # 3. COMMIT (Success Path)
-        state.fields.data[:, [FI.VX, FI.VY, FI.VZ]] = state.fields.data[:, [FI.VX_STAR, FI.VY_STAR, FI.VZ_STAR]]
-        state.fields.data[:, FI.P] = state.fields.data[:, FI.P_NEXT]
+    @property
+    def max_iter(self) -> int:
+        # Boost iterations during stabilized retries to help convergence
+        return 5000 if self._iteration > 0 else self.config.ppe_max_iter
+
+    def stabilization(self, is_needed: bool) -> None:
+        if not is_needed:
+            # Success path: Reset to full speed
+            self._iteration = 0
+            self._dt = self._dt_range[self._iteration]
+            return
+
+        # Failure path: Step down the dt range
+        if self._iteration >= self._runs:
+            # Already at dt_floor and still failing
+            raise RuntimeError(
+                f"Not found stable run within dt = {self._dt:.2e} and dt_floor = {self.dt_floor:.2e}. "
+                "Update config and restart the run."
+            )
         
         self._iteration += 1
-        
-        # 4. CONSERVATIVE RECOVERY
-        # We only start recovery if we have 10 (increased from 5) stable steps
-        if self.is_in_panic and self._iteration >= 10:
-            # Restore standard PPE performance immediately once stable
-            self._max_iter = self.config.ppe_max_iter
-            
-            if self._dt < self._target_dt:
-                self._dt = min(self._target_dt, self._dt * 1.05)
-                self._omega = min(self.config.ppe_omega, self._omega + 0.02)
-            else:
-                self.is_in_panic = False
-        return True
+        self._dt = self._dt_range[self._iteration]
+        self.logger.warning(f"Instability detected. Reducing dt to {self._dt:.2e} (Attempt {self._iteration}/{self._runs})")
