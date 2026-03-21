@@ -1,8 +1,10 @@
 # tests/common/test_elasticity_manager.py
 
-import pytest
-import numpy as np
 from types import SimpleNamespace
+
+import numpy as np
+import pytest
+
 from src.common.elasticity import ElasticManager
 from src.common.field_schema import FI
 
