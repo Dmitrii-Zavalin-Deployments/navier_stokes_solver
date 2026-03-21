@@ -2,11 +2,12 @@
 
 import json
 import logging
-import zipfile
 from pathlib import Path
+
 import pytest
 
 from src.main_solver import BASE_DIR, run_solver
+
 
 class TestHeavyElasticityLifecycle:
     def test_numerical_stabilization_and_terminal_failure(self, caplog):
