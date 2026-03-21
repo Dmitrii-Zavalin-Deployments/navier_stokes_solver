@@ -22,13 +22,6 @@ class SimulationContext:
         # 1. Load physical data
         input_data = SolverInput.from_dict(input_dict)
         
-        # 2. Extract the base time_step from physical input
-        # This becomes the 'Target DT' for the ElasticManager
-        input_data.simulation_parameters.time_step
-        
-        # 3. Inject it into the numerical config
-        # Even if it's 'unchanged' elsewhere, it MUST exist here 
-        # so Elasticity can compare self._dt against self.config.dt
         config_dict.pop("dt", None)
         config = SolverConfig(**config_dict)
         
