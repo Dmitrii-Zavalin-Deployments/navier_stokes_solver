@@ -30,7 +30,7 @@ class TestHeavyElasticityLifecycle:
         config_path = Path(BASE_DIR) / config_filename
 
         production_output_dir = Path(BASE_DIR) / "data" / "testing-input-output"
-        temporary_output_dir = Path(BASE_DIR) / "output"
+        Path(BASE_DIR) / "output"
         
         # 2. Config: Numerical Solver settings (Rule 5 compliance)
         # Note: dt is NOT here. It is injected from the simulation input.
