@@ -98,38 +98,28 @@ class TestHeavyElasticityLifecycle:
                     assert len(data_array) > 0, "ARCHIVE FAIL: State contains no field data."
 
         finally:
-            # 7. PURGE: Universal Cleanup (Rule 2: Zero Debt)
-            if input_path.exists():
-                input_path.unlink()
+            # A. Clean Config/Input
+            if input_path.exists(): input_path.unlink()
+            if config_path.exists(): config_path.unlink()
             
-            if config_path.exists():
-                config_path.unlink()
-            
-            if output_dir.exists():
-                output_path = Path(output_dir)
-                    for item in output_path.iterdir():
-                        if item.name == ".gitkeep":
-                            continue
-
+            # B. Clean Test Data Dir (Preserve .gitkeep)
+            if test_data_dir.exists():
+                for item in test_data_dir.iterdir():
+                    if item.name != ".gitkeep":
                         if item.is_dir():
                             shutil.rmtree(item)
                         else:
                             item.unlink()
+                print(f"\n[Sanitization] Cleaned {test_data_dir.name} (kept .gitkeep)")
 
-                print(f"\n[Sanitization] Purged directory: {output_dir.name}")
+            # C. Kill the rogue 'output/' directory entirely
+            if production_output_dir.exists():
+                shutil.rmtree(production_output_dir)
+                print(f"\n[Sanitization] Purged rogue directory: {production_output_dir.name}")
 
-           if temporary_output_dir.exists():
-                shutil.rmtree(temporary_output_dir)
-                print(f"\n[Sanitization] Removed directory and all contents: {temporary_output_dir.name}")
+            # D. FINAL AUDIT
+            if test_data_dir.exists():
+                remaining = [p.name for p in test_data_dir.iterdir() if p.name != ".gitkeep"]
+                assert not remaining, f"CLEANUP FAILURE: Found rogue files: {remaining}"
             
-            # 8. FINAL AUDIT: Assert the folder is 100% clean
-
-            remaining = [p for p in temporary_output_dir.iterdir() if p.name != ".gitkeep"]
-            assert not remaining, (
-                f"CLEANUP FAILURE: unexpected items in {temporary_output_dir}: "
-                f"{[p.name for p in remaining]}"
-            )
-
-            assert not temporary_output_dir.exists(), (
-                f"CLEANUP FAILURE: directory was not deleted: {temporary_output_dir}"
-            )
+            assert not production_output_dir.exists(), "CLEANUP FAILURE: 'output/' folder still exists."
