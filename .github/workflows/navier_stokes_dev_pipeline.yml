@@ -135,14 +135,14 @@ jobs:
           # 2. Define the new entry & identify branch
           RUN_DATE=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
           STATUS="${{ job.status }}"
-          CURRENT_BRANCH=${GITHUB_REF##*/}  # Extracts 'development' from 'refs/heads/development'
+          CURRENT_BRANCH=${GITHUB_REF##*/}
 
-          # Note: We calculate duration more reliably here
+          # Duration and Resource Calculation
           DURATION_SEC=$(( $(date +%s) - $(date -d "${{ github.event.repository.pushed_at }}" +%s 2>/dev/null || date +%s) ))
           CPU_LOAD=$(top -bn1 | grep "Cpu(s)" | awk '{print $2 + $4 "%"}')
           MEM_USAGE=$(free -m | awk '/Mem:/ { print $3 "/" $2 "MB" }')
 
-          # 3. Create the new entry block (Now with Branch Name)
+          # 3. Create the new entry block
           NEW_ENTRY=$(cat <<EOF
           ### Audit: $RUN_DATE
           - **Branch:** \`$CURRENT_BRANCH\`
@@ -153,35 +153,41 @@ jobs:
           EOF
           )
 
-          # 4. Prepend to file (Newest on top)
-          # We keep the Header, then inject the new entry, then append the old content
-          echo "# 🌊 Navier–Stokes Performance Audit Ledger" > performance_audit.md
-          echo "$NEW_ENTRY" >> performance_audit.md
-          # Append everything after the first line of the old file (skipping the old header)
-          [ -f old_audit.md ] && tail -n +2 old_audit.md >> performance_audit.md
-          git add performance_audit.md
-
-          # 5. Handle Branch-Specific Logic
-          CURRENT_BRANCH=${GITHUB_REF##*/}
+          # 4. Update Ledger (Prepend logic)
+          # We rename the existing file to 'old_audit.md' temporarily to handle the merge
+          [ -f performance_audit.md ] && mv performance_audit.md old_audit.md
           
+          echo "# 🌊 Navier–Stokes Performance Audit Ledger" > performance_audit.md
+          echo -e "$NEW_ENTRY\n" >> performance_audit.md
+          
+          # Append old content (skipping its header) if it existed
+          [ -f old_audit.md ] && tail -n +2 old_audit.md >> performance_audit.md
+          rm -f old_audit.md
+
+          # 5. Handle Branch-Specific Logic with Anti-Deletion Shield
           if [ "$CURRENT_BRANCH" == "$AUTO_COMMIT_BRANCH" ]; then
-            echo "⚡ AUTO-SYNC ACTIVE: Staging all repository changes on '$CURRENT_BRANCH'..."
+            echo "⚡ PROTECTED AUTO-SYNC: Staging New/Modified files (Deletions Blocked)..."
             
-            # Identify all changed files for the commit message
-            UPDATED_FILES=$(git status --porcelain | awk '{print $2}' | tr '\n' ' ')
+            # Rule: Stage only New (Untracked) and Modified files. 
+            # This ensures 'git rm' is never accidentally triggered by the CI.
+            git ls-files --others --modified --exclude-standard -z | xargs -0 -r git add
+            # Explicitly add the ledger since it might be new or modified
+            git add performance_audit.md
+            
+            # Identify what was actually staged for the commit message
+            UPDATED_FILES=$(git diff --name-only --cached | tr '\n' ' ')
             
             if [ -n "$UPDATED_FILES" ]; then
-              git add .
-              git commit -m "📊 audit & sync: [${{ job.status }}] updated files: $UPDATED_FILES"
+              git commit -m "📊 audit & sync [$CURRENT_BRANCH]: updated $UPDATED_FILES"
               git push origin HEAD || echo "Push skipped: Concurrent push detected."
             else
-              echo "✅ No changes to sync."
+              echo "✅ No changes to sync (or only deletions detected, which were ignored)."
             fi
           else
             echo "🛡️ SAFE MODE: Only committing Performance Ledger on '$CURRENT_BRANCH'."
-            
+            git add performance_audit.md
             if [ -n "$(git status --porcelain performance_audit.md)" ]; then
-              git commit -m "📊 audit: update performance ledger"
+              git commit -m "📊 audit [$CURRENT_BRANCH]: update performance ledger"
               git push origin HEAD || echo "Push skipped: Concurrent push detected."
             fi
           fi
