@@ -59,13 +59,13 @@ class ElasticManager:
         # 4. CONSERVATIVE RECOVERY
         # We only start recovery if we have 10 (increased from 5) stable steps
         if self.is_in_panic and self._iteration >= 10:
+            # Restore standard PPE performance immediately once stable
+            self._max_iter = self.config.ppe_max_iter
+            
             if self._dt < self._target_dt:
-                # Recover slower (1.05x instead of 1.1x) to prevent overshooting
                 self._dt = min(self._target_dt, self._dt * 1.05)
                 self._omega = min(self.config.ppe_omega, self._omega + 0.02)
-                self._iteration = 0 
+                self._iteration = 0
             else:
                 self.is_in_panic = False
-                self._max_iter = self.config.ppe_max_iter
-        
         return True
