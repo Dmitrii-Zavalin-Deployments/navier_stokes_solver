@@ -3,10 +3,6 @@
 import json
 import logging
 import sys
-
-import numpy as np
-
-np.seterr(all="raise")
 from pathlib import Path
 
 import jsonschema
