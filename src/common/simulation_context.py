@@ -1,6 +1,8 @@
 from dataclasses import dataclass
+
 from src.common.solver_config import SolverConfig
 from src.common.solver_input import SolverInput
+
 
 @dataclass
 class SimulationContext:
