@@ -142,3 +142,46 @@ def test_p_next_audit(config, state):
     state.fields.data[:, FI.P_NEXT] = 1e9 # Divergent pressure
     
     assert manager.sync_state(state) is False
+
+def test_state_commitment_on_success(config, state):
+    """Ensures intermediate fields are actually copied to primary fields on success."""
+    manager = ElasticManager(config, initial_dt=0.5)
+    trigger_stability(state)
+    
+    # Set unique values to verify copy
+    state.fields.data[:, FI.VX_STAR] = 1.23
+    state.fields.data[:, FI.P_NEXT] = 4.56
+    
+    success = manager.sync_state(state)
+    
+    assert success is True
+    assert np.all(state.fields.data[:, FI.VX] == 1.23)
+    assert np.all(state.fields.data[:, FI.P] == 4.56)
+
+def test_omega_floor_limit(config, state):
+    """Ensures omega never drops below the hardcoded 0.5 limit."""
+    manager = ElasticManager(config, initial_dt=0.5)
+    trigger_instability(state)
+    
+    # Force multiple panics
+    for _ in range(10):
+        manager.sync_state(state)
+        
+    assert manager.omega == 0.5 # Should not be 1.7 - (10 * 0.2) = -0.3
+
+def test_dt_recovery_clamping(config, state):
+    """Ensures dt never exceeds the initial target_dt during recovery."""
+    target = 0.5
+    manager = ElasticManager(config, initial_dt=target)
+    
+    # 1. Trigger Panic to drop dt
+    trigger_instability(state)
+    manager.sync_state(state) 
+    assert manager.dt < target
+    
+    # 2. Simulate long-term stability
+    trigger_stability(state)
+    for _ in range(100): # More than enough to recover
+        manager.sync_state(state)
+        
+    assert manager.dt == target # Must be exactly target, not higher
