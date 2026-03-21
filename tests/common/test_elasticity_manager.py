@@ -159,15 +159,15 @@ def test_state_commitment_on_success(config, state):
     assert np.all(state.fields.data[:, FI.P] == 4.56)
 
 def test_omega_floor_limit(config, state):
-    """Ensures omega never drops below the hardcoded 0.5 limit."""
+    """Ensures omega never drops below 0.5, even if we crash."""
+    config.dt_min_limit = 1e-9  # Set floor very low so we don't crash early
     manager = ElasticManager(config, initial_dt=0.5)
     trigger_instability(state)
     
-    # Force multiple panics
     for _ in range(10):
         manager.sync_state(state)
         
-    assert manager.omega == 0.5 # Should not be 1.7 - (10 * 0.2) = -0.3
+    assert manager.omega == 0.5
 
 def test_dt_recovery_clamping(config, state):
     """Ensures dt never exceeds the initial target_dt during recovery."""

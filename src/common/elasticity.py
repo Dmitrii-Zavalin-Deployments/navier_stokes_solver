@@ -65,7 +65,6 @@ class ElasticManager:
             if self._dt < self._target_dt:
                 self._dt = min(self._target_dt, self._dt * 1.05)
                 self._omega = min(self.config.ppe_omega, self._omega + 0.02)
-                self._iteration = 0
             else:
                 self.is_in_panic = False
         return True
