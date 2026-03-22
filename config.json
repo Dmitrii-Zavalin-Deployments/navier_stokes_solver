@@ -1,1 +1,7 @@
-{"dt_min_limit": 0.0001, "ppe_tolerance": 0.0001, "ppe_max_iter": 20, "ppe_omega": 1.7}
+{
+    "dt_min_limit": 0.0001,
+    "ppe_tolerance": 0.0001,
+    "ppe_max_iter": 20,
+    "ppe_omega": 1.7,
+    "ppe_max_retries": 10
+}
