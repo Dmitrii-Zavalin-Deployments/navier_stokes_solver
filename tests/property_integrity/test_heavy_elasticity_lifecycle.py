@@ -79,15 +79,15 @@ class TestHeavyElasticityLifecycle:
                 with archive.open(csv_files[-1]) as f:
                     header = f.read(8)
                     assert header.startswith(b'\x89HDF'), 'Foundation Error: Snapshot is not a valid HDF5 binary'
-                    # Rule 7: Finalize Binary Integrity Check
-                    assert len(f.read()) > 0, 'Foundation Error: HDF5 Payload is empty'
+                    # Rule 9: Structural Foundation Audit
+                    import h5py
+                    from io import BytesIO
+                    # Re-verify internal H5 integrity by attempting a structural peek
+                    f.seek(0)
+                    with h5py.File(BytesIO(f.read()), 'r') as h5_audit:
+                        assert 'vx' in h5_audit.keys(), 'Foundation Error: Missing VX dataset'
+                        assert h5_audit.attrs['iteration'] >= 0
                     
-                    # Numerical Sanity check (Phase C, Rule 7)
-
-                    # Physics Heartbeat
-                    lines = content.strip().split('\n')
-                    header = lines[0].split(',')
-                    u_idx = header.index('u')
                     
                     # Extract velocities using list comprehension (Rule 0: Logic efficiency)
                     velocities = [float(row.split(',')[u_idx]) for row in lines[1:]]
