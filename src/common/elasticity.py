@@ -2,6 +2,7 @@
 
 import logging
 
+
 class ElasticManager:
     __slots__ = ['config', 'logger', '_dt', 'dt_floor', '_iteration', '_runs', '_dt_range']
 

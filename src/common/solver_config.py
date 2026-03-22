@@ -1,7 +1,9 @@
 # src/common/solver_config.py
 
 from dataclasses import dataclass
+
 from src.common.base_container import ValidatedContainer
+
 
 @dataclass
 class SolverConfig(ValidatedContainer):
