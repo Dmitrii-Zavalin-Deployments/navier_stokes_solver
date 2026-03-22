@@ -98,6 +98,10 @@ def run_solver(input_path: str) -> str:
             # C. ADVANCE
             state.iteration += 1
             state.time += elasticity.dt
+            
+            # SUCCESS PATH - Rule 9: Commit STAR/NEXT fields to Foundation before Archiving
+            elasticity.stabilization(is_needed=False, state=state)
+
             state = orchestrate_step5(state, context)
 
             if DEBUG and state.iteration % 10 == 0:
@@ -105,13 +109,10 @@ def run_solver(input_path: str) -> str:
 
             if state.time >= context.input_data.simulation_parameters.total_time:
                 state.ready_for_time_loop = False
-            
-            # SUCCESS PATH
-            elasticity.stabilization(is_needed=False)
 
         except ArithmeticError:
             # FAILURE PATH: Update dt and retry the SAME time step
-            elasticity.stabilization(is_needed=True)
+            elasticity.stabilization(is_needed=True, state=state)
 
     return archive_simulation_artifacts(state)
 

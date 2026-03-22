@@ -1,7 +1,8 @@
 # src/common/elasticity.py
 
 import logging
-
+from src.common.field_schema import FI
+from src.common.solver_state import SolverState
 
 class ElasticManager:
     __slots__ = ['config', 'logger', '_dt', 'dt_floor', '_iteration', '_runs', '_dt_range']
@@ -27,8 +28,34 @@ class ElasticManager:
     def dt(self) -> float: 
         return self._dt
 
-    def stabilization(self, is_needed: bool) -> None:
+    def validate_and_commit(self, state: SolverState) -> None:
+        """
+        Rule 9: Unified Data Commitment.
+        Optimized via Foundation-level bulk transfer to maintain O(N) scaling.
+        """
+        # Access the raw NumPy buffer from the state's FieldManager/Foundation
+        data = state.fields.data 
+        
+        # Bulk commit using the FI Enum-locked mapping
+        # This is significantly faster than an object-based loop
+        data[:, FI.VX] = data[:, FI.VX_STAR]
+        data[:, FI.VY] = data[:, FI.VY_STAR]
+        data[:, FI.VZ] = data[:, FI.VZ_STAR]
+        data[:, FI.P] = data[:, FI.P_NEXT]
+
+    def stabilization(self, is_needed: bool, state: SolverState) -> None:
+        """
+        Orchestrates time-step recovery and data commitment.
+        
+        Rule 5 & 9: Explicit State commitment. 
+        We do not allow a 'None' state; the solver must fail if the 
+        Foundation-to-Logic bridge is missing.
+        """
         if not is_needed:
+            # Rule 9: Unified Data Commitment via Foundation bulk transfer
+            # This must happen before resetting the iteration/dt logic
+            self.validate_and_commit(state)
+
             # Success: Reset to full speed
             self._iteration = 0
             self._dt = self._dt_range[self._iteration]
@@ -37,10 +64,10 @@ class ElasticManager:
         if self._iteration >= self._runs:
             raise RuntimeError(
                 f"Unstable: reached dt_floor = {self.dt_floor:.2e}. "
-                f"Exhausted {self._runs} retries. Update the run configs and restart the solver"
+                f"Exhausted {self._runs} retries. Update the run configs and restart."
             )
         
-        # Advance to the next (smaller) time step in the pre-calculated range
+        # Advance to the next (smaller) time step
         self._iteration += 1
         self._dt = self._dt_range[self._iteration]
         
