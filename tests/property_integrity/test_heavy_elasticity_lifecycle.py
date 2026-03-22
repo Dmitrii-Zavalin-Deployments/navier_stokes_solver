@@ -53,7 +53,7 @@ class TestHeavyElasticityLifecycle:
         config_path.write_text(json.dumps(base_config))
         input_path.write_text(json.dumps(base_input))
 
-        with caplog.at_level(logging.WARNING, logger="Solver.Main"):
+        with caplog.at_level(logging.WARNING, logger=""):
             # 2. EXECUTION
             zip_path = run_solver(input_filename)
 
@@ -108,7 +108,7 @@ class TestHeavyElasticityLifecycle:
         Path(BASE_DIR / "config.json").write_text(json.dumps(base_config))
         Path(BASE_DIR / "test_input.json").write_text(json.dumps(base_input))
 
-        with caplog.at_level(logging.WARNING, logger="Solver.Main"):
+        with caplog.at_level(logging.WARNING, logger=""):
             # We expect this to succeed eventually because elasticity will drop dt
             run_solver("test_input.json")
             
@@ -124,7 +124,7 @@ class TestHeavyElasticityLifecycle:
         Path(BASE_DIR / "config.json").write_text(json.dumps(base_config))
         Path(BASE_DIR / "test_input.json").write_text(json.dumps(base_input))
 
-        with caplog.at_level(logging.WARNING, logger="Solver.Main"):
+        with caplog.at_level(logging.WARNING, logger=""):
             with pytest.raises(RuntimeError) as excinfo:
                 run_solver("test_input.json")
             
