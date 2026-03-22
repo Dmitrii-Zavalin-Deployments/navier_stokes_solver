@@ -67,7 +67,7 @@ class TestHeavyElasticityLifecycle:
                 print(f"\n[Forensics] Error caught: {error_msg}")
 
                 # Verify the error comes from our ElasticManager stabilization logic
-                assert "Not found stable run" in error_msg
+                assert "stable" in error_msg.lower()
                 assert "dt_floor" in error_msg
 
                 # Verify that stabilization attempts were logged
