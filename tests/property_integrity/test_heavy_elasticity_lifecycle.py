@@ -16,6 +16,7 @@ class TestHeavyElasticityLifecycle:
         return {
             "dt_min_limit": 0.0001,
             "ppe_tolerance": 1e-4, 
+            "ppe_atol": 1e-10,
             "ppe_max_iter": 20,
             "ppe_omega": 1.7,
             "ppe_max_retries": 10

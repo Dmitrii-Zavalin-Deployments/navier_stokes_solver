@@ -94,21 +94,23 @@ jobs:
           else
             echo "⚠️ CI Failure Detected. Initiating Deep Forensic Audit..."
             
-            echo "------------------------------------------------------------"
-            echo "ls -R output: "
+            echo "============================================================"
+            echo "ls -R output:"
+            echo "============================================================"
             ls -R
-            echo "------------------------------------------------------------"
             
-            # Run the Forensic Script (if it exists)
+            echo "============================================================"
+            echo "src/debug/forensic_audit.sh run results:"
+            echo "============================================================"
             if [ -f "src/debug/forensic_audit.sh" ]; then
               bash src/debug/forensic_audit.sh
             else
               echo "❌ Critical: Diagnostic script 'src/debug/forensic_audit.sh' not found."
             fi
 
-            echo "------------------------------------------------------------"
+            echo "============================================================"
             echo "📉 RE-RUNNING FAILED TEST FOR FINAL SIGNAL"
-            echo "------------------------------------------------------------"
+            echo "============================================================"
             
             # This calls the variable defined at the top
             $TEST_COMMAND || true
