@@ -8,6 +8,7 @@ from pathlib import Path
 
 import jsonschema
 import numpy as np
+np.seterr(all="raise")
 
 from src.common.archive_service import archive_simulation_artifacts
 from src.common.elasticity import ElasticManager
@@ -18,16 +19,6 @@ from src.step3.orchestrate_step3 import orchestrate_step3
 from src.step4.orchestrate_step4 import orchestrate_step4
 from src.step5.orchestrate_step5 import orchestrate_step5
 
-
-# --- [RULE 5: DETERMINISTIC INITIALIZATION] ---
-def configure_numerical_runtime():
-    """
-    Forces NumPy to raise exceptions on all mathematical anomalies.
-    This prevents 'Silent Success' on physically divergent simulations.
-    """
-    np.seterr(all="raise", under="ignore")
-
-configure_numerical_runtime()
 
 DEBUG = False
 logger = logging.getLogger("Solver.Main")
@@ -88,12 +79,16 @@ def run_solver(input_path: str) -> str:
     # 5. MAIN EXECUTION LOOP
     while state.ready_for_time_loop:
         try:
-            # A. PREDICTOR PASS
+            # A. ADVANCE (Rule 9: Unified Foundation Commit)
+            state.iteration += 1
+            state.time += elasticity.dt
+            
+            # B. PREDICTOR PASS
             for block in state.stencil_matrix:
                 orchestrate_step3(block, context, elasticity, is_first_pass=True)
                 orchestrate_step4(block, context, state.grid, state.boundary_conditions)
 
-            # B. PPE ITERATION (Pressure-Poisson Equation)
+            # C. PPE ITERATION (Pressure-Poisson Equation)
             for _ in range(context.config.ppe_max_iter):
                 max_delta = 0.0
                 for block in state.stencil_matrix:
@@ -103,10 +98,6 @@ def run_solver(input_path: str) -> str:
 
                 if max_delta < context.config.ppe_tolerance:
                     break
-            
-            # C. ADVANCE (Rule 9: Unified Foundation Commit)
-            state.iteration += 1
-            state.time += elasticity.dt
             
             # Signal Success to Elasticity to potentially increase dt in future steps
             elasticity.stabilization(is_needed=False, state=state)
@@ -118,11 +109,14 @@ def run_solver(input_path: str) -> str:
 
             if state.time >= context.input_data.simulation_parameters.total_time:
                 state.ready_for_time_loop = False
-
         except (ArithmeticError, FloatingPointError, ValueError):
-            logger.warning("Instability detected: Arithmetic anomaly triggered recovery path.")
-            # FAILURE PATH: Instability detected. Trigger dt reduction and retry step.
-            # This block is only reachable if np.seterr(all='raise') is active.
+            import logging; logging.warning("Instability detected: Arithmetic anomaly triggered recovery path.")
+            
+            # 1. Rollback based on the dt that just failed
+            state.iteration -= 1
+            state.time -= elasticity.dt 
+            
+            # 2. Now trigger the logic to reduce dt for the NEXT attempt
             elasticity.stabilization(is_needed=True, state=state)
 
     return archive_simulation_artifacts(state)
