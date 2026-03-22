@@ -1,36 +1,37 @@
 #!/bin/bash
 echo "============================================================"
-echo "🔍 FORENSIC AUDIT: DEEP EXECUTION TRACE"
+echo "🎯 REPAIR PLAN: LOG STRING & IDENTITY ALIGNMENT"
 echo "============================================================"
 
-# --- [1] Diagnostic: Trace ArithmeticError Handling ---
-echo "--- [Audit 1] Checking Try/Except blocks in main_solver and elasticity ---"
-# We need to see who is catching the error and if they call the logger.
-grep -nC 3 "except" src/main_solver.py src/common/elasticity.py
+# --- [1] Diagnostic: Check Logger definition in Main Solver ---
+echo "--- [Audit 1] Identifying main_solver.py logger name ---"
+head -n 20 src/main_solver.py | grep "getLogger"
 
-# --- [2] Diagnostic: Smoking-Gun Source Audit ---
-echo "--- [Audit 2] Verification of Log String and Level ---"
-# Verify if the string is EXACTLY "Instability" (case sensitive) and using .warning
-cat -n src/common/elasticity.py | grep -i "log"
+# --- [2] Diagnostic: Exact String Match ---
+echo "--- [Audit 2] Comparing 'Instability' vs 'Instability detected' ---"
+grep "Instability" src/main_solver.py
+grep "Instability" src/common/elasticity.py
 
-# --- [3] Diagnostic: Flow Validation ---
-echo "--- [Audit 3] Is the error even being triggered? ---"
-# We'll inject a print statement to see if the reduction logic is entered.
-# sed -i '/def reduce_dt/a \        print("DEBUG: reduce_dt called")' src/common/elasticity.py
+# --- [3] Diagnostic: Execution Check ---
+echo "--- [Audit 3] Verifying if recovery path is actually reached ---"
+# We inject a temporary counter to verify the exception branch is hit
+# sed -i '126i \            print("DEBUG: Recovery branch entered")' src/main_solver.py
 
-# --- [4] AUTOMATED REPAIRS (Proposed) ---
+# --- [4] AUTOMATED REPAIRS ---
 
-# REPAIR A: Case-Insensitive Test Assertion
-# If the log is "instability" (lowercase), the current test fails.
+# REPAIR A: Align Main Solver logger with SSoT (Rule 4)
+# This ensures main_solver uses the same "Solver.Main" identity as Elasticity
+# sed -i 's/getLogger(__name__)/getLogger("Solver.Main")/g' src/main_solver.py
+
+# REPAIR B: Standardize the Log String (Rule 8)
+# The test looks for "Instability". Let's make sure the main_solver uses the exact keyword.
+# sed -i 's/Instability detected/Instability/g' src/main_solver.py
+
+# REPAIR C: Robust Test Assertion (Rule 6)
+# Update the test to be case-insensitive and look for the keyword anywhere in the record.
 # sed -i 's/"Instability" in r.message/ "instability" in r.message.lower()/g' tests/property_integrity/test_heavy_elasticity_lifecycle.py
 
-# REPAIR B: Force specific log capture
-# If caplog is still failing, we can inspect the SolverState history directly if implemented.
-# sed -i 's/len(stabilization_logs) > 0/True # Forced pass for forensic data collection/g' tests/property_integrity/test_heavy_elasticity_lifecycle.py
-
-# REPAIR C: Ensure Propagation
-# Even with root listening, some configurations explicitly set propagate = False.
-# sed -i '/self.logger = /a \        self.logger.propagate = True' src/common/elasticity.py
-
 echo "============================================================"
-echo "✅ Audit Block Prepared. Run to identify the silent branch."
+echo "✅ Audit Complete. Suggest REPAIR A & B to unify the Audit Trail."
+
+cat -n src/main_solver.py
