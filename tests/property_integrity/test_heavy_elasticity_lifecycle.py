@@ -97,26 +97,74 @@ class TestHeavyElasticityLifecycle:
                         vx_data = h5_audit['vx'][:]
         
     def test_scenario_2_retry_and_recover(self, caplog, base_config, base_input):
-        """
-        Scenario 2: Failed run (ArithmeticError) triggers dt reduction, 
-        which then succeeds on the second attempt.
-        """
-        # Set a time step that is slightly too aggressive for this velocity
-        base_input["simulation_parameters"]["time_step"] = 0.8 
-        base_input["boundary_conditions"][0]["values"]["u"] = 1e15 
-        
-        Path(BASE_DIR / "config.json").write_text(json.dumps(base_config))
-        Path(BASE_DIR / "test_input.json").write_text(json.dumps(base_input))
+    """
+    Scenario 2: Recovery Audit.
+    Verifies that ArithmeticError triggers dt reduction AND results in valid HDF5 data.
+    """
+    import zipfile
+    import h5py
+    import numpy as np
+    from io import BytesIO
 
-        with caplog.at_level(logging.WARNING, logger=""):
-            # We expect this to succeed eventually because elasticity will drop dt
-            run_solver("test_input.json")
-            
-            # Check logs to confirm at least one instability was caught and fixed
-            stabilization_logs = [r for r in caplog.records if  "instability" in r.message.lower()]
-            print(f"DEBUG: Captured logs: {[r.message for r in caplog.records]}")
-            assert len(stabilization_logs) > 0
-            assert len(stabilization_logs) < base_config["ppe_max_retries"]
+    # 1. SETUP: Force an unstable condition (Rule 7: Scientific Truth)
+    # High velocity + High dt = Guaranteed Courant Number violation/Instability
+    base_input["simulation_parameters"]["time_step"] = 0.8 
+    base_input["boundary_conditions"][0]["values"]["u"] = 1e15 
+    
+    config_path = Path(BASE_DIR) / "config.json"
+    input_path = Path(BASE_DIR) / "test_recovery_input.json"
+    
+    config_path.write_text(json.dumps(base_config))
+    input_path.write_text(json.dumps(base_input))
+
+    with caplog.at_level(logging.WARNING, logger=""):
+        # 2. EXECUTION
+        zip_path = run_solver("test_recovery_input.json")
+        
+        # --- PHASE A: LOGICAL RECOVERY AUDIT ---
+        
+        # Verify that we didn't accidentally slip into a 'Pure Success' path
+        warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
+        stabilization_logs = [r for r in warnings if "instability" in r.message.lower()]
+        
+        assert len(stabilization_logs) > 0, (
+            "TEST SLIPPAGE: Scenario 2 expected an instability/retry, but none occurred. "
+            "The test input is not aggressive enough to trigger the recovery path."
+        )
+        assert len(stabilization_logs) < base_config["ppe_max_retries"], "Solver hit max retries."
+
+        # --- PHASE B: SCIENTIFIC INTEGRITY AUDIT (Rule 9) ---
+        
+        assert Path(zip_path).exists(), "Recovery succeeded but archive was not generated."
+        
+        with zipfile.ZipFile(zip_path, 'r') as archive:
+            h5_files = sorted([f for f in archive.namelist() if f.endswith('.h5')])
+            # We need at least the initial state and one successful step post-recovery
+            assert len(h5_files) >= 2, f"Expected at least 2 snapshots, got {len(h5_files)}"
+
+            # Inspect the LAST snapshot to ensure the physics 'settled' after recovery
+            with archive.open(h5_files[-1]) as f:
+                content = f.read()
+                assert content.startswith(b'\x89HDF'), "Final snapshot is corrupted HDF5"
+                
+                with h5py.File(BytesIO(content), 'r') as h5_audit:
+                    # Check for existence of core datasets
+                    for field in ['vx', 'vy', 'vz', 'p']:
+                        assert field in h5_audit.keys(), f"Physics Error: Missing {field} in recovery output"
+                    
+                    vx_data = h5_audit['vx'][:]
+                    
+                    # THE SMOKING GUN: If recovery worked, values MUST be finite.
+                    # If it 'failed upward', these would be INF or NAN.
+                    assert np.all(np.isfinite(vx_data)), (
+                        "ROOT CAUSE: Recovery path executed, but the resulting physics "
+                        "contains Non-Finite values (NaN/Inf). Stabilization failed."
+                    )
+                    
+                    # Ensure the simulation actually 'moved'
+                    assert np.max(np.abs(vx_data)) > 0, "Physics Error: Recovery resulted in a dead/zero field."
+
+    print(f"DEBUG: Successfully recovered from {len(stabilization_logs)} instabilities.")
 
     def test_scenario_3_terminal_failure(self, caplog, base_config, base_input):
         """Scenario 3: 10 failed attempts lead to terminal RuntimeError."""
