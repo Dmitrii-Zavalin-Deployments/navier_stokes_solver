@@ -104,7 +104,8 @@ class TestHeavyElasticityLifecycle:
 
         # 1. SETUP: Force an unstable condition (Rule 7: Scientific Truth)
         # High velocity + High dt = Guaranteed Courant Number violation/Instability
-        base_input["simulation_parameters"]["time_step"] = 0.8 
+        base_input["simulation_parameters"]["time_step"] = 0.8
+        base_input["simulation_parameters"]["total_time"] = 5.0
         base_input["boundary_conditions"][0]["values"]["u"] = 1e15 
         
         config_path = Path(BASE_DIR) / "config.json"
