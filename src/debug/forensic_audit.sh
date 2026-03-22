@@ -1,27 +1,27 @@
 #!/bin/bash
-echo "🔍 STARTING DEEP FORENSIC AUDIT: ELASTICITY DISCONNECT"
+echo "🔍 STARTING DEEP FORENSIC AUDIT: THE SILENT OVERFLOW GHOST"
 
-# 1. Audit the Catch Block in Main Solver
-echo "--- [1] Checking main_solver.py Exception Handling ---"
-cat -n src/main_solver.py | sed -n '100,125p'
+# 1. Audit NumPy's Error State in the Solver
+echo "--- [1] Checking for NumPy Error Configuration ---"
+grep -r "np.seterr" src/main_solver.py || echo "⚠️ Rule 5 Violation: NumPy error behavior is undefined (Silent Defaults)."
 
-# 2. Audit the Logger Configuration in Elasticity
-echo "--- [2] Checking Elasticity Logger Name and Level ---"
-cat -n src/common/elasticity.py | grep -A 5 "self.logger ="
+# 2. Trace the exception path in main_solver
+echo "--- [2] Smoking-Gun Audit: main_solver.py ---"
+cat -n src/main_solver.py | sed -n '90,120p'
 
-# 3. Check for "Silent" Arithmetic Errors (NaNs in output but no raise)
-echo "--- [3] Checking for NaN signatures in latest output ---"
-if [ -f "navier_stokes_output/snapshot_0001.h5" ]; then
-    echo "Snapshot found. Checking for data corruption..."
-    # If h5py is available, we could probe here, otherwise check logs for NaN prints
-fi
+# 3. Check for Logger naming drift
+echo "--- [3] Logger Name Check ---"
+grep "logging.getLogger" src/common/elasticity.py
 
-# 4. Verify test_input.json parameters actually reached the solver
-echo "--- [4] Verifying Test Input generation ---"
-cat test_input.json | jq '.simulation_parameters, .boundary_conditions[0]'
+# 4. REPAIR: Force NumPy to raise ArithmeticError on all math anomalies
+# This ensures the 'except ArithmeticError' block is actually triggered.
+# # sed -i '1s/^/import numpy as np\nnp.seterr(all="raise")\n/' src/main_solver.py
 
-# 5. Automated Repair: Ensure main_solver uses the correct exception catching
+# 5. REPAIR: Harmonize Logger name for pytest caplog visibility
+# Changing from "Elasticity" to the module path ensures standard log capture.
+# # sed -i 's/logging.getLogger("Elasticity")/logging.getLogger("src.common.elasticity")/g' src/common/elasticity.py
+
+# 6. REPAIR: Add ValueError to the catch block (common for linear algebra failures)
 # # sed -i 's/except ArithmeticError:/except (ArithmeticError, ValueError):/g' src/main_solver.py
 
-# 6. Automated Repair: Ensure Elasticity Logger matches Caplog expectations
-# # sed -i 's/logging.getLogger("Elasticity")/logging.getLogger("src.common.elasticity")/g' src/common/elasticity.py
+echo "✅ Audit Complete. Repairs staged in sed comments."
