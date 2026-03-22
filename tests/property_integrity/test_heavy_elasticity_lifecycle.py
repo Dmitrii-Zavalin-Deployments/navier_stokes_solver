@@ -3,7 +3,7 @@
 import json
 import logging
 from pathlib import Path
-import numpy as np
+
 import pytest
 
 from src.main_solver import BASE_DIR, run_solver
@@ -80,6 +80,7 @@ class TestHeavyElasticityLifecycle:
                     assert header.startswith(b'\x89HDF'), 'Foundation Error: Snapshot is not a valid HDF5 binary'
                     
                     from io import BytesIO
+
                     import h5py
                     import numpy as np
                     
@@ -96,9 +97,10 @@ class TestHeavyElasticityLifecycle:
         Verifies that ArithmeticError triggers dt reduction AND results in valid HDF5 data.
         """
         import zipfile
+        from io import BytesIO
+
         import h5py
         import numpy as np
-        from io import BytesIO
 
         # 1. SETUP: Force an unstable condition (Rule 7: Scientific Truth)
         # High velocity + High dt = Guaranteed Courant Number violation/Instability
