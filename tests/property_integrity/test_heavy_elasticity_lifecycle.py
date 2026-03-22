@@ -3,7 +3,7 @@
 import json
 import logging
 from pathlib import Path
-
+import zipfile
 import pytest
 
 from src.main_solver import BASE_DIR, run_solver
@@ -59,12 +59,17 @@ class TestHeavyElasticityLifecycle:
             # 3. LOG AUDIT (Rule 6: Efficiency)
             # Confirming that 100% of the successful path was exercised without retries
             instability_logs = [r for r in caplog.records if "Instability" in r.message]
-            assert len(instability_logs) == 0
-
-            # 4. PATH AUDIT
-            assert Path(zip_path).exists()
+            assert len(instability_logs) == 0, (
+                f"Scenario 1 Error: Expected 0 retries, but found {len(instability_logs)}. "
+                f"Logs: {[r.message for r in instability_logs]}"
+            )
             
-            # 5. DEEP ARCHIVE INSPECTION (Rule 7: Atomic Numerical Truth)
+            # 4. PATH AUDIT
+            assert Path(zip_path).exists(), "The final archive was not created."
+            assert zip_path.endswith(".zip")
+            assert "navier_stokes_output.zip" in zip_path
+
+            # 5. DEEP ARCHIVE INSPECTION
             with zipfile.ZipFile(zip_path, 'r') as archive:
                 csv_files = sorted([f for f in namelist if f.endswith('.csv')])
                 assert len(csv_files) >= 2 
