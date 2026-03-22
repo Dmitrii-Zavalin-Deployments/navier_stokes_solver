@@ -112,7 +112,6 @@ def run_solver(input_path: str) -> str:
         except ArithmeticError:
             # FAILURE PATH: Update dt and retry the SAME time step
             elasticity.stabilization(is_needed=True)
-            pass
 
     return archive_simulation_artifacts(state)
 

@@ -1,12 +1,11 @@
 # tests/unit/test_archive_service.py
 
-import json
-import shutil
 import zipfile
 from pathlib import Path
-import pytest
+
 from src.common.archive_service import archive_simulation_artifacts
 from src.main_solver import BASE_DIR
+
 
 class TestArchiveServiceIntegrity:
 
