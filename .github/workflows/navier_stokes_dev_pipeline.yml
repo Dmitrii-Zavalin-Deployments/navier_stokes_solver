@@ -75,128 +75,119 @@ jobs:
       - name: 🧪 Run Logic & Scientific Verification
         run: |
           echo "🚀 Initiating: $TEST_COMMAND"
-          bash src/debug/forensic_audit.sh
           $TEST_COMMAND
-          # bash src/debug/forensic_audit.sh
       
       - name: 🔍 Forensic Audit
         if: always()
         run: |
-          bash src/debug/forensic_audit.sh
-      
-      # - name: 🔍 Forensic Audit
-      #   if: always()
-      #   run: |
-      #     if [[ "${{ job.status }}" == "success" ]]; then
-      #       echo "✅ All systems nominal. No anomalies detected in solver lifecycle."
-      #       # Reset the audit script to a clean, dormant state on success
-      #       cat <<EOF > src/debug/forensic_audit.sh
-      #     #!/bin/bash
-      #     # Description: Automated forensic audit for Navier-Stokes solver failures.
-      #     # Status: Dormant (All systems nominal)
-      #     exit 0
-      #     EOF
-      #       chmod +x src/debug/forensic_audit.sh
-      #       echo "🧹 Diagnostic script has been reset to Dormant mode."
-      #     else
-      #       echo "⚠️ CI Failure Detected. Initiating Deep Forensic Audit..."
+          if [[ "${{ job.status }}" == "success" ]]; then
+            echo "✅ All systems nominal. No anomalies detected in solver lifecycle."
+            # Reset the audit script to a clean, dormant state on success
+            cat <<EOF > src/debug/forensic_audit.sh
+          #!/bin/bash
+          # Description: Automated forensic audit for Navier-Stokes solver failures.
+          # Status: Dormant (All systems nominal)
+          exit 0
+          EOF
+            chmod +x src/debug/forensic_audit.sh
+            echo "🧹 Diagnostic script has been reset to Dormant mode."
+          else
+            echo "⚠️ CI Failure Detected. Initiating Deep Forensic Audit..."
             
-      #       echo "------------------------------------------------------------"
-      #       echo "ls -R output: "
-      #       ls -R
-      #       echo "------------------------------------------------------------"
+            echo "------------------------------------------------------------"
+            echo "ls -R output: "
+            ls -R
+            echo "------------------------------------------------------------"
             
-      #       # Run the Forensic Script (if it exists)
-      #       if [ -f "src/debug/forensic_audit.sh" ]; then
-      #         bash src/debug/forensic_audit.sh
-      #       else
-      #         echo "❌ Critical: Diagnostic script 'src/debug/forensic_audit.sh' not found."
-      #       fi
+            # Run the Forensic Script (if it exists)
+            if [ -f "src/debug/forensic_audit.sh" ]; then
+              bash src/debug/forensic_audit.sh
+            else
+              echo "❌ Critical: Diagnostic script 'src/debug/forensic_audit.sh' not found."
+            fi
 
-      #       echo "------------------------------------------------------------"
-      #       echo "📉 RE-RUNNING FAILED TEST FOR FINAL SIGNAL"
-      #       echo "------------------------------------------------------------"
+            echo "------------------------------------------------------------"
+            echo "📉 RE-RUNNING FAILED TEST FOR FINAL SIGNAL"
+            echo "------------------------------------------------------------"
             
-      #       # This calls the variable defined at the top
-      #       $TEST_COMMAND || true
+            # This calls the variable defined at the top
+            $TEST_COMMAND || true
 
-      #       # Cleanup the diagnostic file
-      #       # Note: EOF is shifted to the left margin to ensure shell compatibility
-      #       cat <<EOF > src/debug/forensic_audit.sh
+            # Cleanup the diagnostic file
+            # Note: EOF is shifted to the left margin to ensure shell compatibility
+            cat <<EOF > src/debug/forensic_audit.sh
 
-      #       bash src/debug/forensic_audit.sh
+          #!/bin/bash
+          # Description: Automated forensic audit for Navier-Stokes solver failures.
+          # Status: Waiting for the next payload
+          # exit 0
+          # EOF
+          #   echo "🧹 Diagnostic script has been reset to Waiting mode."
+          #   exit 1
+          # fi
 
-      #     #!/bin/bash
-      #     # Description: Automated forensic audit for Navier-Stokes solver failures.
-      #     # Status: Waiting for the next payload
-      #     exit 0
-      #     EOF
-      #       echo "🧹 Diagnostic script has been reset to Waiting mode."
-      #       exit 1
-      #     fi
-
-      # - name: 📊 Audit Performance & Sync State
-      #   if: always()
-      #   env:
-      #     # Define your "Magic Switch" branch here:
-      #     AUTO_COMMIT_BRANCH: "automatic" 
-      #     GIT_USER_NAME: ${{ secrets.GIT_USER_NAME }}
-      #     GIT_USER_EMAIL: ${{ secrets.GIT_USER_EMAIL }}
-      #   run: |
-      #     # 1. Setup Identity
-      #     git config --global user.name "${GIT_USER_NAME:-'github-actions[bot]'}"
-      #     git config --global user.email "${GIT_USER_EMAIL:-'github-actions[bot]@users.noreply.github.com'}"
+      - name: 📊 Audit Performance & Sync State
+        if: always()
+        env:
+          # Define your "Magic Switch" branch here:
+          AUTO_COMMIT_BRANCH: "automatic" 
+          GIT_USER_NAME: ${{ secrets.GIT_USER_NAME }}
+          GIT_USER_EMAIL: ${{ secrets.GIT_USER_EMAIL }}
+        run: |
+          # 1. Setup Identity
+          git config --global user.name "${GIT_USER_NAME:-'github-actions[bot]'}"
+          git config --global user.email "${GIT_USER_EMAIL:-'github-actions[bot]@users.noreply.github.com'}"
           
-      #     # 2. Define the new entry & identify branch
-      #     RUN_DATE=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
-      #     STATUS="${{ job.status }}"
-      #     CURRENT_BRANCH=${GITHUB_REF##*/}
+          # 2. Define the new entry & identify branch
+          RUN_DATE=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          STATUS="${{ job.status }}"
+          CURRENT_BRANCH=${GITHUB_REF##*/}
 
-      #     # Duration and Resource Calculation
-      #     DURATION_SEC=$(( $(date +%s) - $(date -d "${{ github.event.repository.pushed_at }}" +%s 2>/dev/null || date +%s) ))
-      #     CPU_LOAD=$(top -bn1 | grep "Cpu(s)" | awk '{print $2 + $4 "%"}')
-      #     MEM_USAGE=$(free -m | awk '/Mem:/ { print $3 "/" $2 "MB" }')
+          # Duration and Resource Calculation
+          DURATION_SEC=$(( $(date +%s) - $(date -d "${{ github.event.repository.pushed_at }}" +%s 2>/dev/null || date +%s) ))
+          CPU_LOAD=$(top -bn1 | grep "Cpu(s)" | awk '{print $2 + $4 "%"}')
+          MEM_USAGE=$(free -m | awk '/Mem:/ { print $3 "/" $2 "MB" }')
 
-      #     # 3. Create the new entry block
-      #     NEW_ENTRY=$(cat <<EOF
-      #     ### Audit: $RUN_DATE
-      #     - **Branch:** \`$CURRENT_BRANCH\`
-      #     - **Status:** $STATUS
-      #     - **Duration:** ${DURATION_SEC}s
-      #     - **CPU Load:** $CPU_LOAD
-      #     - **Memory Usage:** $MEM_USAGE
-      #     EOF
-      #     )
+          # 3. Create the new entry block
+          NEW_ENTRY=$(cat <<EOF
+          ### Audit: $RUN_DATE
+          - **Branch:** \`$CURRENT_BRANCH\`
+          - **Status:** $STATUS
+          - **Duration:** ${DURATION_SEC}s
+          - **CPU Load:** $CPU_LOAD
+          - **Memory Usage:** $MEM_USAGE
+          EOF
+          )
 
-      #     # 4. Prepend to file (Newest on top)
-      #     # We keep the Header, then inject the new entry, then append the old content
-      #     echo "# 🌊 Navier–Stokes Performance Audit Ledger" > performance_audit.md
-      #     echo "$NEW_ENTRY" >> performance_audit.md
-      #     # Append everything after the first line of the old file (skipping the old header)
-      #     [ -f old_audit.md ] && tail -n +2 old_audit.md >> performance_audit.md
-      #     git add performance_audit.md
+          # 4. Prepend to file (Newest on top)
+          # We keep the Header, then inject the new entry, then append the old content
+          echo "# 🌊 Navier–Stokes Performance Audit Ledger" > performance_audit.md
+          echo "$NEW_ENTRY" >> performance_audit.md
+          # Append everything after the first line of the old file (skipping the old header)
+          [ -f old_audit.md ] && tail -n +2 old_audit.md >> performance_audit.md
+          git add performance_audit.md
 
-      #     # 5. Handle Branch-Specific Logic
-      #     CURRENT_BRANCH=${GITHUB_REF##*/}
+          # 5. Handle Branch-Specific Logic
+          CURRENT_BRANCH=${GITHUB_REF##*/}
           
-      #     if [ "$CURRENT_BRANCH" == "$AUTO_COMMIT_BRANCH" ]; then
-      #       echo "⚡ AUTO-SYNC ACTIVE: Staging all repository changes on '$CURRENT_BRANCH'..."
+          if [ "$CURRENT_BRANCH" == "$AUTO_COMMIT_BRANCH" ]; then
+            echo "⚡ AUTO-SYNC ACTIVE: Staging all repository changes on '$CURRENT_BRANCH'..."
             
-      #       # Identify all changed files for the commit message
-      #       UPDATED_FILES=$(git status --porcelain | awk '{print $2}' | tr '\n' ' ')
+            # Identify all changed files for the commit message
+            UPDATED_FILES=$(git status --porcelain | awk '{print $2}' | tr '\n' ' ')
             
-      #       if [ -n "$UPDATED_FILES" ]; then
-      #         git add .
-      #         git commit -m "📊 audit & sync: [${{ job.status }}] updated files: $UPDATED_FILES"
-      #         git push origin HEAD || echo "Push skipped: Concurrent push detected."
-      #       else
-      #         echo "✅ No changes to sync."
-      #       fi
-      #     else
-      #       echo "🛡️ SAFE MODE: Only committing Performance Ledger on '$CURRENT_BRANCH'."
+            if [ -n "$UPDATED_FILES" ]; then
+              git add .
+              git commit -m "📊 audit & sync: [${{ job.status }}] updated files: $UPDATED_FILES"
+              git push origin HEAD || echo "Push skipped: Concurrent push detected."
+            else
+              echo "✅ No changes to sync."
+            fi
+          else
+            echo "🛡️ SAFE MODE: Only committing Performance Ledger on '$CURRENT_BRANCH'."
             
-      #       if [ -n "$(git status --porcelain performance_audit.md)" ]; then
-      #         git commit -m "📊 audit: update performance ledger"
-      #         git push origin HEAD || echo "Push skipped: Concurrent push detected."
-      #       fi
-      #     fi
+            if [ -n "$(git status --porcelain performance_audit.md)" ]; then
+              git commit -m "📊 audit: update performance ledger"
+              git push origin HEAD || echo "Push skipped: Concurrent push detected."
+            fi
+          fi

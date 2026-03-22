@@ -1,119 +1,39 @@
 #!/bin/bash
+# Description: Deep Forensic Audit for Navier-Stokes Numerical Stability
+# Targets: Rule 7 (Scientific Rigor) and Rule 5 (Deterministic Initialization)
 
-# Configuration
-TARGET="config.json"
-LOG_FILE="forensic_trace.log"
-TIMESTAMP=$(date +"%H:%M:%S")
+echo "--- [DEEP FORENSIC AUDIT @ $(date +%T)] ---"
 
-echo "--- [FORENSIC CHECK @ $TIMESTAMP] ---" | tee -a $LOG_FILE
-
-if [ ! -f "$TARGET" ]; then
-    echo "❌ FATAL: $TARGET has been physically DELETED from the disk!" | tee -a $LOG_FILE
-    ls -la | tee -a $LOG_FILE
-    exit 1
-fi
-
-# Check for the key ppe_max_retries
-if grep -q "ppe_max_retries" "$TARGET"; then
-    echo "✅ Key 'ppe_max_retries' is present." | tee -a $LOG_FILE
-    # Show the line for absolute certainty
-    grep "ppe_max_retries" "$TARGET" | tee -a $LOG_FILE
+# 1. Check if the test files even exist and what's in them
+echo "Checking Test Artifacts:"
+if [ -f "config.json" ]; then
+    echo "✅ config.json found: $(cat config.json)"
 else
-    echo "❌ CRITICAL: Key 'ppe_max_retries' is MISSING!" | tee -a $LOG_FILE
-    echo "Current File Content:" | tee -a $LOG_FILE
-    cat "$TARGET" | tee -a $LOG_FILE
-    
-    # Traceability: Who was the last user/process to touch it?
-    echo "File Metadata:" | tee -a $LOG_FILE
-    stat "$TARGET" | tee -a $LOG_FILE
+    echo "❌ config.json MISSING"
 fi
 
-echo "--------------------------------------" | tee -a $LOG_FILE
+# 2. Inspect the Solver Logic for 'ArithmeticError' Handling
+echo "--- [CODE INSPECTION: INSTABILITY CATCHING] ---"
+grep -nE "try:|except ArithmeticError:|raise RuntimeError" src/main_solver.py src/physics/elasticity.py 2>/dev/null || echo "No explicit stability catch found."
 
-# ==============================================================================
-# 1. FIND THE KILLER (Grep for write/dump operations in Python)
-# ==============================================================================
-echo "--- [SEARCHING FOR IO OVERWRITES] ---"
-grep -rE "json\.dump|open.*'w'|write\(.*json" src/
+# 3. Trace the Log Output for Retries
+echo "--- [EXECUTION TRACE: STABILIZATION ATTEMPTS] ---"
+# We look for the 'Instability' keyword to see if the loop actually ran
+if [ -f "pytest_log.txt" ]; then
+    grep -i "Instability" pytest_log.txt || echo "No stabilization logs found in output."
+else
+    echo "Hint: Run with '$TEST_COMMAND > pytest_log.txt 2>&1' to capture logs for this script."
+fi
 
-# ==============================================================================
-# 2. AUDIT THE SMOKING GUNS (Viewing the logic)
-# ==============================================================================
-echo -e "\n--- [SMOKING GUN 1: The Config Loader] ---"
-# We check if the __init__ is missing the retries assignment (Trace 4 confirmed this)
-cat -n src/common/solver_config.py | head -n 35
+# 4. Check for 'Ghost' Properties (Rule 8 Violation)
+echo "--- [SLOT INTEGRITY CHECK] ---"
+grep -r "self.ppe_max_retries =" src/common/
+grep -r "def ppe_max_retries" src/common/
 
-echo -e "\n--- [SMOKING GUN 2: The Logic that Saves to Disk] ---"
-# Searching for the method that actually touches config.json
-grep -nC 5 "config.json" src/common/solver_config.py 2>/dev/null || echo "Not found in solver_config.py"
+# 5. Numerical 'Smoking Gun' - Check for NaN/Inf in any saved state
+echo "--- [NUMERICAL SANITY] ---"
+if [ -d "output" ]; then
+    grep -rE "NaN|Infinity" output/ || echo "No NaN/Inf detected in output files."
+fi
 
-# # ==============================================================================
-# # 3. THE REPAIR (Sed Injections)
-# # ==============================================================================
-# echo -e "\n--- [APPLYING PERMANENT FIXES] ---"
-
-# # FIX A: Inject the missing attribute into the Constructor so it survives in memory
-# # We look for the ppe_max_iter line and append the ppe_max_retries after it.
-# sed -i '/self.ppe_max_iter =/a \        self.ppe_max_retries = kwargs.get("ppe_max_retries", 10)' src/common/solver_config.py
-
-# # FIX B: (Hypothetical but likely) If there is a to_dict() or save() method, 
-# # ensure ppe_max_retries is included. We'll run a broad injection to ensure
-# # the property exists for any serialization.
-# # Check if there's a dictionary mapping and add it if missing.
-# if grep -q "ppe_max_iter" src/common/solver_config.py; then
-#     sed -i 's/"ppe_max_iter": self.ppe_max_iter/"ppe_max_iter": self.ppe_max_iter, "ppe_max_retries": self.ppe_max_retries/g' src/common/solver_config.py
-# fi
-
-# # FIX C: Fix the Audit script "1010" bug so it doesn't fail even if data is duplicated
-# sed -i 's/EXPECTED_RETRIES=.*/EXPECTED_RETRIES=$(grep "ppe_max_retries" "$CONFIG_FILE" | head -n 1 | grep -oE "[0-9]+")/' src/debug/forensic_audit.sh
-
-# ==============================================================================
-# 4. FINAL VERIFICATION
-# ==============================================================================
-echo -e "\n--- [VERIFYING REPAIR] ---"
-cat -n src/common/solver_config.py | grep -C 2 "ppe_max_retries"
-
-# ==============================================================================
-# 1. FIND THE SERIALIZATION KILLER (Where is the Write logic?)
-# ==============================================================================
-echo "--- [TRACE: Locating Save/Dict Logic] ---"
-# Check the base class for the hardcoded keys that are likely excluding 'ppe_max_retries'
-grep -rE "def to_dict|def save|def to_json" src/common/
-
-# Check if the test itself performs an 'update' or 'save'
-grep -nE "config.*save|json\.dump" tests/property_integrity/test_heavy_elasticity_lifecycle.py
-
-# ==============================================================================
-# 2. AUDIT THE SMOKING GUNS (Viewing the logic)
-# ==============================================================================
-echo -e "\n--- [GUN 2: The Base Container Logic] ---"
-# Viewing the parent class to see how it serializes
-cat -n src/common/base_container.py | head -n 50
-
-# # ==============================================================================
-# # 3. THE REPAIR (Sed Injections)
-# # ==============================================================================
-# echo -e "\n--- [APPLYING PERMANENT FIXES] ---"
-
-# # FIX A: Ensure SolverConfig doesn't have duplicate properties (Cleanup from previous runs)
-# # Removing the redundant ppe_max_retries property blocks discovered in Gun 1 (Lines 63-66)
-# sed -i '63,66d' src/common/solver_config.py
-
-# # FIX B: Inject into BaseContainer (If it uses a static key list for to_dict)
-# # This forces the serialization logic to recognize the new key
-# if grep -q "to_dict" src/common/base_container.py; then
-#     sed -i '/"ppe_omega":/a \            "ppe_max_retries": self.ppe_max_retries,' src/common/base_container.py
-# fi
-
-# # FIX C: Stop the "Self-Overwrite" during Tests
-# # If the test has a teardown that saves the config, we comment it out
-# sed -i 's/self.config.save()/# self.config.save() # Prevent CI overwrite/g' tests/property_integrity/test_heavy_elasticity_lifecycle.py
-
-# ==============================================================================
-# 4. FINAL VERIFICATION
-# ==============================================================================
-echo -e "\n--- [FINAL VERIFICATION OF SOURCE] ---"
-grep -A 1 "ppe_max_retries" src/common/solver_config.py
-grep -A 1 "ppe_max_retries" src/common/base_container.py 2>/dev/null || echo "Not in base_container"
-
-cat config.json | grep "ppe_max_retries"
+echo "--- [AUDIT COMPLETE] ---"

@@ -1,3 +1,5 @@
+# tests/property_integrity/test_heavy_elasticity_lifecycle.py
+
 import json
 import logging
 from pathlib import Path
@@ -66,16 +68,15 @@ class TestHeavyElasticityLifecycle:
                 str(excinfo.value)
                 
                 # Updated check: matches the simplified RuntimeError in elasticity.py
-                # assert "unstable" in error_msg.lower()
-                # assert "dt_floor" in error_msg
+                assert "unstable" in error_msg.lower()
+                assert "dt_floor" in error_msg
 
                 # Verify that stabilization attempts were logged using the new simplified string
                 # Old string: "Instability detected" | New string: "Instability."
                 [rec for rec in caplog.records if "Instability" in rec.message]
                 
                 # Check that we actually iterated through the 10-step range
-                # assert len(stabilization_logs) == 10, f"Expected 10 retries, found {len(stabilization_logs)}"
-                assert True
+                assert len(stabilization_logs) == 10, f"Expected 10 retries, found {len(stabilization_logs)}"
                 
         finally:
             # # 7. PURGE: Universal Cleanup (Rule 2: Zero Debt)
