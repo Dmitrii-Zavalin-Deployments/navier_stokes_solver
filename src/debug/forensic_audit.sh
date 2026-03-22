@@ -1,36 +1,38 @@
 #!/bin/bash
 echo "============================================================"
-echo "🎯 PHASE C: BOUNDARY INJECTION & LOG PROPAGATION AUDIT"
+echo "🎯 PHASE C: KERNEL TRAP & LOGGER PROPAGATION AUDIT"
 echo "============================================================"
 
-# --- [Audit 1] Boundary Value Injection Check ---
-echo "--- [Audit 1] Checking if 1e15 is actually reaching the solver ---"
-grep -A 5 "values" test_recovery_input.json
+# --- [Audit 1] Trap Verification ---
+echo "--- [Audit 1] Checking NumPy error mode in runtime ---"
+# Verify if something is overriding 'raise' back to 'ignore'
+grep -r "np.seterr" src/
 
-# --- [Audit 2] Logger Visibility Check ---
-echo "--- [Audit 2] Checking if 'logger' in main_solver is root or local ---"
-head -n 20 src/main_solver.py | grep "logger ="
+# --- [Audit 2] Logger Hierarchy Audit ---
+echo "--- [Audit 2] Checking Logger naming (Rule 4 Compliance) ---"
+# If logger = getLogger(__name__), but run_solver is called from a test,
+# the hierarchy might be breaking log capture.
+grep "logging.getLogger" src/main_solver.py
 
-# --- [Audit 3] Boundary Applier Logic ---
-echo "--- [Audit 3] Inspecting inflow application in Step 4 ---"
-cat -n src/step4/boundary_applier.py | grep -A 10 "inflow"
+# --- [Audit 3] Smoking Gun: The 'Try' Block Scope ---
+echo "--- [Audit 3] Inspecting Main Loop for swallowed Exceptions ---"
+cat -n src/main_solver.py | sed -n '100,140p'
 
-# --- [Audit 4] Floating Point Reality Check ---
-echo "--- [Audit 4] Checking for hidden 'clip' or 'minimum' functions ---"
-grep -r "np.clip" src/
-grep -r "min(" src/step3/
+# --- [Audit 4] Physics Audit: Boundary vs. Field ---
+echo "--- [Audit 4] Checking for hardcoded velocity caps ---"
+grep -rE "clip|min\(|max\(" src/step3/ops/
 
 # --- [5] AUTOMATED REPAIRS (Candidate Injections) ---
 
-# REPAIR A: Force an immediate crash if VX exceeds a stability threshold (e.g., 1000)
-# This bypasses the need for an ArithmeticError if the values are "stable but wrong"
-# sed -i '/delta = solve_pressure_poisson_step/i \    if np.max(np.abs(block.field.u)) > 1000: raise ValueError("Velocity Divergence")' src/step3/orchestrate_step3.py
+# REPAIR A: Force Logger to root to ensure pytest 'caplog' visibility
+# sed -i 's/getLogger(__name__)/getLogger()/' src/main_solver.py
 
-# REPAIR B: Force the Logger to propagate to the root (Ensures caplog sees it)
-# sed -i 's/logger = logging.getLogger(__name__)/logger = logging.getLogger()/' src/main_solver.py
+# REPAIR B: Inject a manual instability trigger for values > 1e10
+# This catches "stable" overflows that don't trigger ArithmeticError
+# sed -i '/state = orchestrate_step3/a \                if np.max(np.abs(state.stencil_matrix[0].field.u)) > 1e10: raise ArithmeticError("Velocity Explosion")' src/main_solver.py
 
-# REPAIR C: Ensure boundary conditions aren't being overwritten by initial conditions
-# sed -i '/apply_boundary_conditions/i \    print(f"DEBUG: Max U before BC: {np.max(state.stencil_matrix[0].field.u)}")' src/main_solver.py
+# REPAIR C: Fix potential "underflow=ignore" masking broader issues
+# sed -i 's/under="ignore"/under="raise"/g' src/main_solver.py
 
 echo "============================================================"
-echo "✅ Audit Complete. If Audit 3 shows a clipping function, that is your root cause."
+echo "✅ Audit Complete. If Audit 2 shows a specific name, caplog may need that name."
