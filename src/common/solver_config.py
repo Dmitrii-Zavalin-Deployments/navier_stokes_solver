@@ -1,7 +1,7 @@
+# src/common/solver_config.py
+
 from dataclasses import dataclass
-
 from src.common.base_container import ValidatedContainer
-
 
 @dataclass
 class SolverConfig(ValidatedContainer):
@@ -10,17 +10,19 @@ class SolverConfig(ValidatedContainer):
     """
     __slots__ = [
         '_dt_min_limit', '_ppe_tolerance', '_ppe_atol', 
-        '_ppe_max_iter', '_ppe_omega', '_divergence_threshold'
+        '_ppe_max_iter', '_ppe_omega', '_divergence_threshold',
+        '_ppe_max_retries'
     ]
 
     def __init__(self, **kwargs):
-        # Map JSON keys to slots
+        # Map JSON keys to slots via setters for validation
         self.dt_min_limit = kwargs.get('dt_min_limit')
         self.ppe_tolerance = kwargs.get('ppe_tolerance')
         self.ppe_atol = kwargs.get('ppe_atol')
         self.ppe_max_iter = kwargs.get('ppe_max_iter')
         self.ppe_omega = kwargs.get('ppe_omega')
         self.divergence_threshold = kwargs.get('divergence_threshold')
+        self.ppe_max_retries = kwargs.get('ppe_max_retries')
 
     @property
     def dt_min_limit(self) -> float: return self._get_safe("dt_min_limit")
@@ -51,3 +53,8 @@ class SolverConfig(ValidatedContainer):
     def divergence_threshold(self) -> float: return self._get_safe("divergence_threshold")
     @divergence_threshold.setter
     def divergence_threshold(self, v: float): self._set_safe("divergence_threshold", v, float)
+
+    @property
+    def ppe_max_retries(self) -> int: return self._get_safe("ppe_max_retries")
+    @ppe_max_retries.setter
+    def ppe_max_retries(self, v: int): self._set_safe("ppe_max_retries", v, int)
