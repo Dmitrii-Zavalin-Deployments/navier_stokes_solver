@@ -1,38 +1,37 @@
 #!/bin/bash
 echo "============================================================"
-echo "🎯 PHASE C: KERNEL TRAP & LOGGER PROPAGATION AUDIT"
+echo "🎯 PHASE C: LOGGER HIERARCHY & NUMERICAL STRESS AUDIT"
 echo "============================================================"
 
-# --- [Audit 1] Trap Verification ---
-echo "--- [Audit 1] Checking NumPy error mode in runtime ---"
-# Verify if something is overriding 'raise' back to 'ignore'
-grep -r "np.seterr" src/
+# --- [Audit 1] Logger Hierarchy Check ---
+echo "--- [Audit 1] Verifying Logger Propagation ---"
+# Check if propagate is set to False (which would block caplog)
+grep -r "propagate" src/
 
-# --- [Audit 2] Logger Hierarchy Audit ---
-echo "--- [Audit 2] Checking Logger naming (Rule 4 Compliance) ---"
-# If logger = getLogger(__name__), but run_solver is called from a test,
-# the hierarchy might be breaking log capture.
-grep "logging.getLogger" src/main_solver.py
+# --- [Audit 2] Namespace Audit ---
+echo "--- [Audit 2] Checking all logger definitions ---"
+grep -r "getLogger(" src/
 
-# --- [Audit 3] Smoking Gun: The 'Try' Block Scope ---
-echo "--- [Audit 3] Inspecting Main Loop for swallowed Exceptions ---"
-cat -n src/main_solver.py | sed -n '100,140p'
+# --- [Audit 3] Test Stress Audit ---
+echo "--- [Audit 3] Checking if simulation duration is too short to diverge ---"
+grep -E "total_time|time_step" test_recovery_input.json
 
-# --- [Audit 4] Physics Audit: Boundary vs. Field ---
-echo "--- [Audit 4] Checking for hardcoded velocity caps ---"
-grep -rE "clip|min\(|max\(" src/step3/ops/
+# --- [Audit 4] Error Trap Integrity ---
+echo "--- [Audit 4] Checking if ArithmeticError is reachable ---"
+# Check if Step 3 or Step 4 has its own try/except that swallows errors
+grep -r "except" src/step3/ src/step4/
 
 # --- [5] AUTOMATED REPAIRS (Candidate Injections) ---
 
-# REPAIR A: Force Logger to root to ensure pytest 'caplog' visibility
-# sed -i 's/getLogger(__name__)/getLogger()/' src/main_solver.py
+# REPAIR A: Force the test to use the specific logger name
+# sed -i 's/logger=""/logger="Solver.Main"/' tests/property_integrity/test_heavy_elasticity_lifecycle.py
 
-# REPAIR B: Inject a manual instability trigger for values > 1e10
-# This catches "stable" overflows that don't trigger ArithmeticError
-# sed -i '/state = orchestrate_step3/a \                if np.max(np.abs(state.stencil_matrix[0].field.u)) > 1e10: raise ArithmeticError("Velocity Explosion")' src/main_solver.py
+# REPAIR B: Force the solver to use the root logger (Rule 4 fix)
+# This ensures all logs are captured regardless of the test's logger name filter.
+# sed -i 's/getLogger("Solver.Main")/getLogger()/' src/main_solver.py
 
-# REPAIR C: Fix potential "underflow=ignore" masking broader issues
-# sed -i 's/under="ignore"/under="raise"/g' src/main_solver.py
+# REPAIR C: Stress the physics further by reducing the stability limit
+# sed -i 's/dt_min_limit": 0.0001/dt_min_limit": 1.0/' tests/property_integrity/test_heavy_elasticity_lifecycle.py
 
 echo "============================================================"
-echo "✅ Audit Complete. If Audit 2 shows a specific name, caplog may need that name."
+echo "✅ Audit Complete. Use REPAIR A or B to fix Log Capture."
