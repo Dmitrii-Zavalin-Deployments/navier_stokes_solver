@@ -123,7 +123,8 @@ def run_solver(input_path: str) -> str:
 
         except (ArithmeticError, FloatingPointError, ValueError):
             # Rule 4: Use local logger hierarchy
-            logger.warning("Instability detected: Arithmetic anomaly triggered recovery path.")
+            print("DEBUG: [Main] ArithmeticError caught!")
+            logger.warning("Instability: Arithmetic anomaly triggered recovery path.")
             
             # Rule 9: Encapsulated Rollback (Logic Wiring)
             # Reverting the failed time-step attempt

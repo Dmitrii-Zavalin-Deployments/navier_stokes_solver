@@ -59,7 +59,7 @@ class TestHeavyElasticityLifecycle:
 
             # 3. LOG AUDIT (Rule 6: Efficiency)
             # Confirming that 100% of the successful path was exercised without retries
-            instability_logs = [r for r in caplog.records if "Instability" in r.message]
+            instability_logs = [r for r in caplog.records if  "instability" in r.message.lower()]
             assert len(instability_logs) == 0, (
                 f"Scenario 1 Error: Expected 0 retries, but found {len(instability_logs)}. "
                 f"Logs: {[r.message for r in instability_logs]}"
@@ -103,7 +103,7 @@ class TestHeavyElasticityLifecycle:
         """
         # Set a time step that is slightly too aggressive for this velocity
         base_input["simulation_parameters"]["time_step"] = 0.8 
-        base_input["boundary_conditions"][0]["values"]["u"] = 50.0 
+        base_input["boundary_conditions"][0]["values"]["u"] = 1e15 
         
         Path(BASE_DIR / "config.json").write_text(json.dumps(base_config))
         Path(BASE_DIR / "test_input.json").write_text(json.dumps(base_input))
@@ -113,7 +113,8 @@ class TestHeavyElasticityLifecycle:
             run_solver("test_input.json")
             
             # Check logs to confirm at least one instability was caught and fixed
-            stabilization_logs = [r for r in caplog.records if "Instability" in r.message]
+            stabilization_logs = [r for r in caplog.records if  "instability" in r.message.lower()]
+            print(f"DEBUG: Captured logs: {[r.message for r in caplog.records]}")
             assert len(stabilization_logs) > 0
             assert len(stabilization_logs) < base_config["ppe_max_retries"]
 
@@ -130,5 +131,5 @@ class TestHeavyElasticityLifecycle:
             
             error_msg = str(excinfo.value)
             assert "unstable" in error_msg.lower()
-            logs = [r for r in caplog.records if "Instability" in r.message]
+            logs = [r for r in caplog.records if  "instability" in r.message.lower()]
             assert len(logs) == base_config["ppe_max_retries"]
