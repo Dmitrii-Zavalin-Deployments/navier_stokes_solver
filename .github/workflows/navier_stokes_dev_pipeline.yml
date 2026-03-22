@@ -112,19 +112,8 @@ jobs:
             
             # This calls the variable defined at the top
             $TEST_COMMAND || true
-
-            # Cleanup the diagnostic file
-            # Note: EOF is shifted to the left margin to ensure shell compatibility
-            cat <<EOF > src/debug/forensic_audit.sh
-
-          #!/bin/bash
-          # Description: Automated forensic audit for Navier-Stokes solver failures.
-          # Status: Waiting for the next payload
-          # exit 0
-          # EOF
-          #   echo "🧹 Diagnostic script has been reset to Waiting mode."
-          #   exit 1
-          # fi
+            exit 1
+          fi
 
       - name: 📊 Audit Performance & Sync State
         if: always()
