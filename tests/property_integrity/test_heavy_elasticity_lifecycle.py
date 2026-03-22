@@ -80,14 +80,14 @@ class TestHeavyElasticityLifecycle:
                     header = f.read(8)
                     assert header.startswith(b'\x89HDF'), 'Foundation Error: Snapshot is not a valid HDF5 binary'
                     # Rule 9: Structural Foundation Audit
-                    from io import BytesIO
-
                     import h5py
+                    from io import BytesIO
                     # Re-verify internal H5 integrity by attempting a structural peek
                     f.seek(0)
                     with h5py.File(BytesIO(f.read()), 'r') as h5_audit:
                         assert 'vx' in h5_audit.keys(), 'Foundation Error: Missing VX dataset'
                         assert h5_audit.attrs['iteration'] >= 0
+                    # Rule 9: Structural Foundation Audit
                     
                     
                     # Extract velocities using list comprehension (Rule 0: Logic efficiency)
