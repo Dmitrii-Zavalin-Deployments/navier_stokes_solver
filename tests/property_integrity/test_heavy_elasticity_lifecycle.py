@@ -29,7 +29,7 @@ class TestHeavyElasticityLifecycle:
             "grid": {"x_min": 0.0, "x_max": 1.0, "y_min": 0.0, "y_max": 1.0, "z_min": 0.0, "z_max": 1.0, "nx": 4, "ny": 4, "nz": 4},
             "fluid_properties": {"density": 1.0, "viscosity": 0.001},
             "initial_conditions": {"velocity": [0.0, 0.0, 0.0], "pressure": 1.0},
-            "simulation_parameters": {"time_step": 0.1, "total_time": 0.2, "output_interval": 1},
+            "simulation_parameters": {"time_step": 0.1, "total_time": 2.0, "output_interval": 1},
             "boundary_conditions": [
                 {"location": "x_min", "type": "inflow", "values": {"u": 1.0, "v": 0.0, "w": 0.0}}, 
                 {"location": "x_max", "type": "outflow", "values": {"p": 0.0}}
@@ -53,7 +53,7 @@ class TestHeavyElasticityLifecycle:
         config_path.write_text(json.dumps(base_config))
         input_path.write_text(json.dumps(base_input))
 
-        with caplog.at_level(logging.WARNING, logger=""):
+        with caplog.at_level(logging.WARNING, logger="Solver.Main"):
             # 2. EXECUTION
             zip_path = run_solver(input_filename)
 
@@ -113,7 +113,7 @@ class TestHeavyElasticityLifecycle:
         config_path.write_text(json.dumps(base_config))
         input_path.write_text(json.dumps(base_input))
 
-        with caplog.at_level(logging.WARNING, logger=""):
+        with caplog.at_level(logging.WARNING, logger="Solver.Main"):
             # 2. EXECUTION
             zip_path = run_solver("test_recovery_input.json")
             
@@ -159,7 +159,7 @@ class TestHeavyElasticityLifecycle:
         config_path.write_text(json.dumps(base_config))
         input_path.write_text(json.dumps(base_input))
 
-        with caplog.at_level(logging.WARNING, logger=""):
+        with caplog.at_level(logging.WARNING, logger="Solver.Main"):
             with pytest.raises(RuntimeError) as excinfo:
                 run_solver("test_fail_input.json")
             
