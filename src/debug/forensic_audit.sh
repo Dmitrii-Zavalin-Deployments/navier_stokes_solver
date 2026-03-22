@@ -1,35 +1,31 @@
 echo "============================================================"
-echo "🔍 DIAGNOSING LOG SIGNAL MISMATCH: ELASTICITY RETRY"
+echo "🔍 DIAGNOSING LOG CAPTURE FAILURE: Solver.Main vs Caplog"
 echo "============================================================"
 
-# --- [1] Diagnostic: Verify Logger Name and Level ---
-echo "--- [Audit 1] main_solver.py Logger Configuration ---"
-# Check if the logger name matches what the test expect or if it's being silenced
-grep -n "logger =" src/main_solver.py
-grep -n "logger.warning" src/main_solver.py
+# --- [1] Audit: Check Logger propagation and level ---
+echo "--- [Audit 1] main_solver.py Logger definition ---"
+cat -n src/main_solver.py | grep -B 2 -A 2 "getLogger"
 
-# --- [2] Diagnostic: Check NumPy Error State ---
-echo "--- [Audit 2] NumPy Error Handling Policy ---"
-# Ensure np.seterr is actually inside the runtime config as required by Rule 5
-grep -A 5 "def _configure_numerical_runtime" src/main_solver.py
+# --- [2] Audit: Inspect Test capture logic ---
+echo "--- [Audit 2] Test file capture configuration ---"
+cat -n tests/property_integrity/test_heavy_elasticity_lifecycle.py | grep -A 10 "caplog.at_level"
 
-# --- [3] Smoking Gun: View the catch block in main_solver ---
-echo "--- [Audit 3] main_solver.py Recovery Block Audit ---"
-# Verify the exact string being logged during a failure
-cat -n src/main_solver.py | sed -n '100,130p'
+# --- [3] Audit: Verify Numerical Config is actually called ---
+# If this is missing, ArithmeticError is never raised, so the log is never hit.
+echo "--- [Audit 3] Search for _configure_numerical_runtime call ---"
+grep -n "_configure_numerical_runtime(context)" src/main_solver.py
 
-# --- [4] Automated Repairs (Drafts) ---
+# --- [4] AUTOMATED REPAIRS ---
 
-# REPAIR A: Ensure the logger uses the specific 'Solver.Main' handle instead of root logging
-# This aligns the code with Rule 4 and ensures caplog picks it up.
-# sed -i 's/import logging; logging.warning/logger.warning/g' src/main_solver.py
+# REPAIR A: Update the test to listen specifically to the named logger 'Solver.Main'
+# This is the most likely fix for 'assert 0 > 0' when the code clearly shows the log line.
+# sed -i 's/caplog.at_level(logging.WARNING):/caplog.at_level(logging.WARNING, logger="Solver.Main"):/' tests/property_integrity/test_heavy_elasticity_lifecycle.py
 
-# REPAIR B: Force the log message to match the test's exact regex if 'Instability' is missing
-# sed -i 's/Arithmetic anomaly/Instability detected: Arithmetic anomaly/g' src/main_solver.py
+# REPAIR B: Fallback - Force propagation to root so default caplog catches it
+# sed -i '/logger = logging.getLogger("Solver.Main")/a logger.propagate = True' src/main_solver.py
 
-# REPAIR C: Ensure the test input actually triggers the raise by checking dt_min_limit
-# If dt_min_limit is too high, elasticity might fail to reduce dt enough to succeed.
-# sed -i 's/"dt_min_limit": 0.0001/"dt_min_limit": 1e-9/g' config.json
+# REPAIR C: If the error isn't triggering, ensure the numerical runtime is configured
+# sed -i '/context = _load_simulation_context(input_path)/a \    _configure_numerical_runtime(context)' src/main_solver.py
 
 echo "============================================================"
 echo "✅ Forensic Audit and Repair Script Ready"
