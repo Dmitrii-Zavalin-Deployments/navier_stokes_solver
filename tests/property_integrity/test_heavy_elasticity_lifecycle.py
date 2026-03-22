@@ -40,10 +40,10 @@ class TestHeavyElasticityLifecycle:
                 "nx": nx, "ny": ny, "nz": nz
             },
             "fluid_properties": {"density": 1.0, "viscosity": 0.001},
-            "initial_conditions": {"velocity": [1e10, 1e10, 1e10], "pressure": 1.0},
+            "initial_conditions": {"velocity": [0.0, 0.0, 0.0], "pressure": 1.0},
             "simulation_parameters": {"time_step": 0.5, "total_time": 10.0, "output_interval": 1},
             "boundary_conditions": [
-                {"location": "x_min", "type": "inflow", "values": {"u": 50.0, "v": 0.0, "w": 0.0}}, 
+                {"location": "x_min", "type": "inflow", "values": {"u": 1e15, "v": 0.0, "w": 0.0}}, 
                 {"location": "x_max", "type": "outflow", "values": {"p": 0.0}}
             ],
             "mask": [0] * (nx * ny * nz),
