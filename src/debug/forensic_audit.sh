@@ -1,42 +1,39 @@
 #!/bin/bash
 echo "============================================================"
-echo "🎯 FORENSIC AUDIT: THE SILENT OVERFLOW MYSTERY"
+echo "🎯 FORENSIC AUDIT: FORCING THE ARITHMETIC TRAP"
 echo "============================================================"
 
-# --- [1] Audit: Stack Trace & Exception Trap ---
-echo "--- [Audit 1] Checking if error is swallowed in Step 3/4 ---"
-# Rule 2: 100% visibility. Checking if sub-orchestrators have silent try/excepts.
-grep -r "except:" src/step3 src/step4
-grep -r "except Exception:" src/step3 src/step4
+# --- [1] Diagnostic: Verification of NumPy Error Config ---
+echo "--- [Audit 1] Checking global NumPy error state ---"
+grep -r "np.seterr" src/
 
-# --- [2] Audit: Logger Propagation ---
-echo "--- [Audit 2] Verifying Logger Parentage ---"
-# Rule 4: Hierarchy over Convenience. 
-# If 'Solver.Main' doesn't propagate to root, caplog (defaulting to root) sees nothing.
-grep -n "propagate" src/main_solver.py
+# --- [2] Diagnostic: Rule 7 Compliance Check ---
+echo "--- [Audit 2] Checking for manual NaN/Inf checks in ops ---"
+# If Rule 7 is violated, kernels return non-finite values instead of raising errors.
+grep -E "isinf|isnan|isfinite" src/step3/ops/advection.py || echo "⚠️ VIOLATION: No finite-math guards found in advection.py"
 
-# --- [3] Audit: The Smoking Gun (Step 3 Kernels) ---
-echo "--- [Audit 3] Checking if advection/laplacian handles NaNs internally ---"
-cat -n src/step3/ops/advection.py | head -n 50
+# --- [3] Audit: Orchestration Flow ---
+echo "--- [Audit 3] Checking if step3 catches its own math errors ---"
+cat -n src/step3/orchestrate_step3.py | grep -A 5 "try:"
 
-# --- [4] AUTOMATED REPAIRS & TRAPS ---
+# --- [4] AUTOMATED REPAIRS ---
 
-# REPAIR A: Force Caplog to listen to the specific Logger Identity
-# Rule 6: Efficiency. We tell the test exactly which pipe to listen to.
-# sed -i 's/with caplog.at_level(logging.WARNING, logger=""):/with caplog.at_level(logging.WARNING, logger="Solver.Main"):/g' tests/property_integrity/test_heavy_elasticity_lifecycle.py
+# REPAIR A: Force NumPy to 'raise' on all anomalies (Rule 5)
+# This ensures that 1e15 * 1e15 triggers a Python exception immediately.
+# sed -i 's/np.seterr(all="warn")/np.seterr(all="raise")/g' src/main_solver.py
+# sed -i 's/np.seterr(all="ignore")/np.seterr(all="raise")/g' src/main_solver.py
 
-# REPAIR B: Global NumPy Error Trap
-# Rule 5: Deterministic Initialization. 
-# We move the seterr to the very top of run_solver to ensure it's not overridden.
-# sed -i '56i \    import numpy as np; np.seterr(all="raise")' src/main_solver.py
+# REPAIR B: Inject Rule 7 "Fail-Fast" Guard into Advection
+# We force an explicit check before returning to ensure the recovery path is hit.
+# sed -i '43i \        if not np.isfinite(advection_val): raise ArithmeticError("In-flight instability detected in advection")' src/step3/ops/advection.py
 
-# REPAIR C: Broaden Exception Catching
-# If it's not an ArithmeticError, it might be a RuntimeWarning being promoted to Error.
-# sed -i 's/except (ArithmeticError, FloatingPointError, ValueError):/except (Exception):/g' src/main_solver.py
+# REPAIR C: Fix caplog scope in the test
+# Rule 6: Ensure the test listens to the correct logger identity.
+# sed -i 's/logger=""/logger="Solver.Main"/g' tests/property_integrity/test_heavy_elasticity_lifecycle.py
 
-# REPAIR D: Direct STDOUT Signal
-# Rule 7: Granular Traceability. We bypass the logger for a moment to prove the path exists.
-# sed -i '125i \                print("STABILITY_SIGNAL_REACHED")' src/main_solver.py
+# REPAIR D: Broaden Trap in Main Solver
+# Rule 2: Ensure we don't miss RuntimeWarnings that have been promoted.
+# sed -i 's/except (ArithmeticError, FloatingPointError, ValueError):/except (ArithmeticError, FloatingPointError, ValueError, RuntimeWarning):/g' src/main_solver.py
 
 echo "============================================================"
-echo "✅ Audit Block Configured. Run to expose the silent failure."
+echo "✅ Forensic Script Ready. Run to bridge the 'Math-Logic' gap."
