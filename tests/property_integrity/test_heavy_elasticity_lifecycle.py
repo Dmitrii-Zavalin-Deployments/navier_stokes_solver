@@ -2,7 +2,6 @@
 
 import json
 import logging
-import zipfile
 from pathlib import Path
 
 import pytest
