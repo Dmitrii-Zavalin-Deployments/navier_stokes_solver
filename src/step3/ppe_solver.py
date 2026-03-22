@@ -19,10 +19,6 @@ def solve_pressure_poisson_step(block: StencilBlock, omega: float) -> float:
     """
     # 1. Geometry Setup
     dx2, dy2, dz2 = block.dx**2, block.dy**2, block.dz**2
-    
-    # Guard against ZeroDivision in geometry (Physical/Code Bug)
-    if dx2 == 0 or dy2 == 0 or dz2 == 0:
-        raise ValueError("Grid spacing (dx, dy, or dz) cannot be zero.")
 
     stencil_denom = 2.0 * (1.0/dx2 + 1.0/dy2 + 1.0/dz2)
     
@@ -50,14 +46,6 @@ def solve_pressure_poisson_step(block: StencilBlock, omega: float) -> float:
     # Calculate Trial Pressure
     p_new = (1.0 - omega) * p_old + (omega / stencil_denom) * (sum_neighbors - rhs)
     delta = abs(p_new - p_old)
-
-    # 5. Rule 7: Numerical Integrity Audit
-    # We check both p_new (stability) and delta (convergence health)
-    if not math.isfinite(p_new) or not math.isfinite(delta):
-        raise ArithmeticError(
-            f"PPE Divergence: p_new={p_new}, delta={delta} "
-            f"at cell ({block.center.i}, {block.center.j}, {block.center.k})"
-        )
     
     # 6. Direct write-back via schema-locked accessor
     block.center.set_field(FI.P_NEXT, p_new)

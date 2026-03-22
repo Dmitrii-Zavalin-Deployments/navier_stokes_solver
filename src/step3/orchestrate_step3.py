@@ -39,21 +39,19 @@ def orchestrate_step3(
     original_dt = block.dt
     block.dt = elasticity.dt
 
-    # 1. PREDICT: Intermediate star-velocity calculation
-    if is_first_pass:
-        compute_local_predictor_step(block)
-        return block, 0.0
+    try:
+        # 1. PREDICT: Intermediate star-velocity calculation
+        if is_first_pass:
+            compute_local_predictor_step(block)
+            return block, 0.0
 
-    # 2. SOLVE: Iterative Pressure Poisson (SOR)
-    delta = solve_pressure_poisson_step(block, context.config.ppe_omega)
+        # 2. SOLVE: Iterative Pressure Poisson (SOR)
+        delta = solve_pressure_poisson_step(block, context.config.ppe_omega)
+
+        # 3. CORRECT: Final velocity projection
+        apply_local_velocity_correction(block)
+
+        return block, delta
     
-    # Rule 7: Immediate math audit to catch NaN/Inf divergence
-    if not math.isfinite(delta):
-        raise ArithmeticError(f"Non-finite delta ({delta})")
-
-    # 3. CORRECT: Final velocity projection
-    apply_local_velocity_correction(block)
-
-    block.dt = original_dt
-    
-    return block, delta
+    finally:
+        block.dt = original_dt

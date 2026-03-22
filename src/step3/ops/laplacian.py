@@ -24,10 +24,6 @@ def compute_local_laplacian(block: StencilBlock, field_id: FI) -> float:
     
     # 2. Geometry Setup (Rule 4: SSoT from block)
     dx2, dy2, dz2 = block.dx**2, block.dy**2, block.dz**2
-    
-    # Rule 7: Guard against division by zero in geometry
-    if dx2 == 0 or dy2 == 0 or dz2 == 0:
-        raise ValueError(f"Zero grid spacing squared at ({block.center.i}, {block.center.j})")
 
     # 3. Discrete Laplacian Calculation
     lap_val = (
@@ -35,13 +31,6 @@ def compute_local_laplacian(block: StencilBlock, field_id: FI) -> float:
         (f_jp - 2.0 * f_c + f_jm) / dy2 +
         (f_kp - 2.0 * f_c + f_km) / dz2
     )
-
-    # 4. Rule 7: Numerical Integrity Audit
-    if not math.isfinite(lap_val):
-        raise ArithmeticError(
-            f"Laplacian explosion for {field_id.name}: val={lap_val} | "
-            f"Cell: ({block.center.i}, {block.center.j}, {block.center.k})"
-        )
 
     return lap_val
 

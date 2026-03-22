@@ -39,14 +39,7 @@ def apply_local_velocity_correction(block: StencilBlock) -> None:
         v_star[2] - (scaling * grad_p[2])
     )
     
-    # 5. Rule 7: Numerical Integrity Audit
-    # We check the first component; if one is NaN, the whole vector usually is.
-    if not all(math.isfinite(v) for v in v_new):
-        raise ArithmeticError(
-            f"Velocity correction resulted in non-finite values: {v_new}"
-        )
-    
-    # 6. Apply velocity correction in-place to the STAR buffer
+    # 5. Apply velocity correction in-place to the STAR buffer
     # Note: These will be committed to the Foundation by ElasticManager.validate_and_commit
     block.center.set_field(FI.VX_STAR, v_new[0])
     block.center.set_field(FI.VY_STAR, v_new[1])

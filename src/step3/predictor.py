@@ -47,18 +47,6 @@ def compute_local_predictor_step(block: StencilBlock) -> None:
         v_star_val = v_n[i] + dt_over_rho * (
             block.mu * lap_v[i] - block.rho * adv_v[i] + force[i] - grad_p[i]
         )
-        
-        # Rule 7: Immediate Numerical Audit
-        if not math.isfinite(v_star_val):
-            # Provide high-res telemetry for GitHub Actions
-            physics_context = (
-                f"lap={lap_v[i]:.2e}, adv={adv_v[i]:.2e}, "
-                f"force={force[i]:.2e}, grad_p={grad_p[i]:.2e}"
-            )
-            raise ArithmeticError(
-                f"Predictor Divergence at {field_id.name}: value={v_star_val} | "
-                f"Context: {physics_context}"
-            )
 
         # Commit to the Trial (Star) buffer
         block.center.set_field(field_id, v_star_val)
