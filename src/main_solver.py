@@ -120,6 +120,7 @@ def run_solver(input_path: str) -> str:
                 state.ready_for_time_loop = False
 
         except (ArithmeticError, FloatingPointError, ValueError):
+            logger.warning("Instability detected: Arithmetic anomaly triggered recovery path.")
             # FAILURE PATH: Instability detected. Trigger dt reduction and retry step.
             # This block is only reachable if np.seterr(all='raise') is active.
             elasticity.stabilization(is_needed=True, state=state)

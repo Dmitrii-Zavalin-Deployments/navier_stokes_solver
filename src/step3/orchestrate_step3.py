@@ -39,41 +39,21 @@ def orchestrate_step3(
     original_dt = block.dt
     block.dt = elasticity.dt
 
-    try:
-        # 1. PREDICT: Intermediate star-velocity calculation
-        if is_first_pass:
-            compute_local_predictor_step(block)
-            return block, 0.0
+    # 1. PREDICT: Intermediate star-velocity calculation
+    if is_first_pass:
+        compute_local_predictor_step(block)
+        return block, 0.0
 
-        # 2. SOLVE: Iterative Pressure Poisson (SOR)
-        delta = solve_pressure_poisson_step(block, context.config.ppe_omega)
-        
-        # Rule 7: Immediate math audit to catch NaN/Inf divergence
-        if not math.isfinite(delta):
-            raise ArithmeticError(f"Non-finite delta ({delta})")
-
-        # 3. CORRECT: Final velocity projection
-        apply_local_velocity_correction(block)
-        
-        return block, delta
-
-    except ArithmeticError as e:
-        # Expected Numerical Instability: Signal Main Solver to retry with Panic Mode
-        if DEBUG:
-            print(f"DEBUG [Step 3]: Math instability at ({block.center.i}, {block.center.j}, {block.center.k}) -> {e}")
-        raise
-
-    except Exception as e:
-        # Unexpected Code/Logic Bug: Print telemetry and EXIT simulation
-        loc = f"({block.center.i}, {block.center.j}, {block.center.k})"
-        print(f"\nFATAL CODE BUG at Block {loc}")
-        print(f"  > Error Type: {type(e).__name__}")
-        print(f"  > Details: {str(e)}")
-        
-        # Re-raising without converting to ArithmeticError ensures the main_solver
-        # does NOT retry, effectively terminating the pipeline.
-        raise 
+    # 2. SOLVE: Iterative Pressure Poisson (SOR)
+    delta = solve_pressure_poisson_step(block, context.config.ppe_omega)
     
-    finally:
-        # Mandatory Restoration of block state integrity
-        block.dt = original_dt
+    # Rule 7: Immediate math audit to catch NaN/Inf divergence
+    if not math.isfinite(delta):
+        raise ArithmeticError(f"Non-finite delta ({delta})")
+
+    # 3. CORRECT: Final velocity projection
+    apply_local_velocity_correction(block)
+
+    block.dt = original_dt
+    
+    return block, delta

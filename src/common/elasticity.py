@@ -11,7 +11,7 @@ class ElasticManager:
 
     def __init__(self, config, initial_dt: float):
         self.config = config
-        self.logger = logging.getLogger("src.common.elasticity")
+        self.logger = logging.getLogger("Solver.Main.Elasticity")
         
         self._dt = initial_dt 
         self.dt_floor = self.config.dt_min_limit
