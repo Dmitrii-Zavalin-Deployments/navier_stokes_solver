@@ -77,7 +77,8 @@ class TestHeavyElasticityLifecycle:
                 assert len(csv_files) >= 2 
 
                 with archive.open(csv_files[-1]) as f:
-                    content = f.read().decode('utf-8')
+                    header = f.read(8)
+                    assert header.startswith(b'\x89HDF'), 'Foundation Error: Snapshot is not a valid HDF5 binary'
                     
                     # Numerical Sanity check (Phase C, Rule 7)
                     assert "nan" not in content.lower()
