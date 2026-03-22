@@ -1,37 +1,37 @@
 #!/bin/bash
 echo "============================================================"
-echo "🎯 PHASE D: PROPAGATION DEPTH & EXCEPTION TRAP AUDIT"
+echo "🎯 PHASE E: ITERATION DEPTH & TRAP-DOOR AUDIT"
 echo "============================================================"
 
-# --- [Audit 1] Iteration Count Check ---
-echo "--- [Audit 1] Checking how many steps actually ran ---"
-# If we see 3 flushes but 0 warnings, the instability isn't 'blooming' fast enough
-grep -c "Explicitly flushing" logs/solver.log || echo "No log file found, check stdout."
+# --- [Audit 1] Propagation Check ---
+echo "--- [Audit 1] Checking if time-step logic allows 'Instant Finish' ---"
+cat -n src/main_solver.py | sed -n '120,135p'
 
-# --- [Audit 2] Numerical Kernel Audit ---
-echo "--- [Audit 2] Checking if Step 3 (PPE) is silently returning NaNs ---"
-# Rule 7: Bubbling. If PPE returns NaN but doesn't RAISE, the loop continues blindly.
-grep -n "return.*nan" src/step3/ppe_solver.py
+# --- [Audit 2] PPE Divergence Audit ---
+echo "--- [Audit 2] Checking for silent convergence with NaNs ---"
+# If max_delta remains 0.0 despite 1e15 input, the BC is being ignored.
+grep -A 5 "max_delta =" src/main_solver.py
 
-# --- [Audit 3] Boundary Condition (BC) Latency ---
-echo "--- [Audit 3] Checking if BCs are applied BEFORE or AFTER the first solve ---"
-cat -n src/main_solver.py | grep -A 5 "orchestrate_step4"
+# --- [Audit 3] Test Artifact Forensic ---
+echo "--- [Audit 3] Checking if the 'successful' HDF5 is actually garbage ---"
+python3 -c "import h5py, numpy as np; f=h5py.File('navier_stokes_output/snapshot_0001.h5','r'); print(f'Max U: {np.max(f[\"vx\"][:])}')"
 
-# --- [Audit 4] Logger Propagation ---
-echo "--- [Audit 4] Checking if logger level is being overridden at runtime ---"
-grep "setLevel" src/main_solver.py
+# --- [Audit 4] Logger Capture Verification ---
+echo "--- [Audit 4] Verification of Logger capture scope ---"
+grep "caplog.at_level" tests/property_integrity/test_heavy_elasticity_lifecycle.py
 
-# --- [5] AUTOMATED REPAIRS (Force the Failure) ---
+# --- [5] AUTOMATED REPAIRS (The Smoking Gun Fixes) ---
 
-# REPAIR A: Increase simulation duration to ensure divergence
+# REPAIR A: Force the simulation to run longer. 
+# This gives the instability time to propagate through the grid and trigger a crash.
 # sed -i 's/"total_time": 0.2/"total_time": 5.0/' tests/property_integrity/test_heavy_elasticity_lifecycle.py
 
-# REPAIR B: Force a ValueError if velocity exceeds a physical constant (CFL trigger)
-# sed -i '/orchestrate_step3/a \                if np.max(np.abs(block.field.u)) > 1e10: raise ValueError("Physical Divergence")' src/main_solver.py
+# REPAIR B: Force a manual trap for non-physical velocities.
+# This ensures we don't rely on the hardware to throw a FloatingPointError.
+# sed -i '/orchestrate_step5/i \                if np.max(np.abs(state.stencil_matrix[0].field.u)) > 1e12: raise ArithmeticError("Instability")' src/main_solver.py
 
-# REPAIR C: Ensure the logger name in the test matches the one in Elasticity
-# sed -i 's/logger="Solver.Main"/logger="Solver"/' tests/property_integrity/test_heavy_elasticity_lifecycle.py
-# sed -i 's/getLogger("Solver.Main")/getLogger("Solver")/' src/common/elasticity.py
+# REPAIR C: Ensure the Test captures the right logger namespace.
+# sed -i 's/logger=""/logger="Solver.Main"/' tests/property_integrity/test_heavy_elasticity_lifecycle.py
 
 echo "============================================================"
-echo "✅ Audit Complete. Use REPAIR A to give the instability time to bloom."
+echo "✅ Audit Complete. Apply REPAIR A and REPAIR B for a guaranteed signal."
