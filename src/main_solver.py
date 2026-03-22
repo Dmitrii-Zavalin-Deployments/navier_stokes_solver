@@ -9,8 +9,6 @@ from pathlib import Path
 import jsonschema
 import numpy as np
 
-np.seterr(all="raise")
-
 from src.common.archive_service import archive_simulation_artifacts
 from src.common.elasticity import ElasticManager
 from src.common.simulation_context import SimulationContext
@@ -23,6 +21,15 @@ from src.step5.orchestrate_step5 import orchestrate_step5
 DEBUG = False
 logger = logging.getLogger("Solver.Main")
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+def _configure_numerical_runtime(context: SimulationContext):
+    """
+    Rule 5: Deterministic Initialization.
+    Forces NumPy to raise exceptions based on explicit config rather than global defaults.
+    """
+    # under="ignore" is usually preferred in CFD to prevent subnormal floor-to-zero crashes
+    np.seterr(all="raise", under="ignore")
+    logger.info("Numerical runtime configured: Trapping arithmetic anomalies.")
 
 def _load_simulation_context(input_path: str) -> SimulationContext:
     """Assembles physical input and numerical config into a unified context."""
@@ -47,6 +54,9 @@ def _load_simulation_context(input_path: str) -> SimulationContext:
 def run_solver(input_path: str) -> str:
     """Main Orchestrator with Unified Elastic Stability."""
     context = _load_simulation_context(input_path)
+    
+    # 0. CONFIG RUNTIME (Rule 5 compliance)
+    _configure_numerical_runtime(context)
 
     # 1. VALIDATE INPUT (Contract Guard)
     SCHEMA_PATH = BASE_DIR / "schema/solver_input_schema.json"
@@ -109,14 +119,17 @@ def run_solver(input_path: str) -> str:
 
             if state.time >= context.input_data.simulation_parameters.total_time:
                 state.ready_for_time_loop = False
+
         except (ArithmeticError, FloatingPointError, ValueError):
-            import logging; logging.warning("Instability detected: Arithmetic anomaly triggered recovery path.")
+            # Rule 4: Use local logger hierarchy
+            logger.warning("Instability detected: Arithmetic anomaly triggered recovery path.")
             
-            # 1. Rollback based on the dt that just failed
+            # Rule 9: Encapsulated Rollback (Logic Wiring)
+            # Reverting the failed time-step attempt
             state.iteration -= 1
             state.time -= elasticity.dt 
             
-            # 2. Now trigger the logic to reduce dt for the NEXT attempt
+            # Trigger dt reduction for the retry
             elasticity.stabilization(is_needed=True, state=state)
 
     return archive_simulation_artifacts(state)
