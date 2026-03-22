@@ -1,8 +1,10 @@
 # src/common/elasticity.py
 
 import logging
+
 from src.common.field_schema import FI
 from src.common.solver_state import SolverState
+
 
 class ElasticManager:
     __slots__ = ['config', 'logger', '_dt', 'dt_floor', '_iteration', '_runs', '_dt_range']

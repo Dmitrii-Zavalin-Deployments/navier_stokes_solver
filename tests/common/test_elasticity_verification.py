@@ -1,11 +1,14 @@
 # tests/common/test_elasticity_verification.py
 
-import pytest
-import numpy as np
 from unittest.mock import MagicMock
+
+import numpy as np
+import pytest
+
 from src.common.elasticity import ElasticManager
 from src.common.field_schema import FI
 from src.common.solver_state import SolverState
+
 
 class TestElasticityScientific:
     """
