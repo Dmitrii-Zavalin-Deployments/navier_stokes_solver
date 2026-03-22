@@ -78,6 +78,7 @@ def run_solver(input_path: str) -> str:
 
     # 5. MAIN EXECUTION LOOP
     while state.ready_for_time_loop:
+            print(f'DEBUG: Iteration {state.iteration} | Time {state.time}')
         try:
             # A. PREDICTOR PASS
             for block in state.stencil_matrix:
@@ -97,7 +98,10 @@ def run_solver(input_path: str) -> str:
             
             # C. ADVANCE
             state.iteration += 1
-            state.time += elasticity.dt
+            state.time += state.dt
+                # Rule 6 & 9: Global State Snapshot
+                from src.step5.orchestrate_step5 import orchestrate_step5
+                orchestrate_step5(state)
             state = orchestrate_step5(state, context)
 
             if DEBUG and state.iteration % 10 == 0:
