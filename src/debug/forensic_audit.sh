@@ -1,45 +1,42 @@
 #!/bin/bash
 echo "============================================================"
-echo "🎯 FORENSIC AUDIT: BREAKING THE SILENT TRY-BLOCK"
+echo "🎯 FORENSIC AUDIT: FORCING EXCEPTION BUBBLE-UP"
 echo "============================================================"
 
-# --- [1] Audit: The "Swallow" Reveal ---
-echo "--- [Audit 1] Checking for silent exception swallowing in Step 3 ---"
-# We need to see what happens after Line 54. If it's "except: return block", we found it.
-cat -n src/step3/orchestrate_step3.py | sed -n '50,70p'
+# --- [1] Audit: Step 3 "Silent Death" Check ---
+echo "--- [Audit 1] Checking if Step 3 returns instead of raising ---"
+# We need to see if there is an 'except' block between lines 54 and 70.
+cat -n src/step3/orchestrate_step3.py | sed -n '50,75p'
 
-# --- [2] Audit: Main Solver Recovery Logic ---
-echo "--- [Audit 2] Checking the catch block in main_solver.py ---"
-# Verifying if the main loop actually has the logic to catch the bubble-up.
-cat -n src/main_solver.py | grep -C 5 "except"
+# --- [2] Audit: Elasticity Signal Verification ---
+echo "--- [Audit 2] Checking Elasticity Manager logic ---"
+# Verifying if the stabilization method itself has a silent fail.
+cat -n src/common/elasticity.py | grep -A 10 "def stabilization"
 
-# --- [3] Audit: Logger Propagation ---
-echo "--- [Audit 3] Checking if Solver.Main propagates to Root ---"
-grep "propagate" src/main_solver.py || echo "⚠️ Logger propagation not explicitly set."
+# --- [3] Audit: Logger Propagation Fix ---
+echo "--- [Audit 3] Checking Logger Propagation ---"
+# If propagation is True but caplog is empty, we need to check the Level.
+grep "logger.setLevel" src/main_solver.py || echo "⚠️ Logger level might be blocking WARNINGS."
 
 # --- [4] AUTOMATED REPAIRS ---
 
-# REPAIR A: Fix the "Swallow" in Step 3
-# If there is an 'except' block catching math errors, we force it to re-raise.
+# REPAIR A: Force Step 3 to be "Transparent"
+# Removing the try/finally in Step 3 ensures exceptions hit the Main Solver immediately.
 # Rule 7: Fail-Fast.
-# sed -i '/except ArithmeticError:/a \            raise' src/step3/orchestrate_step3.py
-# sed -i '/except Exception:/a \            raise' src/step3/orchestrate_step3.py
+# sed -i '41d' src/step3/orchestrate_step3.py
+# sed -i '54,56d' src/step3/orchestrate_step3.py
 
-# REPAIR B: Synchronize Test Logger with Code Logger
-# Rule 6: Listen to the correct pipe.
+# REPAIR B: Synchronize Test Logger Scope
+# Standardizing the test to listen to the specific 'Solver.Main' channel.
 # sed -i 's/logger=""/logger="Solver.Main"/g' tests/property_integrity/test_heavy_elasticity_lifecycle.py
 
-# REPAIR C: Force Finite-Math Guard (The "Hard Stop")
-# Injecting a manual finite check in the predictor to ensure we don't return 'inf' blocks.
-# sed -i '45i \            if not np.isfinite(delta): raise ArithmeticError("PPE Diverged: non-finite delta")' src/step3/orchestrate_step3.py
+# REPAIR C: Inject High-Visibility "Smoking Gun" Print
+# Bypassing the logger to prove the Main Solver's catch block is reachable.
+# sed -i '125i \                print("CORE_RECOVERY_SIGNAL: EXCEPTION_TRAPPED")' src/main_solver.py
 
-# REPAIR D: Emergency Print Signal
-# Direct stdout bypasses all logger/caplog issues to prove the recovery path was hit.
-# sed -i '/logger.warning/a \            print("CI_SIGNAL: INSTABILITY_CAUGHT_REDUCING_DT")' src/main_solver.py
+# REPAIR D: Ensure NumPy Raise is Global
+# Moving the seterr to the absolute top of the run_solver function.
+# sed -i '57i \        import numpy as np; np.seterr(all="raise")' src/main_solver.py
 
 echo "============================================================"
-echo "✅ Audit Block Configured. Run to expose the 'return' instead of 'raise'."
-echo "============================================================"
-cat -n src/step3/orchestrate_step3.py
-echo "============================================================"
-cat -n src/main_solver.py
+echo "✅ Audit Block Configured. Run to bridge the exception gap."
