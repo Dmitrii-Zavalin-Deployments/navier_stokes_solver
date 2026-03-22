@@ -85,7 +85,7 @@ def run_solver(input_path: str) -> str:
                 orchestrate_step4(block, context, state.grid, state.boundary_conditions)
 
             # B. PPE ITERATION
-            for _ in range(context.config.max_iter):
+            for _ in range(context.config.ppe_max_iter):
                 max_delta = 0.0
                 for block in state.stencil_matrix:
                     _, delta = orchestrate_step3(block, context, elasticity, is_first_pass=False)
@@ -94,9 +94,6 @@ def run_solver(input_path: str) -> str:
 
                 if max_delta < context.config.ppe_tolerance:
                     break
-
-            # SUCCESS PATH
-            elasticity.stabilization(is_needed=False)
             
             # C. ADVANCE
             state.iteration += 1
@@ -108,6 +105,9 @@ def run_solver(input_path: str) -> str:
 
             if state.time >= context.input_data.simulation_parameters.total_time:
                 state.ready_for_time_loop = False
+            
+            # SUCCESS PATH
+            elasticity.stabilization(is_needed=False)
 
         except ArithmeticError:
             # FAILURE PATH: Update dt and retry the SAME time step

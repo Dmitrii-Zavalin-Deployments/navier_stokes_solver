@@ -15,7 +15,7 @@ class ElasticManager:
         self._iteration = 0
         self._runs = 10
         
-        # Linear range calculation
+        # Linear range from initial_dt down to dt_floor
         self._dt_range = [
             initial_dt + i * (self.dt_floor - initial_dt) / self._runs 
             for i in range(self._runs + 1)
@@ -27,16 +27,17 @@ class ElasticManager:
 
     def stabilization(self, is_needed: bool) -> None:
         if not is_needed:
+            # Success: Reset to full speed
             self._iteration = 0
             self._dt = self._dt_range[self._iteration]
             return
 
         if self._iteration >= self._runs:
             raise RuntimeError(
-                f"Not found stable run within dt = {self._dt:.2e} and dt_floor = {self.dt_floor:.2e}. "
-                "Update config and restart the run."
+                f"Unstable run at dt_floor = {self.dt_floor:.2e}. "
+                "Update config.json (increase ppe_max_iter or reduce ppe_tolerance) and restart."
             )
         
         self._iteration += 1
         self._dt = self._dt_range[self._iteration]
-        self.logger.warning(f"Instability detected. Reducing dt to {self._dt:.2e} (Attempt {self._iteration}/{self._runs})")
+        self.logger.warning(f"Instability. Reducing dt to {self._dt:.2e} ({self._iteration}/{self._runs})")

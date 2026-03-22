@@ -40,7 +40,7 @@ def orchestrate_step3(
             return block, 0.0
 
         # 2. SOLVE: Iterative Pressure Poisson (SOR)
-        delta = solve_pressure_poisson_step(block, context.config.omega)
+        delta = solve_pressure_poisson_step(block, context.config.ppe_omega)
         
         # Rule 7: Immediate math audit to catch NaN/Inf divergence
         if not math.isfinite(delta):
