@@ -1,35 +1,33 @@
 #!/bin/bash
 echo "============================================================"
-echo "🔍 PHASE C: FORENSIC STRUCTURAL & PHYSICS AUDIT"
+echo "🎯 PHASE C: INDENTATION & STRUCTURAL REPAIR"
 echo "============================================================"
 
-# --- [Audit 1] Whitespace & Indentation Smoking Gun ---
-echo "--- [Audit 1] Checking for Mixed Tabs/Spaces in Tests ---"
-# Shows non-printable characters (Tabs as ^I, Line endings as $)
-cat -A tests/property_integrity/test_heavy_elasticity_lifecycle.py | sed -n '95,110p'
+# --- [Audit 1] Space Counting ---
+echo "--- [Audit 1] Exact Space Count for Lines 99-105 ---"
+# This identifies exactly how many leading spaces exist
+sed -n '99,105p' tests/property_integrity/test_heavy_elasticity_lifecycle.py | grep -o '^ *' | awk '{ print length, "spaces" }'
 
-# --- [Audit 2] Source Integrity Check ---
-echo "--- [Audit 2] Line-Numbered Source Audit (Rule 7) ---"
-cat -n tests/property_integrity/test_heavy_elasticity_lifecycle.py | sed -n '98,115p'
+# --- [Audit 2] Structural Alignment ---
+echo "--- [Audit 2] Visualizing Block Alignment ---"
+# Using cat -A to ensure there are no hidden characters causing the shift
+cat -A tests/property_integrity/test_heavy_elasticity_lifecycle.py | sed -n '98,110p'
 
-# --- [Audit 3] Search for Swallowed Exceptions ---
-echo "--- [Audit 3] Scanning for 'except:' blocks that lack logging ---"
-grep -r "except:" src/ | grep -v "logger"
+# --- [Audit 3] Physics Foundation Check ---
+echo "--- [Audit 3] Verifying HDF5 usage in Step 5 (Output) ---"
+grep -r "h5py.File" src/step5/
 
-# --- [Audit 4] Physics Kernel Sync Check ---
-echo "--- [Audit 4] Verifying dt property setter in StencilBlock ---"
-grep -A 5 "@dt.setter" src/common/stencil_block.py
+# --- [4] AUTOMATED REPAIRS (The "Indentation Hammer") ---
 
-# --- [5] AUTOMATED REPAIRS (Candidate Injections) ---
+# REPAIR A: Fix Scenario 2 indentation (Lines 100 to 150)
+# This adds 4 extra spaces to every line from the docstring to the end of the test function
+# sed -i '100,150s/^    /        /' tests/property_integrity/test_heavy_elasticity_lifecycle.py
 
-# REPAIR A: Force 4-space indentation and remove Tabs (Fixes the Ruff Error)
+# REPAIR B: Global Tab-to-Space conversion (Safety Net)
 # sed -i 's/\t/    /g' tests/property_integrity/test_heavy_elasticity_lifecycle.py
 
-# REPAIR B: Inject a hard sync-check into the main loop for CI debugging
-# sed -i '/state.iteration += 1/i \            assert all(b.dt == elasticity.dt for b in state.stencil_matrix), "STENCIL_SYNC_FAILURE"' src/main_solver.py
-
-# REPAIR C: Ensure NumPy traps are active in the test environment
-# sed -i '104i \        import numpy as np; np.seterr(all="raise")' tests/property_integrity/test_heavy_elasticity_lifecycle.py
+# REPAIR C: Fix the 'import' block specifically if sed A misses it
+# sed -i '104,107s/^import/    import/' tests/property_integrity/test_heavy_elasticity_lifecycle.py
 
 echo "============================================================"
-echo "✅ Audit Complete. Review the 'cat -A' output for ^I (Tabs)."
+echo "✅ Audit Complete. If Audit 1 showed equal space counts for 99 and 100, use REPAIR A."
