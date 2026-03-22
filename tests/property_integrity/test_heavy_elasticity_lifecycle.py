@@ -73,7 +73,7 @@ class TestHeavyElasticityLifecycle:
             # 5. DEEP ARCHIVE INSPECTION
             with zipfile.ZipFile(zip_path, 'r') as archive:
                 namelist = archive.namelist()
-                csv_files = sorted([f for f in namelist if f.endswith('.csv')])
+                csv_files = sorted([f for f in namelist if f.endswith('.h5')])
                 assert len(csv_files) >= 2 
 
                 with archive.open(csv_files[-1]) as f:

@@ -6,6 +6,7 @@ from src.step5.io_archivist import save_snapshot
 
 
 def orchestrate_step5(state: SolverState, context: SimulationContext) -> SolverState:
+    print('DEBUG: Explicitly flushing field buffers to archive...')
     """
     Step 5: The Archivist Orchestration.
     
