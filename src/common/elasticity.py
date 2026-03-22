@@ -36,8 +36,8 @@ class ElasticManager:
 
         if self._iteration >= self._runs:
             raise RuntimeError(
-                f"Unstable run at dt_floor = {self.dt_floor:.2e}. "
-                f"Exhausted {self._runs} retries. Check physics bounds."
+                f"Unstable: reached dt_floor = {self.dt_floor:.2e}. "
+                f"Exhausted {self._runs} retries. Update the run configs and restart the solver"
             )
         
         # Advance to the next (smaller) time step in the pre-calculated range
