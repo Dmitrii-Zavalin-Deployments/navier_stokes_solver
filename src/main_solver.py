@@ -9,6 +9,8 @@ from pathlib import Path
 import jsonschema
 import numpy as np
 
+# Rule 5: Force global arithmetic trapping for deterministic stability
+# This is the initial "hard" lock.
 np.seterr(all="raise")
 
 from src.common.archive_service import archive_simulation_artifacts
@@ -26,6 +28,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 def _configure_numerical_runtime(context: SimulationContext):
     """Rule 5: Deterministic Initialization via NumPy error trapping."""
+    # Refined lock: Trap explosions, but allow very small numbers (underflow)
     np.seterr(all="raise", under="ignore")
     logger.info("Numerical runtime configured: Trapping arithmetic anomalies.")
 
@@ -77,18 +80,16 @@ def run_solver(input_path: str) -> str:
         raise
 
     # 4. ELASTICITY ENGINE (Rule 5 & 9: State-Anchored Guardian)
-    # The manager now owns the reference to 'state' and its 'dt'
     elasticity = ElasticManager(context.config, state)
 
     # 5. MAIN EXECUTION LOOP
     while state.ready_for_time_loop:
         try:
-            # Sync time-step across blocks from the Elasticity SSoT)
+            # Sync time-step across blocks from the Elasticity SSoT
             for b in state.stencil_matrix:
                 b.dt = elasticity.dt
 
-            
-            # PREDICTOR PASS (Atomic Predictor + Boundary Injection)
+            # PREDICTOR PASS
             for block in state.stencil_matrix:
                 orchestrate_step3(
                     block, 
@@ -98,8 +99,7 @@ def run_solver(input_path: str) -> str:
                     is_first_pass=True
                 )
             
-            # Rule 7: Immediate Physics Verification
-            # We audit the global foundation once all local stencils are updated.
+            # Rule 7: Immediate Physics Verification (Scenario 2 Tripwire)
             state.audit_physical_bounds()
             
             # PPE ITERATION (Pressure-Poisson Equation)
@@ -118,9 +118,10 @@ def run_solver(input_path: str) -> str:
                 if max_delta < context.config.ppe_tolerance:
                     break
             
-            # Signal Success to Elasticity
+            # Success signal: allows dt to potentially expand later
             elasticity.stabilization(is_needed=False)
 
+            # Finalize Step
             state = orchestrate_step4(state, context)
 
             if DEBUG and state.iteration % 10 == 0:
@@ -131,25 +132,21 @@ def run_solver(input_path: str) -> str:
 
         except ArithmeticError as e:
             # TIER 1: PHYSICAL INSTABILITY (Recoverable)
-            # We log the specific error from the audit, then the standardized trigger for the test
             logger.error(f"Audit Failure: {e}") 
             
-            # CRITICAL: This exact string must match the test's caplog search
+            # REQUIRED FOR PYTEST: The specific string search in Scenario 2
             logger.warning(f"STABILITY TRIGGER: Physical anomaly at iteration {state.iteration}. Reducing dt...")
             
-            # Rule 4: Singular routing
+            # Rule 4: Singular routing to the recovery manager
             elasticity.stabilization(is_needed=True)
 
         except FloatingPointError:
-            # TIER 2: NUMERICAL CORRUPTION (Usually Fatal)
-            # Triggered by: Division by zero or overflow trapped by np.seterr(all='raise').
-            # While sometimes dt-related, it often points to a zero-mask or mesh error.
+            # TIER 2: NUMERICAL CORRUPTION
             logger.error(f"❌ NUMERICAL CRITICAL: Floating point trap sprung at iteration {state.iteration}.")
             raise 
 
         except ValueError as e:
-            # TIER 3: CONTRACT VIOLATION (Fatal)
-            # Triggered by: Invalid array shapes, dx=0, or configuration errors.
+            # TIER 3: CONTRACT VIOLATION
             logger.error(f"🚫 CONTRACT VIOLATION: {str(e)}")
             raise
 
