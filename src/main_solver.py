@@ -126,8 +126,10 @@ def run_solver(input_path: str) -> str:
 
         except ArithmeticError:
             # TIER 1: PHYSICAL INSTABILITY (Recoverable)
-            # Triggered by: CFL violations, pressure divergence, or audit failures.
-            logger.warning(f"⚠️ STABILITY TRIGGER: Physical anomaly at iteration {state.iteration}. Reducing dt...")
+            # Standardized log for Test-Matcher (Rule 8)
+            logger.warning(f"STABILITY TRIGGER: Physical anomaly at iteration {state.iteration}. Reducing dt...")
+            
+            # Singular routing to the Time-Step Manager (Rule 4)
             elasticity.stabilization(is_needed=True)
 
         except FloatingPointError:
