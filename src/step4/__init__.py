@@ -1,19 +1,18 @@
 # src/step4/__init__.py
 
 """
-Step 4: Boundary Enforcement Package.
+Step 5: Archivist Package.
 
-This package manages the application of physical boundary conditions 
-using a dispatcher-applier pattern.
-
+This package manages the serialization of the simulation state to disk.
 Compliance:
-- Rule 8 (API Minimalism): Only the orchestrator is exposed.
-- Rule 4 (SSoT): Internal modules are isolated to prevent redundant data 
-  access paths and ensure the Foundation remains the exclusive source of state.
+- Rule 8 (API Minimalism): Exposes only the primary orchestration entry point.
+- Rule 4 (SSoT): Internal modules are isolated to prevent bypass of state 
+  validation and configuration rules.
 """
 
 from src.step4.orchestrate_step4 import orchestrate_step4
 
-# By explicitly defining __all__, we ensure that internal logic (dispatcher 
-# and applier) is protected from external, non-orchestrated access.
+# We restrict the public interface to the orchestrator.
+# The internal io_archivist is shielded from direct external access 
+# to ensure all I/O operations respect the state's lifecycle.
 __all__ = ["orchestrate_step4"]

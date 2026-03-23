@@ -1,4 +1,4 @@
-# src/step5/io_archivist.py
+# src/step4/io_archivist.py
 
 from pathlib import Path
 

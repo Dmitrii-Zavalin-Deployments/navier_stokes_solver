@@ -15,9 +15,7 @@ from src.common.simulation_context import SimulationContext
 from src.step1.orchestrate_step1 import orchestrate_step1
 from src.step2.orchestrate_step2 import orchestrate_step2
 from src.step3.orchestrate_step3 import orchestrate_step3
-
-# Step 4 removed: Integrated into Step 3 for physical causality
-from src.step5.orchestrate_step5 import orchestrate_step5
+from src.step4.orchestrate_step4 import orchestrate_step4
 
 DEBUG = False
 logger = logging.getLogger("Solver.Main")
@@ -25,10 +23,7 @@ logger.propagate = True
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 def _configure_numerical_runtime(context: SimulationContext):
-    """
-    Rule 5: Deterministic Initialization.
-    Forces NumPy to raise exceptions based on explicit config rather than global defaults.
-    """
+    """Rule 5: Deterministic Initialization via NumPy error trapping."""
     np.seterr(all="raise", under="ignore")
     logger.info("Numerical runtime configured: Trapping arithmetic anomalies.")
 
@@ -53,10 +48,8 @@ def _load_simulation_context(input_path: str) -> SimulationContext:
     return SimulationContext.create(input_data, config_data)
 
 def run_solver(input_path: str) -> str:
-    """Main Orchestrator with Unified Elastic Stability."""
+    """Main Orchestrator with State-Anchored Elastic Stability."""
     context = _load_simulation_context(input_path)
-    
-    # 0. CONFIG RUNTIME (Rule 5 compliance)
     _configure_numerical_runtime(context)
 
     # 1. VALIDATE INPUT (Contract Guard)
@@ -81,16 +74,14 @@ def run_solver(input_path: str) -> str:
         logger.error(f"!!! STATE CONTRACT VIOLATION at {path_str}: {e.message}")
         raise
 
-    # 4. ELASTICITY ENGINE (Stability Controller)
-    elasticity = ElasticManager(
-        context.config,
-        context.input_data.simulation_parameters.time_step,
-    )
+    # 4. ELASTICITY ENGINE (Rule 5 & 9: State-Anchored Guardian)
+    # The manager now owns the reference to 'state' and its 'dt'
+    elasticity = ElasticManager(context.config, state)
 
     # 5. MAIN EXECUTION LOOP
     while state.ready_for_time_loop:
         try:
-            # SYNC FIRST
+            # Sync time-step across blocks from the Elasticity SSoT
             for b in state.stencil_matrix:
                 b.dt = elasticity.dt
 
@@ -112,7 +103,6 @@ def run_solver(input_path: str) -> str:
             for _ in range(context.config.ppe_max_iter):
                 max_delta = 0.0
                 for block in state.stencil_matrix:
-                    # Pass state objects for internal boundary-consistent solving
                     _, delta = orchestrate_step3(
                         block, 
                         context, 
@@ -126,12 +116,12 @@ def run_solver(input_path: str) -> str:
                     break
             
             # Signal Success to Elasticity
-            elasticity.stabilization(is_needed=False, state=state)
+            elasticity.stabilization(is_needed=False)
 
-            state = orchestrate_step5(state, context)
+            state = orchestrate_step4(state, context)
 
             if DEBUG and state.iteration % 10 == 0:
-                print(f"DEBUG [Main]: Step {state.iteration} | Time {state.time:.4f} | dt {elasticity.dt:.2e}")
+                print(f"DEBUG: Step {state.iteration} | Time {state.time:.4f} | dt {elasticity.dt:.2e}")
 
             if state.time >= context.input_data.simulation_parameters.total_time:
                 state.ready_for_time_loop = False
@@ -146,7 +136,7 @@ def run_solver(input_path: str) -> str:
             state.time -= elasticity.dt 
             
             # Trigger dt reduction for the retry
-            elasticity.stabilization(is_needed=True, state=state)
+            elasticity.stabilization(is_needed=True)
 
     return archive_simulation_artifacts(state)
 
