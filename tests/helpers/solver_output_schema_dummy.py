@@ -1,7 +1,7 @@
 # tests/helpers/solver_output_schema_dummy.py
 
 from src.common.solver_state import SolverState
-from tests.helpers.solver_step5_output_dummy import make_step5_output_dummy
+from tests.helpers.solver_step4_output_dummy import make_step4_output_dummy
 
 
 def make_output_schema_dummy(nx: int = 4, ny: int = 4, nz: int = 4) -> SolverState:
@@ -9,7 +9,7 @@ def make_output_schema_dummy(nx: int = 4, ny: int = 4, nz: int = 4) -> SolverSta
     Hydrates a terminal SolverState object for Archivist Testing.
     Ensures snapshot paths align with Rule 4 SSoT.
     """
-    state = make_step5_output_dummy(nx=nx, ny=ny, nz=nz)
+    state = make_step4_output_dummy(nx=nx, ny=ny, nz=nz)
     
     # Reset loop flag to indicate simulation completion
     state.ready_for_time_loop = False

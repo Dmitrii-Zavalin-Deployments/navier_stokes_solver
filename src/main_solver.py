@@ -126,17 +126,26 @@ def run_solver(input_path: str) -> str:
             if state.time >= context.input_data.simulation_parameters.total_time:
                 state.ready_for_time_loop = False
 
-        except (ArithmeticError, FloatingPointError, ValueError):
-            # Rule 4: Use local logger hierarchy
-            print("DEBUG: [Main] ArithmeticError caught!")
-            logger.warning("Instability: Arithmetic anomaly triggered recovery path.")
-            
-            # Rule 9: Encapsulated Rollback
+        except ArithmeticError:
+            # TIER 1: PHYSICAL INSTABILITY (Recoverable)
+            # Triggered by: CFL violations, pressure divergence, or audit failures.
+            logger.warning(f"⚠️ STABILITY TRIGGER: Physical anomaly at iteration {state.iteration}. Reducing dt...")
             state.iteration -= 1
             state.time -= elasticity.dt 
-            
-            # Trigger dt reduction for the retry
             elasticity.stabilization(is_needed=True)
+
+        except FloatingPointError:
+            # TIER 2: NUMERICAL CORRUPTION (Usually Fatal)
+            # Triggered by: Division by zero or overflow trapped by np.seterr(all='raise').
+            # While sometimes dt-related, it often points to a zero-mask or mesh error.
+            logger.error(f"❌ NUMERICAL CRITICAL: Floating point trap sprung at iteration {state.iteration}.")
+            raise 
+
+        except ValueError as e:
+            # TIER 3: CONTRACT VIOLATION (Fatal)
+            # Triggered by: Invalid array shapes, dx=0, or configuration errors.
+            logger.error(f"🚫 CONTRACT VIOLATION: {str(e)}")
+            raise
 
     return archive_simulation_artifacts(state)
 

@@ -1,3 +1,5 @@
+# src/step3/orchestrate_step3.py
+
 from src.common.simulation_context import SimulationContext
 from src.common.stencil_block import StencilBlock
 
@@ -20,48 +22,58 @@ def orchestrate_step3(
     is_first_pass: bool = False
 ) -> tuple[StencilBlock, float]:
     """
-    Step 3 Orchestrator: Projection Method Kernel with Integrated Boundaries.
+    Step 3 Orchestrator: Stabilized Collocated Projection Method.
     
-    Compliance:
-    - Rule 0 (Performance): Atomic execution of Predictor + Boundary Enforcement.
-    - Rule 4 (SSoT): Uses state-level grid and bc_manager for rule dispatching.
-    - Rule 9 (Hybrid Memory): Direct mutation of Foundation buffers via sub-modules.
+    Mathematical Flow (Collocated Rhie-Chow):
+    1. Predictor: Compute v* (intermediate velocity).
+    2. PPE Loop (Iterative):
+       a. Solve Pressure (SOR) with Rhie-Chow Laplacian correction.
+       b. Correct v* immediately using new pressure gradient.
+       c. Re-enforce Boundary Conditions on v* to ensure wall-consistency.
     """
     
     # --- [A] GHOST SYNC PATH ---
     if block.center.is_ghost:
-        if DEBUG:
-            print(f"[DEBUG] Ghost Sync at Index {block.center.index}")
-            
         sync_ghost_trial_buffers(block)
         return block, 0.0
     
-    # --- [B] PHYSICS KERNEL PATH ---
+    # --- [B] SHARED BOUNDARY DISPATCHER ---
+    # Boundary rules are needed in both Predictor and Iterative phases
+    rules = get_applicable_boundary_configs(
+        block, 
+        state_bc_manager.to_dict(),
+        state_grid, 
+        context.input_data.domain_configuration.to_dict()
+    )
     
-    # 1. PREDICT & ENFORCE (Atomic Unit)
+    # --- [C] PHYSICS KERNEL PATH ---
+    
+    # PHASE 1: PREDICT (Once per dt)
     if is_first_pass:
-        # A. Intermediate star-velocity calculation (u*)
+        # A. Intermediate star-velocity calculation (v*)
         compute_local_predictor_step(block)
         
-        # B. Identify and Apply Boundary Rules immediately
-        # This ensures 1e15 is in the field BEFORE the Poisson solver runs.
-        rules = get_applicable_boundary_configs(
-            block, 
-            state_bc_manager.to_dict(),
-            state_grid, 
-            context.input_data.domain_configuration.to_dict()
-        )
-        
+        # B. Initial Boundary Enforcement
+        # Ensures that the first PPE iteration sees correct Inlet/Outlet/Wall values
         for rule in rules:
             apply_boundary_values(block, rule)
             
         return block, 0.0
 
-    # 2. SOLVE: Iterative Pressure Poisson (SOR)
-    # The solver now encounters the massive gradient from the BC, triggering instability signal.
+    # PHASE 2: SOLVE & CORRECT (Iterative)
+    # 1. Solve: Pressure Poisson Equation (SOR)
+    # Note: Internally uses Rhie-Chow term: rho/dt * (div(v*) - dt * lap(p_n))
     delta = solve_pressure_poisson_step(block, context.config.ppe_omega)
 
-    # 3. CORRECT: Final velocity projection (u_next)
+    # 2. Correct: Velocity Projection
+    # This projects v* onto the divergence-free space defined by p^{n+1}
+    # Because we write to VX_STAR, the next iteration's div_v_star is updated.
     apply_local_velocity_correction(block)
+
+    # 3. Re-Enforce: Boundary Consistency
+    # CRITICAL: Velocity correction can "drift" values at the boundaries.
+    # We must reset No-Slip or Inlet conditions before the next SOR iteration.
+    for rule in rules:
+        apply_boundary_values(block, rule)
 
     return block, delta
