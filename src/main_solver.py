@@ -8,6 +8,7 @@ from pathlib import Path
 
 import jsonschema
 import numpy as np
+np.seterr(all="raise")
 
 from src.common.archive_service import archive_simulation_artifacts
 from src.common.elasticity import ElasticManager
