@@ -2,6 +2,7 @@
 
 import numpy as np
 import pytest
+from tests.helpers.solver_step5_output_dummy import make_step5_output_dummy
 
 from src.common.simulation_context import SimulationContext
 from src.common.solver_config import SolverConfig
@@ -19,7 +20,6 @@ from src.step5.orchestrate_step5 import orchestrate_step5
 # --- MANDATE: Vertical Integrity Dummy Imports ---
 from tests.helpers.solver_input_schema_dummy import create_validated_input
 from tests.helpers.solver_output_schema_dummy import make_output_schema_dummy
-from tests.helpers.solver_step5_output_dummy import make_step5_output_dummy
 
 
 class TestStep5Initialization:

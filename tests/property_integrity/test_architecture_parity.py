@@ -1,6 +1,7 @@
 # tests/property_integrity/test_architecture_parity.py
 
 import pytest
+from tests.helpers.solver_step5_output_dummy import make_step5_output_dummy
 
 from src.common.field_schema import FI
 from src.common.stencil_block import StencilBlock
@@ -9,7 +10,6 @@ from tests.helpers.solver_step1_output_dummy import make_step1_output_dummy
 from tests.helpers.solver_step2_output_dummy import make_step2_output_dummy
 from tests.helpers.solver_step3_output_dummy import make_step3_output_dummy
 from tests.helpers.solver_step4_output_dummy import make_step4_output_dummy
-from tests.helpers.solver_step5_output_dummy import make_step5_output_dummy
 
 # Only stages that return a SolverState with a monolithic .fields manager
 STATE_BASED_STAGES = [

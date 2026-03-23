@@ -6,11 +6,12 @@ import zipfile
 from io import BytesIO
 from pathlib import Path
 
-import pytest
 import h5py
 import numpy as np
+import pytest
 
 from src.main_solver import BASE_DIR, run_solver
+
 
 class TestHeavyElasticityLifecycle:
 

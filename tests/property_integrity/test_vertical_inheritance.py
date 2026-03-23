@@ -199,8 +199,9 @@ class TestVerticalIntegrity:
         Ensures that after Math (Step 3) and Boundaries (Step 4), 
         Step 5 can correctly consolidate the StencilMatrix back into Global Fields.
         """
-        from src.step5.orchestrate_step5 import orchestrate_step5
         from tests.helpers.solver_step5_output_dummy import make_step5_output_dummy
+
+        from src.step5.orchestrate_step5 import orchestrate_step5
 
         NX, NY, NZ = 4, 4, 4
         

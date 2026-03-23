@@ -1,7 +1,8 @@
 # tests/property_integrity/test_state_transitions.py
 
-from tests.helpers.solver_output_schema_dummy import make_output_schema_dummy
 from tests.helpers.solver_step5_output_dummy import make_step5_output_dummy
+
+from tests.helpers.solver_output_schema_dummy import make_output_schema_dummy
 
 
 def test_bridge_step5_to_output_integrity():
