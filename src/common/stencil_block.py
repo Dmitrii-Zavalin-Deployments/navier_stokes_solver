@@ -1,7 +1,9 @@
 # src/common/stencil_block.py
 
 import logging
+
 from src.common.base_container import ValidatedContainer
+
 from .cell import Cell
 
 logger = logging.getLogger(__name__)
