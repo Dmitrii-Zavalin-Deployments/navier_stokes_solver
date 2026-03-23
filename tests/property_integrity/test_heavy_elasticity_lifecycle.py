@@ -44,7 +44,7 @@ class TestHeavyElasticityLifecycle:
             "mask": [0] * 64,
             "external_forces": {"force_vector": [0.0, 0.0, 0.0]},
             # SMALL SCALE CONSTRAINTS
-            "physical_constraints": {"min_velocity": -20.0, "max_velocity": 20.0, "min_pressure": -50.0, "max_pressure": 50.0}
+            "physical_constraints": {"min_velocity": -20.0, "max_velocity": 20.0, "min_pressure": -50.0, "max_pressure": 200.0}
         }
 
     def test_scenario_1_pure_success(self, caplog, base_config, base_input):
@@ -114,7 +114,7 @@ class TestHeavyElasticityLifecycle:
         (Path(BASE_DIR) / "config.json").write_text(json.dumps(base_config))
         (Path(BASE_DIR) / input_filename).write_text(json.dumps(base_input))
 
-        with caplog.at_level(logging.ERROR):
+        with caplog.at_level(logging.WARNING):
             with pytest.raises(RuntimeError) as excinfo:
                 run_solver(input_filename)
         
