@@ -56,6 +56,8 @@ class ElasticManager:
         data[:, FI.VY] = data[:, FI.VY_STAR]
         data[:, FI.VZ] = data[:, FI.VZ_STAR]
         data[:, FI.P] = data[:, FI.P_NEXT]
+        self._state.iteration += 1
+        self._state.time += self._dt
 
     def stabilization(self, is_needed: bool) -> None:
         """

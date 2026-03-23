@@ -81,15 +81,12 @@ def run_solver(input_path: str) -> str:
     # 5. MAIN EXECUTION LOOP
     while state.ready_for_time_loop:
         try:
-            # Sync time-step across blocks from the Elasticity SSoT
+            # Sync time-step across blocks from the Elasticity SSoT)
             for b in state.stencil_matrix:
                 b.dt = elasticity.dt
 
-            # A. ADVANCE (Rule 9: Unified Foundation Commit)
-            state.iteration += 1
-            state.time += elasticity.dt
             
-            # B. PREDICTOR PASS (Atomic Predictor + Boundary Injection)
+            # PREDICTOR PASS (Atomic Predictor + Boundary Injection)
             for block in state.stencil_matrix:
                 orchestrate_step3(
                     block, 
@@ -99,7 +96,7 @@ def run_solver(input_path: str) -> str:
                     is_first_pass=True
                 )
 
-            # C. PPE ITERATION (Pressure-Poisson Equation)
+            # PPE ITERATION (Pressure-Poisson Equation)
             for _ in range(context.config.ppe_max_iter):
                 max_delta = 0.0
                 for block in state.stencil_matrix:
@@ -130,8 +127,6 @@ def run_solver(input_path: str) -> str:
             # TIER 1: PHYSICAL INSTABILITY (Recoverable)
             # Triggered by: CFL violations, pressure divergence, or audit failures.
             logger.warning(f"⚠️ STABILITY TRIGGER: Physical anomaly at iteration {state.iteration}. Reducing dt...")
-            state.iteration -= 1
-            state.time -= elasticity.dt 
             elasticity.stabilization(is_needed=True)
 
         except FloatingPointError:
