@@ -88,6 +88,6 @@ class ElasticManager:
         
         # Rule 8: Singular logging call for audit trail visibility
         self.logger.warning(
-            f"⚠️ STABILITY TRIGGER: Reducing dt to {self._dt:.2e} "
+            f"STABILITY TRIGGER: Reducing dt to {self._dt:.2e} "
             f"({self._iteration}/{self._runs})"
         )
