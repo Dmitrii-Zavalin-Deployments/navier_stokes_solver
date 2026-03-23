@@ -95,6 +95,7 @@ def run_solver(input_path: str) -> str:
                     state.boundary_conditions, 
                     is_first_pass=True
                 )
+                state.audit_physical_bounds()
 
             # PPE ITERATION (Pressure-Poisson Equation)
             for _ in range(context.config.ppe_max_iter):
