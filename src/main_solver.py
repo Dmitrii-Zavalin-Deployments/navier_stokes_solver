@@ -10,7 +10,6 @@ import jsonschema
 import numpy as np
 
 # Rule 5: Force global arithmetic trapping for deterministic stability
-# This is the initial "hard" lock.
 np.seterr(all="raise")
 
 from src.common.archive_service import archive_simulation_artifacts
@@ -28,7 +27,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 def _configure_numerical_runtime(context: SimulationContext):
     """Rule 5: Deterministic Initialization via NumPy error trapping."""
-    # Refined lock: Trap explosions, but allow very small numbers (underflow)
     np.seterr(all="raise", under="ignore")
     logger.info("Numerical runtime configured: Trapping arithmetic anomalies.")
 
@@ -57,7 +55,7 @@ def run_solver(input_path: str) -> str:
     context = _load_simulation_context(input_path)
     _configure_numerical_runtime(context)
 
-    # 1. VALIDATE INPUT (Contract Guard)
+    # 1. VALIDATE INPUT
     SCHEMA_PATH = BASE_DIR / "schema/solver_input_schema.json"
     try:
         with open(SCHEMA_PATH) as f:
@@ -67,7 +65,7 @@ def run_solver(input_path: str) -> str:
         logger.error(f"!!! CONTRACT VIOLATION: {e.message}")
         raise
 
-    # 2. ASSEMBLY (Phase B Implementation)
+    # 2. ASSEMBLY
     state = orchestrate_step1(context)
     state = orchestrate_step2(state)
 
@@ -79,13 +77,16 @@ def run_solver(input_path: str) -> str:
         logger.error(f"!!! STATE CONTRACT VIOLATION at {path_str}: {e.message}")
         raise
 
-    # 4. ELASTICITY ENGINE (Rule 5 & 9: State-Anchored Guardian)
+    # 4. ELASTICITY ENGINE
     elasticity = ElasticManager(context.config, state)
 
     # 5. MAIN EXECUTION LOOP
     while state.ready_for_time_loop:
+        # RULE 9: Snapshot memory BEFORE the trial begins
+        state.capture_stable_state()
+
         try:
-            # Sync time-step across blocks from the Elasticity SSoT
+            # Sync time-step from Elasticity SSoT
             for b in state.stencil_matrix:
                 b.dt = elasticity.dt
 
@@ -99,10 +100,10 @@ def run_solver(input_path: str) -> str:
                     is_first_pass=True
                 )
             
-            # Rule 7: Immediate Physics Verification (Scenario 2 Tripwire)
+            # Rule 7: Immediate Physics Verification
             state.audit_physical_bounds()
             
-            # PPE ITERATION (Pressure-Poisson Equation)
+            # PPE ITERATION
             for _ in range(context.config.ppe_max_iter):
                 max_delta = 0.0
                 for block in state.stencil_matrix:
@@ -118,10 +119,10 @@ def run_solver(input_path: str) -> str:
                 if max_delta < context.config.ppe_tolerance:
                     break
             
-            # Success signal: allows dt to potentially expand later
+            # Success signal
             elasticity.stabilization(is_needed=False)
 
-            # Finalize Step
+            # Finalize Step (Iteration incremented here)
             state = orchestrate_step4(state, context)
 
             if DEBUG and state.iteration % 10 == 0:
@@ -131,22 +132,22 @@ def run_solver(input_path: str) -> str:
                 state.ready_for_time_loop = False
 
         except ArithmeticError as e:
-            # TIER 1: PHYSICAL INSTABILITY (Recoverable)
+            # RULE 9: ANTI-FRANKENSTEIN ROLLBACK
+            # Wipes the memory pollution (e.g., 144.93) before the next dt retry
             logger.error(f"Audit Failure: {e}") 
+            state.rollback_to_stable_state()
             
-            # REQUIRED FOR PYTEST: The specific string search in Scenario 2
+            # REQUIRED FOR PYTEST
             logger.warning(f"STABILITY TRIGGER: Physical anomaly at iteration {state.iteration}. Reducing dt...")
             
-            # Rule 4: Singular routing to the recovery manager
+            # Reduce dt and loop back to try again with clean memory
             elasticity.stabilization(is_needed=True)
 
         except FloatingPointError:
-            # TIER 2: NUMERICAL CORRUPTION
             logger.error(f"❌ NUMERICAL CRITICAL: Floating point trap sprung at iteration {state.iteration}.")
             raise 
 
         except ValueError as e:
-            # TIER 3: CONTRACT VIOLATION
             logger.error(f"🚫 CONTRACT VIOLATION: {str(e)}")
             raise
 

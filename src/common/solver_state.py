@@ -1,7 +1,6 @@
 # src/common/solver_state.py
 
 import logging
-
 import numpy as np
 
 from src.common.base_container import ValidatedContainer
@@ -9,6 +8,7 @@ from src.common.field_schema import FI
 
 logger = logging.getLogger(__name__)
 
+# ... [Previous Managers: PhysicalConstraints, Domain, Grid, etc. remain unchanged] ...
 # =========================================================
 # POST: PRE-FLIGHT INTEGRITY CHECK (Rule 9 Sentinel)
 # =========================================================
@@ -380,7 +380,8 @@ class SolverState(ValidatedContainer):
         '_boundary_conditions', '_external_forces', '_simulation_parameters', 
         '_physical_constraints',
         '_mask', '_fields', '_stencil_matrix', 
-        '_iteration', '_time', '_ready_for_time_loop', '_manifest'
+        '_iteration', '_time', '_ready_for_time_loop', '_manifest',
+        '_cache_buffer'
     ]
 
     def __init__(self):
@@ -392,7 +393,8 @@ class SolverState(ValidatedContainer):
         self._iteration = 0
         self._time = 0.0
         self._ready_for_time_loop = False
-        self.manifest = ManifestManager() 
+        self._manifest = ManifestManager() 
+        self._cache_buffer = None # Lazy allocation
 
     @property
     def physical_constraints(self) -> PhysicalConstraintsManager: 
@@ -466,6 +468,33 @@ class SolverState(ValidatedContainer):
     def time(self) -> float: return self._time
     @time.setter
     def time(self, value: float): self._time = value
+
+    # =========================================================
+    # RULE 9: MEMORY RECOVERY (Anti-Frankenstein Protocol)
+    # =========================================================
+
+    def capture_stable_state(self):
+        """
+        Takes a snapshot of the current 'Foundation' fields (VX, VY, VZ, P).
+        Called BEFORE a trial time-step begins.
+        """
+        if self._cache_buffer is None:
+            self._cache_buffer = np.zeros_like(self.fields.data)
+            logger.info("CACHE: Rollback buffer allocated.")
+            
+        self._cache_buffer[:] = self.fields.data[:]
+        logger.debug("CACHE: Stable state captured.")
+
+    def rollback_to_stable_state(self):
+        """
+        Reverts the fields buffer to the last stable snapshot.
+        Wipes the 'numerical storm' left by a failed attempt.
+        """
+        if self._cache_buffer is None:
+            raise RuntimeError("CRITICAL: Rollback requested but no cache exists.")
+        
+        self.fields.data[:] = self._cache_buffer[:]
+        logger.warning(f"ROLLBACK: Memory reverted to state at start of Iteration {self.iteration}.")
 
     # =========================================================
     # RULE 7: VECTORIZED PHYSICAL AUDIT
