@@ -480,34 +480,44 @@ class SolverState(ValidatedContainer):
     # =========================================================
     def audit_physical_bounds(self):
         """
-        Rule 7: Vectorized Physical Audit.
-        Checks entire NumPy buffers against PhysicalConstraintsManager.
-        Uses NumPy vectorization (100x faster than cell-by-cell loops).
+        Rule 7: Vectorized Physical Audit with Forensic Logging.
         """
         pc = self.physical_constraints
-        fields = self.fields.data # The raw NumPy buffer
+        fields = self.fields.data 
 
-        # 1. Check Velocities (VX, VY, VZ indices)
-        # We calculate the max magnitude of the entire velocity field in one sweep.
-        # Refined Line in src/common/solver_state.py
-        if not np.isfinite(fields).all(): 
-            raise ArithmeticError("NUMERICAL EXPLOSION: Non-finite values (NaN/Inf) detected in Foundation.")
+        # --- FORENSIC DUMP FOR GITHUB ACTIONS ---
+        # Using print() ensures it hits the stdout log immediately
+        print(f"DEBUG [Rule 7 Audit]: Iteration {self.iteration}")
+        print(f"DEBUG [Rule 7 Audit]: Constraint Limits -> V_max: {pc.max_velocity}, P_range: [{pc.min_pressure}, {pc.max_pressure}]")
 
-        v_max_current = np.max(np.abs(fields[:, [FI.VX, FI.VY, FI.VZ, FI.VX_STAR, FI.VY_STAR, FI.VZ_STAR]]))
+        # 1. Check Finite Status
+        finite_mask = np.isfinite(fields)
+        if not finite_mask.all():
+            num_nans = np.count_nonzero(~finite_mask)
+            print(f"CRITICAL: Found {num_nans} non-finite values in Foundation.")
+            raise ArithmeticError(f"NUMERICAL EXPLOSION: {num_nans} NaN/Inf values detected.")
+
+        # 2. Check Velocities
+        v_fields = fields[:, [FI.VX, FI.VY, FI.VZ, FI.VX_STAR, FI.VY_STAR, FI.VZ_STAR]]
+        v_max_current = np.max(np.abs(v_fields))
+        
+        print(f"DEBUG [Rule 7 Audit]: Current V_max observed: {v_max_current:.4e}")
+
         if v_max_current > pc.max_velocity:
-            raise ArithmeticError(
-                f"PHYSICAL EXPLOSION: Velocity {v_max_current:.4f} "
-                f"exceeds limit {pc.max_velocity}"
-            )
+            msg = f"PHYSICAL EXPLOSION: Velocity {v_max_current:.4e} exceeds limit {pc.max_velocity}"
+            print(f"ERROR: {msg}") # Forces display in GHA logs
+            raise ArithmeticError(msg)
 
-        # 2. Check Pressure (P index)
+        # 3. Check Pressure
         p_min = np.min(fields[:, FI.P])
         p_max = np.max(fields[:, FI.P])
+        
+        print(f"DEBUG [Rule 7 Audit]: Current P_range observed: [{p_min:.4e}, {p_max:.4e}]")
+
         if p_min < pc.min_pressure or p_max > pc.max_pressure:
-            raise ArithmeticError(
-                f"PHYSICAL EXPLOSION: Pressure [{p_min:.4f}, {p_max:.4f}] "
-                f"out of bounds [{pc.min_pressure}, {pc.max_pressure}]."
-            )
+            msg = f"PHYSICAL EXPLOSION: Pressure [{p_min:.4e}, {p_max:.4e}] out of bounds."
+            print(f"ERROR: {msg}")
+            raise ArithmeticError(msg)
 
     def validate_physical_readiness(self):
         if self.fields is None or self.fields.data is None:
