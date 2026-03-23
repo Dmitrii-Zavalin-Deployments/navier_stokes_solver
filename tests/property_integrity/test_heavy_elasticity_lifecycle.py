@@ -71,15 +71,26 @@ class TestHeavyElasticityLifecycle:
     def test_scenario_2_retry_and_recover(self, caplog, base_config, base_input):
         """
         Scenario 2: THE ELASTICITY TEST.
-        We use a velocity that is 'fast' (15.0) but allowed by Audit (20.0).
-        The large dt (0.1) will force a math trigger, and the solver must downstep to 0.001 to pass.
+        Uses a calculated CFL trigger to ensure the math fails initially.
         """
-        # 1. Setup physics: 15.0 < 20.0 (Audit passes, but CFL math will likely fail)
-        base_input["boundary_conditions"][0]["values"]["u"] = 25.0
+        # --- CFL CALCULATOR & LOGGER ---
+        u = 25.0
+        dt_initial = 0.1
+        # Calculate dx: (x_max - x_min) / nx
+        dx = (base_input["grid"]["x_max"] - base_input["grid"]["x_min"]) / base_input["grid"]["nx"]
+        courant_number = (u * dt_initial) / dx
+        
+        logging.info(f"DEBUG: Initial Physics -> u={u}, dt={dt_initial}, dx={dx}")
+        logging.info(f"DEBUG: Initial Courant Number = {courant_number} (Target > 1.0 for trigger)")
+
+        # 1. Setup physics: Ensure Audit limit (50.0) is higher than u (25.0)
+        base_input["boundary_conditions"][0]["values"]["u"] = u
+        base_input["physical_constraints"]["max_velocity"] = 50.0
+        base_input["physical_constraints"]["max_pressure"] = 1000.0
         
         # 2. Config: Force a downstep by starting with a huge DT
-        base_config["dt"] = 0.1 
-        base_config["dt_min_limit"] = 0.0001
+        base_config["dt"] = dt_initial 
+        base_config["dt_min_limit"] = 1e-6
         base_config["ppe_max_retries"] = 10 
         
         input_filename = "test_recovery_input.json"
@@ -89,12 +100,20 @@ class TestHeavyElasticityLifecycle:
         config_path.write_text(json.dumps(base_config))
         input_path.write_text(json.dumps(base_input))
 
-        with caplog.at_level(logging.WARNING, logger="Solver.Main"):
+        # We capture INFO level now so we can see our own debug logs too
+        with caplog.at_level(logging.INFO):
             zip_path = run_solver(input_filename)
         
         assert zip_path is not None
+        
         # Verify the logs show at least one reduction happened
-        assert any("STABILITY TRIGGER" in r.message for r in caplog.records)
+        trigger_found = any("STABILITY TRIGGER" in r.message for r in caplog.records)
+        
+        if not trigger_found:
+            print(f"\n[CFL FAIL] Courant was {courant_number}, but no trigger fired.")
+            print("Records found:", [r.message for r in caplog.records if r.levelno >= 30])
+            
+        assert trigger_found, "Solver was too stable! Elasticity logic never fired."
         
         # Cleanup
         input_path.unlink(missing_ok=True)
