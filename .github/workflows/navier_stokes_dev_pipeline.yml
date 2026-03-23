@@ -18,7 +18,7 @@ jobs:
       APP_SECRET: ${{ secrets.APP_SECRET }}
       REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
       # Define the 'Gold Standard' test command here (e.g. # pytest -s tests/ -vv --cov=src --cov-report=term-missing)
-      TEST_COMMAND: "pytest -s tests/property_integrity/test_heavy_elasticity_lifecycle.py::TestHeavyElasticityLifecycle::test_scenario_2_retry_and_recover -vv"
+      TEST_COMMAND: "pytest -s tests/property_integrity/test_heavy_elasticity_lifecycle.py -vv"
 
     steps:
       - name: 🗂️ Checkout Repository
