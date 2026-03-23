@@ -1,7 +1,6 @@
 # src/common/stencil_block.py
 
 from src.common.base_container import ValidatedContainer
-
 from .cell import Cell
 
 
@@ -16,7 +15,7 @@ class StencilBlock(ValidatedContainer):
 
     __slots__ = [
         '_center', '_i_minus', '_i_plus', '_j_minus', '_j_plus', '_k_minus', '_k_plus',
-        '_dx', '_dy', '_dz', '_dt', '_rho', '_mu', '_f_vals'
+        '_dx', '_dy', '_dz', '_dt', '_rho', '_mu', '_f_vals', '_id'
     ]
 
     def __init__(self, center: Cell, i_minus: Cell, i_plus: Cell, 
@@ -41,8 +40,14 @@ class StencilBlock(ValidatedContainer):
         object.__setattr__(self, '_rho', float(rho))
         object.__setattr__(self, '_mu', float(mu))
         object.__setattr__(self, '_f_vals', tuple(f_vals))
+        
+        # Unique ID for tracking in logs
+        object.__setattr__(self, '_id', f"Block_{id(self) % 1000}")
 
     # --- Topological Accessors ---
+    @property
+    def id(self) -> str: return self._id
+
     @property
     def center(self) -> Cell: return self._center
     
@@ -82,10 +87,14 @@ class StencilBlock(ValidatedContainer):
     def dt(self, value: float):
         """
         Rule 4 Sync Gate: Allows ElasticityManager to update the block's time-step.
-        Uses object.__setattr__ to bypass ValidatedContainer's strict write-protection.
         """
         if value <= 0:
             raise ValueError(f"Numerical Instability: dt must be positive, got {value}")
+        
+        # --- [STRATEGIC DIAGNOSTIC LOG] ---
+        # Verifies that Elasticity is actually pushing the new dt down to the compute kernels.
+        print(f"DEBUG [StencilBlock]: {self._id} Syncing dt -> {value:.4e}")
+        
         object.__setattr__(self, '_dt', float(value))
     
     @property
@@ -96,3 +105,6 @@ class StencilBlock(ValidatedContainer):
     
     @property
     def f_vals(self) -> tuple: return self._f_vals
+
+    def __repr__(self):
+        return f"<{self._id} dt={self._dt:.2e}>"

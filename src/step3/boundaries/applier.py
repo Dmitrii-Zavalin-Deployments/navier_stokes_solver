@@ -38,9 +38,15 @@ def apply_boundary_values(block: StencilBlock, rule: dict) -> None:
         field_id = BC_FIELD_MAP.get(key)
         
         if field_id is not None:
+            # --- [STRATEGIC DIAGNOSTIC LOG] ---
+            # This will show up in the GitHub Action logs to confirm 1e10 is received.
+            print(f"DEBUG [BC Applier]: Block {block.id} | Boundary: {location} | "
+                  f"Key: {key} -> FieldID: {field_id} | Value: {value:.4e}")
+            
             # Rule 9: Direct in-place update to the Star/Trial Foundation.
             # This makes the boundary condition "active" for the PPE solver.
             block.center.set_field(field_id, value)
+            
         else:
             # Rule 5: Immediate failure for invalid/unmapped configuration keys.
             raise KeyError(f"CONTRACT VIOLATION: Unsupported boundary key '{key}' at {location}")

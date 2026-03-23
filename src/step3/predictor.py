@@ -1,6 +1,5 @@
 # src/step3/predictor.py
 
-
 from src.common.field_schema import FI
 from src.common.stencil_block import StencilBlock
 from src.step3.ops.advection import compute_local_advection_vector
@@ -9,7 +8,6 @@ from src.step3.ops.gradient import compute_local_gradient_p
 from src.step3.ops.laplacian import compute_local_laplacian_v_n
 from src.step3.ops.scaling import get_dt_over_rho
 
-
 def compute_local_predictor_step(block: StencilBlock) -> None:
     """
     Computes the intermediate star-velocity field v*.
@@ -17,9 +15,8 @@ def compute_local_predictor_step(block: StencilBlock) -> None:
     Formula: v* = v^n + (dt/rho) * (mu * lap(v^n) - rho * (v^n ⋅ ∇)v^n + F - grad(p^n))
 
     Compliance:
-    - Rule 7: Fail-Fast math audit. If v* calculation results in NaN/Inf, 
-      raises ArithmeticError to trigger Elasticity recovery.
-    - Rule 9: Direct modification of FI.VX_STAR buffers via StencilBlock.
+    - Rule 7: Fail-Fast math audit. 
+    - Rule 9: Direct modification of FI.VX_STAR buffers.
     """
     
     # 1. Local Operator calls (Physics gradients)
@@ -46,6 +43,14 @@ def compute_local_predictor_step(block: StencilBlock) -> None:
         v_star_val = v_n[i] + dt_over_rho * (
             block.mu * lap_v[i] - block.rho * adv_v[i] + force[i] - grad_p[i]
         )
+
+        # --- [STRATEGIC DIAGNOSTIC LOG] ---
+        # We log the "Pre-Commit" value calculated by the physics kernel.
+        # This helps us see if the physics engine itself is producing the 0.1 observed by the audit.
+        if i == 0: # Focus on VX/u for the test case
+            print(f"DEBUG [Predictor]: Block {block.id} | "
+                  f"Calculated VX_STAR: {v_star_val:.4e} | "
+                  f"dt: {block.dt:.4e}")
 
         # Commit to the Trial (Star) buffer
         block.center.set_field(field_id, v_star_val)
