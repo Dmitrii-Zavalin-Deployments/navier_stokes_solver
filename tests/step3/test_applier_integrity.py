@@ -1,10 +1,13 @@
 # tests/step3/test_applier_integrity.py
 
-import pytest
 import logging
 from unittest.mock import MagicMock
-from src.step3.boundaries.applier import apply_boundary_values
+
+import pytest
+
 from src.common.field_schema import FI
+from src.step3.boundaries.applier import apply_boundary_values
+
 
 def test_applier_enforcement_and_logging(caplog):
     """
