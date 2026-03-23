@@ -91,15 +91,38 @@ class TestHeavyElasticityLifecycle:
                         assert np.all(np.isfinite(h5_audit['vx'][:]))
 
     def test_scenario_3_terminal_failure(self, caplog, base_config, base_input):
-        """Scenario 3: Force a crash by making stability impossible."""
+        """
+        Scenario 3: Force a crash by making stability impossible.
+        Uses extreme velocity (1e20) and a high dt floor (0.1).
+        EXPECTATION: Solver detects explosion, tries to reduce dt, 
+        hits the 0.1 floor immediately, and raises RuntimeError.
+        """
+        # 1. Setup impossible physics
         base_input["boundary_conditions"][0]["values"]["u"] = 1e20
-        base_config["dt_min_limit"] = 0.1 # Floor is too high to recover
+        base_config["dt_min_limit"] = 0.1  # High floor prevents recovery
+        base_config["ppe_max_retries"] = 3 # Shorten retries for faster test
         
-        input_filename = "test_fail_input.json"
-        (Path(BASE_DIR) / "config.json").write_text(json.dumps(base_config))
-        (Path(BASE_DIR) / input_filename).write_text(json.dumps(base_input))
+        input_filename = "test_terminal_fail.json"
+        config_path = Path(BASE_DIR) / "config.json"
+        input_path = Path(BASE_DIR) / input_filename
+        
+        config_path.write_text(json.dumps(base_config))
+        input_path.write_text(json.dumps(base_input))
 
-        with pytest.raises(RuntimeError) as excinfo:
-            run_solver(input_filename)
+        # 2. Execute and catch the specific Safety Shutdown
+        with caplog.at_level(logging.WARNING):
+            with pytest.raises(RuntimeError) as excinfo:
+                run_solver(input_filename)
         
-        assert "CRITICAL INSTABILITY" in str(excinfo.value)
+        # 3. Forensic Assertions
+        error_msg = str(excinfo.value)
+        assert "CRITICAL INSTABILITY" in error_msg
+        assert "Exhausted" in error_msg
+        
+        # Check logs for the audit trail
+        assert "AUDIT [Explosion]" in caplog.text
+        assert "STABILITY TRIGGER" in caplog.text
+        
+        # Cleanup
+        input_path.unlink(missing_ok=True)
+        config_path.unlink(missing_ok=True)
