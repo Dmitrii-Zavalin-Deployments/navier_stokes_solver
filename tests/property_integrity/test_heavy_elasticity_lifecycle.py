@@ -44,7 +44,7 @@ class TestHeavyElasticityLifecycle:
             "mask": [0] * 64,
             "external_forces": {"force_vector": [0.0, 0.0, 0.0]},
             # SMALL SCALE CONSTRAINTS
-            "physical_constraints": {"min_velocity": -20.0, "max_velocity": 20.0, "min_pressure": -50.0, "max_pressure": 200.0}
+            "physical_constraints": {"min_velocity": -20.0, "max_velocity": 30.0, "min_pressure": -50.0, "max_pressure": 200.0}
         }
 
     def test_scenario_1_pure_success(self, caplog, base_config, base_input):
@@ -75,7 +75,7 @@ class TestHeavyElasticityLifecycle:
         The large dt (0.1) will force a math trigger, and the solver must downstep to 0.001 to pass.
         """
         # 1. Setup physics: 15.0 < 20.0 (Audit passes, but CFL math will likely fail)
-        base_input["boundary_conditions"][0]["values"]["u"] = 15.0
+        base_input["boundary_conditions"][0]["values"]["u"] = 25.0
         
         # 2. Config: Force a downstep by starting with a huge DT
         base_config["dt"] = 0.1 
