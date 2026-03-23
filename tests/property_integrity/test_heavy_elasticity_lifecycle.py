@@ -41,6 +41,7 @@ class TestHeavyElasticityLifecycle:
             ],
             "mask": [0] * 64,
             "external_forces": {"force_vector": [0.0, 0.0, 0.0]}
+            "physical_constraints": {"min_velocity": -1e6, "max_velocity": 1e6, "min_pressure": -1e6, "max_pressure": 1e6},
         }
 
     def test_scenario_1_pure_success(self, caplog, base_config, base_input):
