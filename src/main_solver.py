@@ -135,8 +135,9 @@ def run_solver(input_path: str) -> str:
             # RULE 9: ANTI-FRANKENSTEIN ROLLBACK
             # Wipes the memory pollution (e.g., 144.93) before the next dt retry
             logger.error(f"Audit Failure: {e}") 
-            state.rollback_to_stable_state()
-            state.reset_pressure_ghosts()
+            
+            # This already handles the ghosts because it restores the WHOLE array
+            state.rollback_to_stable_state() 
             
             # REQUIRED FOR PYTEST
             logger.warning(f"STABILITY TRIGGER: Physical anomaly at iteration {state.iteration}. Reducing dt...")
