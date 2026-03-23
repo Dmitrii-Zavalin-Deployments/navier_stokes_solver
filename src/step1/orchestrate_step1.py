@@ -15,8 +15,8 @@ from src.common.solver_state import (
     FluidPropertiesManager,
     GridManager,
     InitialConditionManager,
-    PhysicalConstraintsManager,
     MaskManager,
+    PhysicalConstraintsManager,
     SimulationParameterManager,
     SolverState,
 )
