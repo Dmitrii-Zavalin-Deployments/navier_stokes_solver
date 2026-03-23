@@ -1,9 +1,12 @@
 # tests/step3/test_ppe_solver.py
 
-import pytest
 import logging
 from unittest.mock import MagicMock
+
+import pytest
+
 from src.step3.ppe_solver import solve_pressure_poisson_step
+
 
 class TestPPESolverIntegrity:
     

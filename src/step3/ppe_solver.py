@@ -1,7 +1,9 @@
 # src/step3/ppe_solver.py
 
-import numpy as np
 import logging
+
+import numpy as np
+
 from src.common.field_schema import FI
 from src.common.stencil_block import StencilBlock
 from src.step3.ops.divergence import compute_local_divergence_v_star
