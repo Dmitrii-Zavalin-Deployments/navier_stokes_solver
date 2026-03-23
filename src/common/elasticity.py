@@ -5,6 +5,7 @@ import logging
 from src.common.field_schema import FI
 from src.common.solver_state import SolverState
 
+
 class ElasticManager:
     """
     Rule 4 & 5: SSoT Stability Controller (Elasticity Engine).
