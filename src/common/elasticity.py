@@ -21,7 +21,7 @@ class ElasticManager:
         
         # Rule 5: Pulling initial conditions from the SSoT objects
         # Using the state's internal dt as the starting anchor
-        self._dt = state.dt 
+        self._dt = state.simulation_parameters.time_step 
         self.dt_floor = self.config.dt_min_limit
         self._iteration = 0
         self._runs = self.config.ppe_max_retries
