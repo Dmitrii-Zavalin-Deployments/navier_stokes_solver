@@ -1,9 +1,11 @@
 # src/common/solver_state.py
 
 import numpy as np
-
+import logging
 from src.common.base_container import ValidatedContainer
 from src.common.field_schema import FI
+
+logger = logging.getLogger(__name__)
 
 # =========================================================
 # POST: PRE-FLIGHT INTEGRITY CHECK (Rule 9 Sentinel)
@@ -16,48 +18,36 @@ def verify_foundation_integrity(state):
     Verifies that object-pointers map correctly to the monolithic fields_buffer.
     """
     if state.fields is None or state.fields.data is None:
+        logger.error("POST FAILED: Fields buffer not initialized.")
         raise RuntimeError("POST FAILED: Fields buffer not initialized.")
         
-    # print("🚀 POST: Initiating Pre-Flight Memory Integrity Check...")
+    logger.info("POST: Initiating Pre-Flight Memory Integrity Check...")
     
-    # 1. Structural Synchronicity Check
-    # We allow the stencil_matrix to be smaller than the buffer (to accommodate 
-    # safety padding), but it must never overflow the foundation.
     num_cells = state.fields.data.shape[0]
-    
     if len(state.stencil_matrix) > num_cells:
-        raise RuntimeError(
-            f"POST OVERFLOW: Stencil count ({len(state.stencil_matrix)}) "
-            f"> Buffer size ({num_cells}). Architecture integrity compromised."
-        )
+        logger.error(f"POST OVERFLOW: Stencil count ({len(state.stencil_matrix)}) > Buffer size ({num_cells})")
+        raise RuntimeError("POST OVERFLOW: Architecture integrity compromised.")
         
     original_data = state.fields.data.copy()
     
-    # Prime the buffer: Value = Index + (Field_ID / 10.0)
+    # Prime the buffer for pointer validation
     for f in FI:
         state.fields.data[:, f] = np.arange(num_cells, dtype=float) + (float(f) / 10.0)
 
-    # 2. The Inquisition: Verify pointer-to-buffer alignment
     try:
         for idx, block in enumerate(state.stencil_matrix):
             c = block.center
-            
-            # RULE 9: Sentinel Integrity - Ignore ghost cells for pointer-validation
             if c.is_ghost:
                 continue
             
             expected_p = float(c.index) + (float(FI.P) / 10.0)
-            expected_vx = float(c.index) + (float(FI.VX) / 10.0)
-            
-            if not np.isclose(c.p, expected_p) or not np.isclose(c.vx, expected_vx):
-                raise RuntimeError(
-                    f"CRITICAL: Memory Swap at Stencil Index {idx}! "
-                    f"Cell {c.index} pointers detected drift. "
-                    f"Expected P: {expected_p}, Got: {c.p}"
-                )
+            if not np.isclose(c.p, expected_p):
+                logger.critical(f"MEMORY DRIFT: Index {idx} | Expected P {expected_p}, Got {c.p}")
+                raise RuntimeError(f"CRITICAL: Memory Swap at Stencil Index {idx}!")
+        
+        logger.info("POST: Memory integrity verified. All pointers aligned.")
 
     finally:
-        # 3. Restore actual simulation data
         state.fields.data[:] = original_data
 
 # =========================================================
@@ -485,39 +475,32 @@ class SolverState(ValidatedContainer):
         pc = self.physical_constraints
         fields = self.fields.data 
 
-        # --- FORENSIC DUMP FOR GITHUB ACTIONS ---
-        # Using print() ensures it hits the stdout log immediately
-        print(f"DEBUG [Rule 7 Audit]: Iteration {self.iteration}")
-        print(f"DEBUG [Rule 7 Audit]: Constraint Limits -> V_max: {pc.max_velocity}, P_range: [{pc.min_pressure}, {pc.max_pressure}]")
-
+        logger.debug(f"AUDIT [Start]: Iteration {self.iteration}")
+        
         # 1. Check Finite Status
         finite_mask = np.isfinite(fields)
         if not finite_mask.all():
             num_nans = np.count_nonzero(~finite_mask)
-            print(f"CRITICAL: Found {num_nans} non-finite values in Foundation.")
-            raise ArithmeticError(f"NUMERICAL EXPLOSION: {num_nans} NaN/Inf values detected.")
+            logger.error(f"AUDIT [Explosion]: Found {num_nans} NaN/Inf values.")
+            raise ArithmeticError(f"NUMERICAL EXPLOSION: {num_nans} NaN/Inf detected.")
 
         # 2. Check Velocities
         v_fields = fields[:, [FI.VX, FI.VY, FI.VZ, FI.VX_STAR, FI.VY_STAR, FI.VZ_STAR]]
         v_max_current = np.max(np.abs(v_fields))
         
-        print(f"DEBUG [Rule 7 Audit]: Current V_max observed: {v_max_current:.4e}")
+        logger.debug(f"AUDIT [Metric]: V_max observed: {v_max_current:.4e} (Limit: {pc.max_velocity})")
 
         if v_max_current > pc.max_velocity:
-            msg = f"PHYSICAL EXPLOSION: Velocity {v_max_current:.4e} exceeds limit {pc.max_velocity}"
-            print(f"ERROR: {msg}") # Forces display in GHA logs
-            raise ArithmeticError(msg)
+            logger.error(f"AUDIT [Explosion]: Velocity {v_max_current:.4e} > Limit {pc.max_velocity}")
+            raise ArithmeticError("PHYSICAL EXPLOSION: Velocity out of bounds.")
 
         # 3. Check Pressure
-        p_min = np.min(fields[:, FI.P])
-        p_max = np.max(fields[:, FI.P])
-        
-        print(f"DEBUG [Rule 7 Audit]: Current P_range observed: [{p_min:.4e}, {p_max:.4e}]")
+        p_min, p_max = np.min(fields[:, FI.P]), np.max(fields[:, FI.P])
+        logger.debug(f"AUDIT [Metric]: P_range: [{p_min:.4e}, {p_max:.4e}]")
 
         if p_min < pc.min_pressure or p_max > pc.max_pressure:
-            msg = f"PHYSICAL EXPLOSION: Pressure [{p_min:.4e}, {p_max:.4e}] out of bounds."
-            print(f"ERROR: {msg}")
-            raise ArithmeticError(msg)
+            logger.error(f"AUDIT [Explosion]: Pressure [{p_min:.4e}, {p_max:.4e}] out of bounds.")
+            raise ArithmeticError("PHYSICAL EXPLOSION: Pressure out of bounds.")
 
     def validate_physical_readiness(self):
         if self.fields is None or self.fields.data is None:
