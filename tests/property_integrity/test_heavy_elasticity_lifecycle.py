@@ -96,7 +96,7 @@ class TestHeavyElasticityLifecycle:
 
         # 1. Setup physics: Ensure Audit limit (50.0) is higher than u (25.0)
         base_input["boundary_conditions"][0]["values"]["u"] = u
-        base_input["physical_constraints"]["max_velocity"] = 50.0
+        base_input["physical_constraints"]["max_velocity"] = 40.0
         base_input["physical_constraints"]["max_pressure"] = 1000.0
         
         # 2. Config: Force a downstep by starting with a huge DT

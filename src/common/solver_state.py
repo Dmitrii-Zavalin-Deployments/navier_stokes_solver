@@ -485,7 +485,7 @@ class SolverState(ValidatedContainer):
         # 1.5. Velocity Magnitude Check
         max_v = np.max(np.abs(fields))
         # VIOLATION FIXED: No default value. Must be explicit in config.
-        limit = pc["max_velocity"] 
+        limit = pc.max_velocity 
         if max_v > limit:
             logger.error(f"AUDIT [Limit]: Velocity {max_v} exceeds physical limit {limit}.")
             raise ArithmeticError(f"STABILITY TRIGGER: {max_v} > {limit}")
