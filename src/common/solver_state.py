@@ -1,7 +1,9 @@
 # src/common/solver_state.py
 
-import numpy as np
 import logging
+
+import numpy as np
+
 from src.common.base_container import ValidatedContainer
 from src.common.field_schema import FI
 

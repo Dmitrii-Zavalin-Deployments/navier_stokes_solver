@@ -1,10 +1,17 @@
 # tests/common/test_solver_state.py
 
-import pytest
-import numpy as np
 import logging
-from src.common.solver_state import SolverState, PhysicalConstraintsManager, FieldManager
+
+import numpy as np
+import pytest
+
 from src.common.field_schema import FI
+from src.common.solver_state import (
+    FieldManager,
+    PhysicalConstraintsManager,
+    SolverState,
+)
+
 
 def test_audit_catches_velocity_explosion(caplog):
     """
