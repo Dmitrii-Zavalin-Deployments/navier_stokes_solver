@@ -15,6 +15,7 @@ from src.common.solver_state import (
     FluidPropertiesManager,
     GridManager,
     InitialConditionManager,
+    PhysicalConstraintsManager,
     MaskManager,
     SimulationParameterManager,
     SolverState,
@@ -56,6 +57,13 @@ def orchestrate_step1(context: SimulationContext) -> SolverState:
 
     state.external_forces = ExternalForceManager()
     state.external_forces.force_vector = np.array(input_data.external_forces.force_vector, dtype=np.float64)
+ 
+    # Mapping Physical Constraints
+    state.physical_constraints = PhysicalConstraintsManager()
+    state.physical_constraints.min_velocity = float(input_data.physical_constraints.min_velocity)
+    state.physical_constraints.max_velocity = float(input_data.physical_constraints.max_velocity)
+    state.physical_constraints.min_pressure = float(input_data.physical_constraints.min_pressure)
+    state.physical_constraints.max_pressure = float(input_data.physical_constraints.max_pressure)
 
     # --- 3. Initial Conditions ---
     state.initial_conditions = InitialConditionManager()
