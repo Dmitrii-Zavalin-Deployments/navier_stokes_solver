@@ -1,0 +1,69 @@
+# tests/step3/test_ppe_solver.py
+
+import pytest
+import logging
+from unittest.mock import MagicMock
+from src.step3.ppe_solver import solve_pressure_poisson_step
+
+class TestPPESolverIntegrity:
+    
+    def test_catch_poisoned_pressure_slingshot(self, caplog):
+        """
+        Verify that a massive p_old (from a failed dt attempt) 
+        triggers a Rule 7 ArithmeticError and logs the error.
+        """
+        # Setup mock block with "poisoned" values
+        block = MagicMock()
+        block.id = "test-block-01"
+        block.dt = 1e-6
+        block.dx = block.dy = block.dz = 0.1
+        
+        # Simulate a 1.4M pressure spike in the trial buffer
+        # This mocks block.center.get_field(FI.P_NEXT)
+        block.center.get_field.return_value = 1.4e9 
+        
+        with caplog.at_level(logging.ERROR):
+            with pytest.raises(ArithmeticError) as excinfo:
+                solve_pressure_poisson_step(block, omega=1.0)
+        
+        # Assertions
+        assert "Poisoned Pressure Trial" in str(excinfo.value)
+        assert "PPE CRITICAL" in caplog.text
+        assert "Value: 1.4000e+09" in caplog.text
+
+    def test_catch_nan_divergence(self, caplog):
+        """
+        Verify that if div_v_star is NaN, we raise ArithmeticError 
+        to trigger the rollback.
+        """
+        block = MagicMock()
+        block.dx = block.dy = block.dz = 0.1
+        block.center.get_field.return_value = 0.0 # Stable pressure
+        
+        # Force a math error in the RHS calculation
+        with pytest.warns(RuntimeWarning): # Handle potential numpy warnings
+             # Mock the div calc to return NaN
+             import src.step3.ppe_solver as ppe
+             ppe.compute_local_divergence_v_star = MagicMock(return_value=float('nan'))
+             
+             with pytest.raises(ArithmeticError):
+                 solve_pressure_poisson_step(block, omega=1.0)
+        
+        assert "PPE MATH ERROR" in caplog.text
+
+    def test_successful_ppe_update(self):
+        """Verify normal operation returns a valid delta."""
+        block = MagicMock()
+        block.dx = block.dy = block.dz = 1.0
+        block.dt = 0.01
+        block.rho = 1.0
+        
+        # Valid physical values
+        block.center.get_field.side_effect = lambda field: 0.0
+        block.i_plus.get_field.return_value = 0.0
+        block.i_minus.get_field.return_value = 0.0
+        # ... and so on for other neighbors
+        
+        delta = solve_pressure_poisson_step(block, omega=1.0)
+        assert isinstance(delta, float)
+        assert delta >= 0.0
