@@ -8,7 +8,6 @@ from pathlib import Path
 
 import jsonschema
 import numpy as np
-
 np.seterr(all="raise")
 
 from src.common.archive_service import archive_simulation_artifacts
@@ -97,8 +96,11 @@ def run_solver(input_path: str) -> str:
                     state.boundary_conditions, 
                     is_first_pass=True
                 )
-                state.audit_physical_bounds()
-
+            
+            # Rule 7: Immediate Physics Verification
+            # We audit the global foundation once all local stencils are updated.
+            state.audit_physical_bounds()
+            
             # PPE ITERATION (Pressure-Poisson Equation)
             for _ in range(context.config.ppe_max_iter):
                 max_delta = 0.0
