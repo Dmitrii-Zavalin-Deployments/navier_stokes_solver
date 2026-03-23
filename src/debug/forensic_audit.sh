@@ -1,39 +1,31 @@
 #!/bin/bash
-# forensic_audit.sh - Rule 4 (Routing) & Rule 7 (Scientific Audit)
+# forensic_audit.sh - Rule 7 (Scientific Audit) & Rule 0 (Performance)
 
 echo "============================================================"
-echo "🔍 DIAGNOSING: Why the Recovery Circuit stayed silent"
+echo "🔍 DIAGNOSING: The NaN-Silence Vulnerability"
 echo "============================================================"
 
-# 1. Check if the Predictor Step actually validates its output
-echo "--- [PREDICTOR AUDIT: src/main_solver.py] ---"
-# Check if we are missing a check that would actually raise ArithmeticError
-grep -C 5 "predictor" src/main_solver.py
+# 1. Confirm PhysicalConstraintsManager defaults
+echo "--- [CONSTRAINTS AUDIT: src/common/physical_constraints.py] ---"
+grep -A 5 "max_velocity" src/common/physical_constraints.py
 
-# 2. Check the Audit Slice implementation (Rule 7)
-# If FI.VX_STAR isn't being audited for finite values, the loop continues with NaNs
-echo -e "\n--- [FIELD AUDIT LOGIC: src/common/solver_state.py] ---"
-cat -n src/common/solver_state.py | grep -A 10 "def audit_fields"
-
-# 3. Check for RuntimeWarning redirection
-# NumPy often emits warnings instead of errors; we must ensure they are errors
-echo -e "\n--- [NUMPY ERROR CONFIG: src/main_solver.py] ---"
-grep "np.seterr" src/main_solver.py
+# 2. Check for NaN presence in the current test run (Simulation of logic)
+echo -e "\n--- [LOGIC VERIFICATION] ---"
+echo "Note: np.nanmax([1.0, np.nan]) returns 1.0. This is why our trap failed."
 
 echo -e "\n============================================================"
-echo "🛠️ AUTOMATED REPAIR: Ensuring High-Fidelity Triggering"
+echo "🛠️ AUTOMATED REPAIR: Atomic Physics Guard"
 echo "============================================================"
 
-# Fix 1: Ensure NumPy treats 'invalid' (NaN) and 'over' (Inf) as Errors (Rule 0)
-# This forces the ArithmeticError to actually be raised in Python
-# sed -i '/import numpy as np/a np.seterr(all="raise")' src/main_solver.py
+# Fix 1: Add the NaN/Inf check (The Finite Guard)
+# This ensures that ANY numerical corruption triggers the recovery circuit.
+sed -i '/v_max_current =/i \        if not np.isfinite(fields).all(): raise ArithmeticError("NUMERICAL EXPLOSION: Non-finite values detected in fields.")' src/common/solver_state.py
 
-# Fix 2: Explicitly trigger an audit after the predictor step (Rule 7)
-# This ensures the 'Physical anomaly' is caught before the loop progresses
-# sed -i '/predictor.execute/a \            state.audit_fields() # Rule 7: Prove physics before proceeding' src/main_solver.py
+# Fix 2: Upgrade nanmax to a strict max (Rule 7)
+# If there is a NaN, we WANT the audit to fail/error out, not ignore it.
+sed -i 's/np.nanmax/np.max/g' src/common/solver_state.py
 
-# Fix 3: Standardize the Logger Name (Rule 8 Alignment)
-# Ensure the logger is strictly named to match the test's caplog filter
-# sed -i 's/getLogger(__name__)/getLogger("Solver.Main")/' src/main_solver.py
+# Fix 3: Ensure the Logger in main_solver matches the test caplog identity
+sed -i 's/getLogger(__name__)/getLogger("Solver.Main")/' src/main_solver.py
 
-echo "Audit Complete. Diagnostic data collected and repair sequence prepared."
+echo "Audit Complete. The 'Silent NaN' hole has been plugged."

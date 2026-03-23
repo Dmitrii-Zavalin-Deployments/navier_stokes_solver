@@ -489,7 +489,11 @@ class SolverState(ValidatedContainer):
 
         # 1. Check Velocities (VX, VY, VZ indices)
         # We calculate the max magnitude of the entire velocity field in one sweep.
-        v_max_current = np.nanmax(np.abs(fields[:, [FI.VX, FI.VY, FI.VZ, FI.VX_STAR, FI.VY_STAR, FI.VZ_STAR]]))
+        # Refined Line in src/common/solver_state.py
+        if not np.isfinite(fields).all(): 
+            raise ArithmeticError("NUMERICAL EXPLOSION: Non-finite values (NaN/Inf) detected in Foundation.")
+
+        v_max_current = np.max(np.abs(fields[:, [FI.VX, FI.VY, FI.VZ, FI.VX_STAR, FI.VY_STAR, FI.VZ_STAR]]))
         if v_max_current > pc.max_velocity:
             raise ArithmeticError(
                 f"PHYSICAL EXPLOSION: Velocity {v_max_current:.4f} "
