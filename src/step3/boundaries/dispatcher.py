@@ -31,7 +31,7 @@ def get_applicable_boundary_configs(block: StencilBlock, boundary_cfg: list, gri
         except KeyError:
             # Rule 5: Explicit or Error. No silent fallbacks to 'Wall'.
             logger.error(f"FATAL: Boundary configuration missing for face {b_type}.")
-            raise KeyError(f"Missing boundary definition for {b_type}")
+            raise KeyError(f"Missing boundary definition for {b_type}") from None
 
     # 2. Material Mask Logic (The Safety Net)
     mask = block.center.mask
