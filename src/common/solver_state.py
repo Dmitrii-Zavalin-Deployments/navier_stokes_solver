@@ -475,15 +475,13 @@ class SolverState(ValidatedContainer):
     # =========================================================
 
     def capture_stable_state(self):
-        """
-        Takes a snapshot of the current 'Foundation' fields (VX, VY, VZ, P).
-        Called BEFORE a trial time-step begins.
-        """
+        """Rule 9: Deep-copying the foundation to prevent pointer aliasing."""
         if self._cache_buffer is None:
             self._cache_buffer = np.zeros_like(self.fields.data)
             logger.info("CACHE: Rollback buffer allocated.")
-            
-        self._cache_buffer[:] = self.fields.data[:]
+        
+        # FIX: Use np.copyto or .copy() to ensure data is physically moved in RAM
+        np.copyto(self._cache_buffer, self.fields.data)
         logger.debug("CACHE: Stable state captured.")
 
     def rollback_to_stable_state(self):
