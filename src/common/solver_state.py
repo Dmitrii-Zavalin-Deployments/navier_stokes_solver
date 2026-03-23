@@ -493,6 +493,7 @@ class SolverState(ValidatedContainer):
         if not np.isfinite(fields).all(): 
             raise ArithmeticError("NUMERICAL EXPLOSION: Non-finite values (NaN/Inf) detected in Foundation.")
 
+        if not np.isfinite(fields).all(): raise ArithmeticError("NUMERICAL EXPLOSION: Non-finite values detected in fields.")
         v_max_current = np.max(np.abs(fields[:, [FI.VX, FI.VY, FI.VZ, FI.VX_STAR, FI.VY_STAR, FI.VZ_STAR]]))
         if v_max_current > pc.max_velocity:
             raise ArithmeticError(
