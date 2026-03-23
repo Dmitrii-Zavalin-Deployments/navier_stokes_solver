@@ -129,12 +129,15 @@ def run_solver(input_path: str) -> str:
             if state.time >= context.input_data.simulation_parameters.total_time:
                 state.ready_for_time_loop = False
 
-        except ArithmeticError:
+        except ArithmeticError as e:
             # TIER 1: PHYSICAL INSTABILITY (Recoverable)
-            # Standardized log for Test-Matcher (Rule 8)
+            # We log the specific error from the audit, then the standardized trigger for the test
+            logger.error(f"Audit Failure: {e}") 
+            
+            # CRITICAL: This exact string must match the test's caplog search
             logger.warning(f"STABILITY TRIGGER: Physical anomaly at iteration {state.iteration}. Reducing dt...")
             
-            # Singular routing to the Time-Step Manager (Rule 4)
+            # Rule 4: Singular routing
             elasticity.stabilization(is_needed=True)
 
         except FloatingPointError:
