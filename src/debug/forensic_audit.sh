@@ -1,33 +1,33 @@
 #!/bin/bash
-# src/debug/forensic_audit.sh
+# forensic_audit.sh - Diagnosing State Mapping Discontinuity
 
 echo "============================================================"
-echo "🔍 DIAGNOSING: SolverState Initialization Gap"
+echo "🔍 DIAGNOSING: State Initialization Gap"
 echo "============================================================"
 
-# 1. Audit SolverState Definition
-echo "--- [STATE DEFINITION: src/common/solver_state.py] ---"
-grep -n "_physical_constraints" src/common/solver_state.py
+# 1. Audit the handover logic in Step 1
+echo "--- [HANDOVER AUDIT: src/step1/orchestrate_step1.py] ---"
+if grep -q "physical_constraints" src/step1/orchestrate_step1.py; then
+    cat -n src/step1/orchestrate_step1.py | grep -C 3 "physical_constraints"
+else
+    echo "⚠️ SMOKING GUN: physical_constraints is never assigned in orchestrate_step1.py"
+    cat -n src/step1/orchestrate_step1.py
+fi
 
-# 2. Audit Step 1 Orchestration (The likely culprit)
-echo -e "\n--- [STEP 1 AUDIT: src/step1/orchestrate_step1.py] ---"
-cat -n src/step1/orchestrate_step1.py | grep -C 5 "physical_constraints" || echo "⚠️ MISSING: Step 1 is not mapping constraints to State!"
-
-# 3. Audit the Gate Keeper
-echo -e "\n--- [GATE AUDIT: src/common/solver_state.py] ---"
-cat -n src/common/solver_state.py | sed -n '510,520p'
+# 2. Verify SolverState property setter
+echo -e "\n--- [PROPERTY AUDIT: src/common/solver_state.py] ---"
+cat -n src/common/solver_state.py | grep -A 5 "def physical_constraints(self, value):"
 
 echo -e "\n============================================================"
-echo "🛠️ AUTOMATED REPAIR: State Mapping Injection"
+echo "🛠️ AUTOMATED REPAIR: Mapping Injection"
 echo "============================================================"
 
-# The fix requires ensuring orchestrate_step1 actually copies the values from 
-# the input object into the state object.
+# This sed command injects the missing assignment into orchestrate_step1.
+# It looks for the assignment of external_forces and appends the physical_constraints assignment after it.
 
 # # sed -i '/state.external_forces =/a \    state.physical_constraints = input_data.physical_constraints' src/step1/orchestrate_step1.py
 
-# Also ensure SolverState initializes the private attribute to None in __init__ 
-# to satisfy the hasattr() check in _get_safe.
+# Ensure the SolverState class-level attribute is ready to receive it
 # # sed -i '/self._external_forces =/a \        self._physical_constraints = None' src/common/solver_state.py
 
-echo "Audit Complete. Un-comment # sed lines to bridge the Input -> State gap."
+echo "Audit Complete. Un-comment # sed lines to repair the state handover."
