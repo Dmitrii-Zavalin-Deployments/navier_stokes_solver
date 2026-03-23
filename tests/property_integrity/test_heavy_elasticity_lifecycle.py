@@ -85,7 +85,7 @@ class TestHeavyElasticityLifecycle:
         Uses a calculated CFL trigger to ensure the math fails initially.
         """
         # --- CFL CALCULATOR & LOGGER ---
-        u = 45.0
+        u = 35.0
         dt_initial = 0.1
         # Calculate dx: (x_max - x_min) / nx
         dx = (base_input["grid"]["x_max"] - base_input["grid"]["x_min"]) / base_input["grid"]["nx"]
