@@ -37,14 +37,25 @@ class TestHeavyElasticityLifecycle:
             "fluid_properties": {"density": 1.0, "viscosity": 0.01},
             "initial_conditions": {"velocity": [0.1, 0.0, 0.0], "pressure": 1.0},
             "simulation_parameters": {"time_step": 0.01, "total_time": 0.02, "output_interval": 1},
+            # --- [Rule 5 Alignment]: Strictly following your JSON Schema ---
+            "physical_constraints": {
+                "min_velocity": -100.0,
+                "max_velocity": 40.0,
+                "min_pressure": -10.0,
+                "max_pressure": 100.0
+            },
             "boundary_conditions": [
+                # Note: Even for slip/no-slip, the schema requires "values" 
+                # to avoid a ValidationError, even if the kernel ignores them.
+                {"location": "y_min", "type": "free-slip", "values": {"u": 0.0}},
+                {"location": "y_max", "type": "free-slip", "values": {"u": 0.0}},
+                {"location": "z_min", "type": "free-slip", "values": {"u": 0.0}},
+                {"location": "z_max", "type": "free-slip", "values": {"u": 0.0}},
                 {"location": "x_min", "type": "inflow", "values": {"u": 1.0, "v": 0.0, "w": 0.0}}, 
                 {"location": "x_max", "type": "outflow", "values": {"p": 0.0}}
             ],
             "mask": [0] * 64,
-            "external_forces": {"force_vector": [0.0, 0.0, 0.0]},
-            # SMALL SCALE CONSTRAINTS
-            "physical_constraints": {"min_velocity": -20.0, "max_velocity": 30.0, "min_pressure": -50.0, "max_pressure": 200.0}
+            "external_forces": {"force_vector": [0.0, 0.0, 0.0]}
         }
 
     def test_scenario_1_pure_success(self, caplog, base_config, base_input):
