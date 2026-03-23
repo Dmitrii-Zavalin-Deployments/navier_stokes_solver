@@ -1,9 +1,10 @@
 # tests/step3/test_dispatcher_priority.py
 
-import pytest
 import logging
 from unittest.mock import MagicMock
+
 from src.step3.boundaries.dispatcher import get_applicable_boundary_configs
+
 
 def test_spatial_priority_over_mask(caplog):
     """

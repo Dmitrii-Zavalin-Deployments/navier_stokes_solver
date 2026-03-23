@@ -1,6 +1,7 @@
 # src/step3/boundaries/dispatcher.py
 
 import logging
+
 from src.common.stencil_block import StencilBlock
 
 logger = logging.getLogger(__name__)
