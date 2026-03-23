@@ -103,16 +103,19 @@ class TestHeavyElasticityLifecycle:
     def test_scenario_3_terminal_failure(self, caplog, base_config, base_input):
         """
         Scenario 3: Force a crash.
-        Velocity (50.0) is way ABOVE the Audit Limit (20.0).
-        Even if it shrinks dt, the Audit will block it every time.
         """
         base_input["boundary_conditions"][0]["values"]["u"] = 50.0
         base_config["dt_min_limit"] = 0.01 
         base_config["ppe_max_retries"] = 2 
         
         input_filename = "test_terminal_fail.json"
-        (Path(BASE_DIR) / "config.json").write_text(json.dumps(base_config))
-        (Path(BASE_DIR) / input_filename).write_text(json.dumps(base_input))
+        
+        # DEFINITIONS (Fixes F821)
+        config_path = Path(BASE_DIR) / "config.json"
+        input_path = Path(BASE_DIR) / input_filename
+        
+        config_path.write_text(json.dumps(base_config))
+        input_path.write_text(json.dumps(base_input))
 
         with caplog.at_level(logging.WARNING):
             with pytest.raises(RuntimeError) as excinfo:
@@ -127,6 +130,6 @@ class TestHeavyElasticityLifecycle:
         assert "AUDIT [Explosion]" in caplog.text
         assert "STABILITY TRIGGER" in caplog.text
         
-        # Cleanup
+        # Cleanup now works because variables are defined in this scope
         input_path.unlink(missing_ok=True)
         config_path.unlink(missing_ok=True)
