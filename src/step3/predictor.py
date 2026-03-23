@@ -8,6 +8,7 @@ from src.step3.ops.gradient import compute_local_gradient_p
 from src.step3.ops.laplacian import compute_local_laplacian_v_n
 from src.step3.ops.scaling import get_dt_over_rho
 
+
 def compute_local_predictor_step(block: StencilBlock) -> None:
     """
     Computes the intermediate star-velocity field v*.

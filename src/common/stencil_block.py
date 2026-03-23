@@ -1,6 +1,7 @@
 # src/common/stencil_block.py
 
 from src.common.base_container import ValidatedContainer
+
 from .cell import Cell
 
 
