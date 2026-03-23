@@ -25,6 +25,7 @@ from src.common.solver_state import (
     SolverState,
 )
 
+
 def make_step1_output_dummy(nx: int = 4, ny: int = 4, nz: int = 4) -> SolverState:
     """
     Hydrates a SolverState prototype using atomic constructor injection.

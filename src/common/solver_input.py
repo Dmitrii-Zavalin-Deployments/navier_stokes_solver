@@ -1,6 +1,7 @@
 # src/common/solver_input.py
 
 from dataclasses import dataclass
+
 from src.common.base_container import ValidatedContainer
 
 # =========================================================
