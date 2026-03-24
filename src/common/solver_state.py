@@ -537,7 +537,7 @@ class SolverState(ValidatedContainer):
             raise ArithmeticError("PHYSICAL EXPLOSION: Velocity out of bounds.")
 
         # 3. Check Pressure
-        p_min, p_max = np.min(fields[:, FI.P]), np.max(fields[:, FI.P])
+        p_min, p_max = np.min(fields[:, FI.P_NEXT]), np.max(fields[:, FI.P_NEXT])
         logger.debug(f"AUDIT [Metric]: P_range: [{p_min:.4e}, {p_max:.4e}]")
 
         if p_min < pc.min_pressure or p_max > pc.max_pressure:
