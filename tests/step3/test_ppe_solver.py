@@ -47,7 +47,7 @@ class TestPPESolverIntegrity:
         
         # Mock the divergence calculation to return NaN directly
         import src.step3.ppe_solver as ppe
-        ppe.compute_local_divergence_v_star = MagicMock(return_value=float('nan'))
+        ppe.compute_local_divergence_v_star = MagicMock(return_value=np.nan)
 
         # EXECUTION: Must remain to satisfy Rule 2 (Coverage)
         with pytest.raises(ArithmeticError):

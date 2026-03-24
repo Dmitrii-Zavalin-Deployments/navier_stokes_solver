@@ -36,7 +36,7 @@ def solve_pressure_poisson_step(block: StencilBlock, omega: float) -> float:
     
     # --- RULE 7: ATOMIC DIVERGENCE GATE ---
     # Catch NaN from the source term before it poisons the SOR loop
-    if not np.isfinite(div_v_star):
+    if not np.all(np.isfinite(div_v_star)):
         logger.error(f"PPE MATH ERROR: Non-finite divergence in block {block.id}")
         raise ArithmeticError(f"NaN detected in divergence source term: {div_v_star}")
 
