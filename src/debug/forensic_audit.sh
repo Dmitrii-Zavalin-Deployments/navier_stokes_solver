@@ -1,39 +1,63 @@
-#!/bin/bash
-# src/debug/forensic_audit.sh
+#!/usr/bin/env bash
+set -euo pipefail
 
-LOG_FILE="caplog.txt"
+echo "=============================================="
+echo " FORENSIC AUDIT: Boundary / Stencil Integrity "
+echo "=============================================="
 
-echo "----------------------------------------------------------------"
-echo "🔍 FORENSIC AUDIT: RHIE-CHOW DECOUPLING ANALYSIS"
-echo "----------------------------------------------------------------"
+echo
+echo "---- 1. Inspect Cell class definition ----"
+grep -Rni "class Cell" -n src || true
+echo
+echo "---- Cell source (annotated) ----"
+cat -n src/common/*.py | sed -n '/class Cell/,/class /p' || true
 
-# 1. VELOCITY EXPLOSION PROFILE
-echo "STEP 1: Velocity Divergence Profile (Final Value vs Trial Number)"
-grep "AUDIT \[Limit\]: Velocity" $LOG_FILE | awk -F'=' '{print $NF}' | nl -v 0
+echo
+echo "---- 2. Search for boundary metadata fields ----"
+grep -Rni "is_boundary" src || true
+grep -Rni "location" src || true
+grep -Rni "boundary" src/common || true
 
-# 2. PRESSURE GRADIENT STAGNATION CHECK
-# If Velocity is climbing but Pressure is static, Rhie-Chow is dead.
-echo -e "\nSTEP 2: Pressure Gradient vs. Velocity Correlation"
-grep -E "AUDIT \[Limit\]: (Velocity|Pressure)" $LOG_FILE | tail -n 10
+echo
+echo "---- 3. Inspect StencilBlock definitions ----"
+grep -Rni "class StencilBlock" -n src || true
+cat -n src/common/*.py | sed -n '/class StencilBlock/,/class /p' || true
 
-# 3. PPE SOLVER AUDIT
-echo -e "\nSTEP 3: Solver State - Rhie-Chow Implementation (src/step3/ppe_solver.py)"
-# Capturing the Laplacian calculation we identified as the 'Zero-Trap'
-cat -n src/step3/ppe_solver.py | sed -n '32,45p'
+echo
+echo "---- 4. Inspect stencil_matrix construction ----"
+grep -Rni "stencil_matrix" -n src || true
+grep -Rni "build" -n src/common || true
 
-# 4. ELASTICITY LADDER AUDIT
-echo -e "\nSTEP 4: Elasticity Step-Down Logic (src/common/elasticity.py)"
-# Checking how it generates the _dt_range ladder
-cat -n src/common/elasticity.py | grep -A 5 "_dt_range ="
+echo
+echo "---- 5. Dump boundary_conditions from test input ----"
+echo "Input file:"
+ls -l *.json || true
+echo
+echo "Boundary conditions:"
+grep -Rni "\"boundary_conditions\"" -n . || true
 
-# 5. REPAIR PLAN: PROPOSED INJECTIONS
-echo -e "\nSTEP 5: Proposed Stability Injections..."
+echo
+echo "---- 6. Inspect solver_state audit block ----"
+grep -Rni "audit_physical_bounds" -n src/common/solver_state.py || true
+cat -n src/common/solver_state.py | sed -n '/audit_physical_bounds/,/validate_physical_readiness/p'
 
-# Repair 1: Inject Pressure Noise to break the Zero-Laplacian Symmetry
-echo "Proposed: sed -i '57s/cell.p = init.pressure/cell.p = init.pressure + 1e-6 * (i + j + k)/' src/step2/factory.py"
+echo
+echo "---- 7. Inspect elasticity recovery logs ----"
+grep -Rni "ROLLBACK" -n . || true
+grep -Rni "Explosion" -n . || true
+grep -Rni "P_real_range" -n . || true
 
-# Repair 2: Upgrade Linear Ladder to Geometric Decay (More aggressive recovery)
-echo "Proposed: sed -i 's/i \* (self.dt_floor - self._dt) \/ self._runs/self._dt * (0.5 ** i)/' src/common/elasticity.py"
+echo
+echo "---- 8. Inspect failing test ----"
+grep -Rni "test_scenario_2_retry_and_recover" -n tests || true
+cat -n tests/property_integrity/test_heavy_elasticity_lifecycle.py | sed -n '1,200p'
 
-echo "----------------------------------------------------------------"
-echo "✅ Forensic Data Collected. Compare Step 1 and Step 2 to verify decoupling."
+echo
+echo "---- 9. Suggested automated repair (commented out) ----"
+echo "# sed -i 's/class Cell:/class Cell:\\n    __slots__ = [\"index\", \"fields_buffer\", \"is_boundary\", \"location\"]/' src/common/cell.py"
+echo "# sed -i 's/self.index = idx/self.index = idx; self.is_boundary = False; self.location = None/' src/common/cell.py"
+echo "# sed -i 's/block.center = cell/block.center = cell; cell.is_boundary = True; cell.location = bc.location/' src/common/stencil_builder.py"
+
+echo
+echo "---- 10. Final status ----"
+echo "Forensic audit completed."
