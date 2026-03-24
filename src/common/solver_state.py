@@ -5,8 +5,8 @@ import logging
 import numpy as np
 
 from src.common.base_container import ValidatedContainer
-from src.common.grid_math import get_flat_index
 from src.common.field_schema import FI
+from src.common.grid_math import get_flat_index
 
 logger = logging.getLogger(__name__)
 
