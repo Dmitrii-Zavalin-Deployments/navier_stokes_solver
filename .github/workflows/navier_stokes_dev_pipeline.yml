@@ -116,7 +116,7 @@ jobs:
             $TEST_COMMAND || true
             exit 1
           fi
-
+      # TO AVOID POLUTION PRODUCTION CONFIGS WITH THE TEST DATA - RUN PRODUCTION IN THE SECOND JOB THAT WILL BE TRIGGERED AUTOMATICALLY IF THE TESTS JOB IS PASSED
       - name: 📊 Audit Performance & Sync State
         if: always()
         env:

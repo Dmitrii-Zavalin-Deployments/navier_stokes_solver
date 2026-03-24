@@ -25,7 +25,8 @@ class TestHeavyElasticityLifecycle:
             "ppe_atol": 1e-10,
             "ppe_max_iter": 5,
             "ppe_omega": 1.7,
-            "ppe_max_retries": 5
+            "ppe_max_retries": 5,
+            "divergence_threshold": 1e12
         }
 
     @pytest.fixture

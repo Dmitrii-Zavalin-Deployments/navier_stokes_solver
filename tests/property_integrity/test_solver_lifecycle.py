@@ -31,7 +31,8 @@ class TestSolverLifecycle:
             "ppe_atol": 1e-7,
             "ppe_max_iter": 50,
             "ppe_omega": 1.2,
-            "ppe_max_retries": 10
+            "ppe_max_retries": 10,
+            "divergence_threshold": 1e12
         }
 
         # 3. Payload B: Physical Input (Schema-compliant)

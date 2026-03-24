@@ -1,7 +1,6 @@
 # src/step3/ppe_solver.py
 
 import logging
-
 import numpy as np
 
 from src.common.field_schema import FI
@@ -16,7 +15,7 @@ def solve_pressure_poisson_step(block: StencilBlock, omega: float) -> float:
     Consolidated PPE Solver using SOR iteration with Fail-Fast Math.
     
     Compliance:
-    - Rule 7: Immediate math audit.
+    - Rule 7: Immediate math audit (Atomic Verification).
     - Rule 9: Performs in-place updates via schema-locked accessors.
     """
     # 1. Geometry Setup
@@ -33,6 +32,13 @@ def solve_pressure_poisson_step(block: StencilBlock, omega: float) -> float:
     
     # 3. Compute RHS
     div_v_star = compute_local_divergence_v_star(block)
+    
+    # --- RULE 7: ATOMIC DIVERGENCE GATE ---
+    # Catch NaN from the source term before it poisons the SOR loop
+    if not np.isfinite(div_v_star):
+        logger.error(f"PPE MATH ERROR: Non-finite divergence in block {block.id}")
+        raise ArithmeticError(f"NaN detected in divergence source term: {div_v_star}")
+
     rho_over_dt = get_rho_over_dt(block)
     rhs = rho_over_dt * (div_v_star - rhie_chow_term)
     
@@ -46,21 +52,25 @@ def solve_pressure_poisson_step(block: StencilBlock, omega: float) -> float:
     p_old = block.center.get_field(FI.P_NEXT)
 
     # --- RULE 7: PRE-UPDATE AUDIT (SCALAR CHECK) ---
-    if not np.isfinite(np.min(p_old)) or np.abs(np.max(p_old)) > 1e12:
-        logger.error(f"PPE CRITICAL: Poisoned p_old in block {block.id} | Value: {p_old:.4e} | dt: {block.dt:.4e}")
-        raise ArithmeticError(f"Poisoned Pressure Trial: {p_old}")
+    # Access the threshold from the config container (Rule 4 & 5)
+    div_threshold = block.config.divergence_threshold 
+    
+    p_old_val = np.atleast_1d(p_old)
+    if not np.isfinite(p_old_val).all() or np.any(np.abs(p_old_val) > div_threshold):
+        logger.error(f"PPE CRITICAL: Poisoned p_old in block {block.id} | Limit: {div_threshold:.1e}")
+        raise ArithmeticError(f"Pressure exceeded divergence threshold: {div_threshold}")
 
     # 5. Calculate Trial Pressure
     p_new = (1.0 - omega) * p_old + (omega / stencil_denom) * (sum_neighbors - rhs)
     
     # --- RULE 7: POST-UPDATE AUDIT (NUMPY-SAFE) ---
-    # np.atleast_1d ensures scalars work with .all()
     p_new_audit = np.atleast_1d(p_new)
     if not np.isfinite(p_new_audit).all():
-        logger.error(f"PPE MATH ERROR: Non-finite p_new in block {block.id}")
+        logger.error(f"PPE MATH ERROR: Non-finite p_new generated in block {block.id}")
         raise ArithmeticError("Non-finite pressure generated in SOR step")
 
     # Use .max() for delta to catch the largest local change
+    # Rule 0: Mathematically robust against zero-size arrays (identities)
     delta = float(np.max(np.abs(p_new - p_old), initial=0.0))
     
     # 6. Direct write-back
