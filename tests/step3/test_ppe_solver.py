@@ -1,6 +1,6 @@
 # tests/step3/test_ppe_solver.py
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -17,6 +17,7 @@ class TestPPESolverIntegrity:
         # Setup mock block with "poisoned" values
         block = MagicMock()
         block.id = "test-block-01"
+        block.config.divergence_threshold = 1.0e10
         block.dt = 1e-6
         block.dx = block.dy = block.dz = 0.1
         
@@ -45,8 +46,7 @@ class TestPPESolverIntegrity:
         block.dx = block.dy = block.dz = 0.1
         block.center.get_field.return_value = 0.0 
         
-        # Mock the divergence calculation to return NaN directly
-        import src.step3.ppe_solver as ppe
+        with patch("src.step3.ppe_solver.compute_local_divergence_v_star", return_value=float("nan")):
         ppe.compute_local_divergence_v_star = MagicMock(return_value=float('nan'))
 
         # EXECUTION: Must remain to satisfy Rule 2 (Coverage)

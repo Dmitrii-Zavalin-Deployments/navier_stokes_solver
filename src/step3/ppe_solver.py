@@ -59,7 +59,7 @@ def solve_pressure_poisson_step(block: StencilBlock, omega: float) -> float:
     p_old_val = np.atleast_1d(p_old)
     if not np.isfinite(p_old_val).all() or np.any(np.abs(p_old_val) > div_threshold):
         logger.error(f"PPE CRITICAL: Poisoned p_old in block {block.id} | Limit: {div_threshold:.1e}")
-        raise ArithmeticError(f"Pressure exceeded divergence threshold: {div_threshold}")
+        raise ArithmeticError(f"Poisoned Pressure Trial: {div_threshold}")
 
     # 5. Calculate Trial Pressure
     p_new = (1.0 - omega) * p_old + (omega / stencil_denom) * (sum_neighbors - rhs)
