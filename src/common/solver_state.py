@@ -536,12 +536,47 @@ class SolverState(ValidatedContainer):
             logger.error(f"AUDIT [Explosion]: Velocity {v_max_current:.4e} > Limit {pc.max_velocity}")
             raise ArithmeticError("PHYSICAL EXPLOSION: Velocity out of bounds.")
 
-        # 3. Check Pressure
-        p_min, p_max = np.min(fields[:, FI.P_NEXT]), np.max(fields[:, FI.P_NEXT])
-        logger.debug(f"AUDIT [Metric]: P_range: [{p_min:.4e}, {p_max:.4e}]")
+        # 3. Check Pressure (Real Physical Pressure Audit)
+
+        # 3.1. Find reference pressure boundary (Dirichlet pressure BC)
+        ref_bc = None
+        for bc in self.boundary_conditions.conditions:
+            if bc.type in ("pressure", "outflow", "inflow") and "p" in bc.values:
+                ref_bc = bc
+                break
+
+        if ref_bc is None:
+            raise RuntimeError("No pressure reference boundary found for real-pressure reconstruction.")
+
+        # 3.2. Collect indices of reference boundary cells
+        ref_indices = [
+            block.center.index
+            for block in self.stencil_matrix
+            if block.center.is_boundary and block.center.location == ref_bc.location
+        ]
+
+        if len(ref_indices) == 0:
+            raise RuntimeError(f"No cells found for reference boundary '{ref_bc.location}'.")
+
+        # 3.3. PPE pressure at reference boundary
+        p_trial = fields[:, FI.P_NEXT]
+        p_ref_value = np.mean(p_trial[ref_indices])
+
+        # 3.4. Physical reference pressure from BC
+        p_ref_physical = ref_bc.values["p"]
+
+        # 3.5. Real physical pressure
+        p_real = p_trial - p_ref_value + p_ref_physical
+
+        # 3.6. Audit real pressure range
+        p_min, p_max = np.min(p_real), np.max(p_real)
+        logger.debug(f"AUDIT [Metric]: P_real_range: [{p_min:.4e}, {p_max:.4e}]")
 
         if p_min < pc.min_pressure or p_max > pc.max_pressure:
-            logger.error(f"AUDIT [Explosion]: Pressure [{p_min:.4e}, {p_max:.4e}] out of bounds.")
+            logger.error(
+                f"AUDIT [Explosion]: Real pressure [{p_min:.4e}, {p_max:.4e}] "
+                f"out of bounds [{pc.min_pressure:.4e}, {pc.max_pressure:.4e}]."
+            )
             raise ArithmeticError("PHYSICAL EXPLOSION: Pressure out of bounds.")
 
     def validate_physical_readiness(self):
