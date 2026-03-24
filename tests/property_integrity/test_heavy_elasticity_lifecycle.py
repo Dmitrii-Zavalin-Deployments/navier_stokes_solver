@@ -158,7 +158,7 @@ class TestHeavyElasticityLifecycle:
         assert "Exhausted" in error_msg
         
         # Check logs for the audit trail
-        assert "AUDIT [Explosion]" in caplog.text
+        assert "AUDIT [Limit]" in caplog.text
         assert "STABILITY TRIGGER" in caplog.text
         
         # Cleanup now works because variables are defined in this scope
