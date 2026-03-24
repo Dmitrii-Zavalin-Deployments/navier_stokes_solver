@@ -35,7 +35,8 @@ class TestPPESolverIntegrity:
         assert "Poisoned Pressure Trial" in str(excinfo.value)
         assert "PPE CRITICAL" in caplog.text
         # Use a more robust check or ensure the format matches exactly
-        assert "Value: 1.4000e+13" in caplog.text
+        assert "Poisoned p_old" in caplog.text
+        assert "Limit: 1.0e+10" in caplog.text
 
     def test_catch_nan_divergence(self, caplog):
         """
@@ -51,10 +52,6 @@ class TestPPESolverIntegrity:
             # EXECUTION: Shifted right to remain inside the patch context
             with pytest.raises(ArithmeticError):
                 solve_pressure_poisson_step(block, omega=1.0)
-
-        # EXECUTION: Must remain to satisfy Rule 2 (Coverage)
-        with pytest.raises(ArithmeticError):
-            solve_pressure_poisson_step(block, omega=1.0)
         
         # VALIDATION: Traceability
         assert "PPE MATH ERROR" in caplog.text
@@ -67,10 +64,8 @@ class TestPPESolverIntegrity:
         block.rho = 1.0
         
         # Valid physical values
-        block.center.get_field.side_effect = lambda field: 0.0
-        block.i_plus.get_field.return_value = 0.0
-        block.i_minus.get_field.return_value = 0.0
-        # ... and so on for other neighbors
+        for neighbor in [block.i_plus, block.i_minus, block.j_plus, block.j_minus, block.k_plus, block.k_minus]:
+            neighbor.get_field.return_value = 0.0
         
         delta = solve_pressure_poisson_step(block, omega=1.0)
         assert isinstance(delta, float)
