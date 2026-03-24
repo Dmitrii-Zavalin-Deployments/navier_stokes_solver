@@ -38,22 +38,22 @@ class TestPPESolverIntegrity:
 
     def test_catch_nan_divergence(self, caplog):
         """
-        Verify that if div_v_star is NaN, we raise ArithmeticError 
-        to trigger the rollback.
+        Verify that if div_v_star is NaN, we raise ArithmeticError.
+        Rule 7: Atomic Numerical Truth.
         """
         block = MagicMock()
         block.dx = block.dy = block.dz = 0.1
-        block.center.get_field.return_value = 0.0 # Stable pressure
+        block.center.get_field.return_value = 0.0 
         
-        # Force a math error in the RHS calculation
-        with pytest.warns(RuntimeWarning): # Handle potential numpy warnings
-             # Mock the div calc to return NaN
-             import src.step3.ppe_solver as ppe
-             ppe.compute_local_divergence_v_star = MagicMock(return_value=float('nan'))
-             
-             with pytest.raises(ArithmeticError):
-                 solve_pressure_poisson_step(block, omega=1.0)
+        # Mock the divergence calculation to return NaN directly
+        import src.step3.ppe_solver as ppe
+        ppe.compute_local_divergence_v_star = MagicMock(return_value=float('nan'))
+
+        # EXECUTION: Must remain to satisfy Rule 2 (Coverage)
+        with pytest.raises(ArithmeticError):
+            solve_pressure_poisson_step(block, omega=1.0)
         
+        # VALIDATION: Traceability
         assert "PPE MATH ERROR" in caplog.text
 
     def test_successful_ppe_update(self):

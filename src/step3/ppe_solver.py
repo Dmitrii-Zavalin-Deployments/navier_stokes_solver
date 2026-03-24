@@ -61,7 +61,7 @@ def solve_pressure_poisson_step(block: StencilBlock, omega: float) -> float:
         raise ArithmeticError("Non-finite pressure generated in SOR step")
 
     # Use .max() for delta to catch the largest local change
-    delta = float(np.max(np.abs(p_new - p_old)))
+    delta = float(np.max(np.abs(p_new - p_old), initial=0.0))
     
     # 6. Direct write-back
     block.center.set_field(FI.P_NEXT, p_new)
