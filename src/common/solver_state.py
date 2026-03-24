@@ -5,6 +5,7 @@ import logging
 import numpy as np
 
 from src.common.base_container import ValidatedContainer
+from src.common.grid_math import get_flat_index
 from src.common.field_schema import FI
 
 logger = logging.getLogger(__name__)
@@ -548,15 +549,56 @@ class SolverState(ValidatedContainer):
         if ref_bc is None:
             raise RuntimeError("No pressure reference boundary found for real-pressure reconstruction.")
 
-        # 3.2. Collect indices of reference boundary cells
-        ref_indices = [
-            block.center.index
-            for block in self.stencil_matrix
-            if block.center.is_boundary and block.center.location == ref_bc.location
-        ]
+        # 3.2. Compute reference boundary indices from grid geometry
+        nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
+        ref_indices = []
+
+        # Helper alias
+        gfi = get_flat_index
+
+        loc = ref_bc.location
+
+        if loc == "x_min":
+            i = 0
+            for j in range(ny):
+                for k in range(nz):
+                    ref_indices.append(gfi(i, j, k, nx, ny))
+
+        elif loc == "x_max":
+            i = nx - 1
+            for j in range(ny):
+                for k in range(nz):
+                    ref_indices.append(gfi(i, j, k, nx, ny))
+
+        elif loc == "y_min":
+            j = 0
+            for i in range(nx):
+                for k in range(nz):
+                    ref_indices.append(gfi(i, j, k, nx, ny))
+
+        elif loc == "y_max":
+            j = ny - 1
+            for i in range(nx):
+                for k in range(nz):
+                    ref_indices.append(gfi(i, j, k, nx, ny))
+
+        elif loc == "z_min":
+            k = 0
+            for i in range(nx):
+                for j in range(ny):
+                    ref_indices.append(gfi(i, j, k, nx, ny))
+
+        elif loc == "z_max":
+            k = nz - 1
+            for i in range(nx):
+                for j in range(ny):
+                    ref_indices.append(gfi(i, j, k, nx, ny))
+
+        else:
+            raise RuntimeError(f"Unsupported boundary location '{loc}' for pressure reference.")
 
         if len(ref_indices) == 0:
-            raise RuntimeError(f"No cells found for reference boundary '{ref_bc.location}'.")
+            raise RuntimeError(f"No cells found for reference boundary '{loc}'.")
 
         # 3.3. PPE pressure at reference boundary
         p_trial = fields[:, FI.P_NEXT]
@@ -569,7 +611,9 @@ class SolverState(ValidatedContainer):
         p_real = p_trial - p_ref_value + p_ref_physical
 
         # 3.6. Audit real pressure range
-        p_min, p_max = np.min(p_real), np.max(p_real)
+        p_min = p_real.min()
+        p_max = p_real.max()
+
         logger.debug(f"AUDIT [Metric]: P_real_range: [{p_min:.4e}, {p_max:.4e}]")
 
         if p_min < pc.min_pressure or p_max > pc.max_pressure:
