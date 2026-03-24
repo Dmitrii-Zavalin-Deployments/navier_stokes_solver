@@ -46,7 +46,11 @@ class TestPPESolverIntegrity:
         block.dx = block.dy = block.dz = 0.1
         block.center.get_field.return_value = 0.0 
         
+        # Correctly nested scope to satisfy Rule 5 (Explicit Initialization)
         with patch("src.step3.ppe_solver.compute_local_divergence_v_star", return_value=float("nan")):
+            # EXECUTION: Shifted right to remain inside the patch context
+            with pytest.raises(ArithmeticError):
+                solve_pressure_poisson_step(block, omega=1.0)
 
         # EXECUTION: Must remain to satisfy Rule 2 (Coverage)
         with pytest.raises(ArithmeticError):
