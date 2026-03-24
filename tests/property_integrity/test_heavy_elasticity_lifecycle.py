@@ -120,7 +120,7 @@ class TestHeavyElasticityLifecycle:
         
         # Verify the logs show both the Trigger AND the eventual Success
         trigger_found = any("STABILITY TRIGGER" in r.message for r in caplog.records)
-        success_found = any("Pipeline complete" in r.message or "Iteration 1" in r.message for r in caplog.records)
+        any("Pipeline complete" in r.message or "Iteration 1" in r.message for r in caplog.records)
             
         assert trigger_found, "Solver was too stable! Elasticity logic never fired."
         # If this still fails, the physics at u=20 on a 4x4 grid are simply too unstable.
