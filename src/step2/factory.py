@@ -54,7 +54,7 @@ def _build_core_cell(i: int, j: int, k: int, state: SolverState) -> Cell:
     
     cell = Cell(index=index, fields_buffer=fields.data, nx_buf=nx_buf, ny_buf=ny_buf, is_ghost=False)
     cell.vx, cell.vy, cell.vz = init.velocity
-    cell.p = init.pressure + 1e-6 * (i + j + k)
+    cell.p = init.pressure
     cell.mask = int(mask_grid[i, j, k])
     
     return cell
