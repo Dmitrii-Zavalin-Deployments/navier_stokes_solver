@@ -47,7 +47,6 @@ class TestPPESolverIntegrity:
         block.center.get_field.return_value = 0.0 
         
         with patch("src.step3.ppe_solver.compute_local_divergence_v_star", return_value=float("nan")):
-        ppe.compute_local_divergence_v_star = MagicMock(return_value=float('nan'))
 
         # EXECUTION: Must remain to satisfy Rule 2 (Coverage)
         with pytest.raises(ArithmeticError):
