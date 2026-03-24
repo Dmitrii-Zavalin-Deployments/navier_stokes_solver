@@ -33,6 +33,7 @@ def orchestrate_step3(
     """
     
     # --- [A] GHOST SYNC PATH ---
+    # Rule 9: Short-circuit ghosts to maintain data foundation integrity
     if block.center.is_ghost:
         sync_ghost_trial_buffers(block)
         return block, 0.0
@@ -62,8 +63,13 @@ def orchestrate_step3(
 
     # PHASE 2: SOLVE & CORRECT (Iterative)
     # 1. Solve: Pressure Poisson Equation (SOR)
-    # Note: Internally uses Rhie-Chow term: rho/dt * (div(v*) - dt * lap(p_n))
-    delta = solve_pressure_poisson_step(block, context.config.ppe_omega)
+    # Mapping Rule: (block, divergence_threshold, ppe_omega)
+    # Decouples ppe_solver from StencilBlock internal configuration hierarchy.
+    delta = solve_pressure_poisson_step(
+        block, 
+        context.config.divergence_threshold, 
+        context.config.ppe_omega
+    )
 
     # 2. Correct: Velocity Projection
     # This projects v* onto the divergence-free space defined by p^{n+1}

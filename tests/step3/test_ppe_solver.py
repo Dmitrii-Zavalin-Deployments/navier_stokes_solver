@@ -1,11 +1,10 @@
 # tests/step3/test_ppe_solver.py
 
 from unittest.mock import MagicMock, patch
-
 import pytest
+import numpy as np
 
 from src.step3.ppe_solver import solve_pressure_poisson_step
-
 
 class TestPPESolverIntegrity:
     
@@ -14,27 +13,29 @@ class TestPPESolverIntegrity:
         Verify that a massive p_old (from a failed dt attempt) 
         triggers a Rule 7 ArithmeticError and logs the error.
         """
-        # Setup mock block with "poisoned" values
+        # Setup mock block
         block = MagicMock()
         block.id = "test-block-01"
-        block.config.divergence_threshold = 1.0e10
         block.dt = 1e-6
         block.dx = block.dy = block.dz = 0.1
         
-        # CRITICAL: Neighbors MUST return 0.0, not another Mock
+        # Define the explicit threshold for this test
+        test_threshold = 1.0e10
+        
+        # Neighbors MUST return 0.0 to avoid poisoning the sum
         for neighbor in [block.i_plus, block.i_minus, block.j_plus, block.j_minus, block.k_plus, block.k_minus]:
             neighbor.get_field.return_value = 0.0
             
-        block.center.get_field.return_value = 1.4e13 # The "slingshot" value
+        # The "slingshot" value: 1.4e13 > 1.0e10
+        block.center.get_field.return_value = 1.4e13 
         
-        # Ensure we capture the exception info (excinfo) to verify Rule 7 Compliance
+        # EXECUTION: Passing the threshold explicitly (New Signature)
         with pytest.raises(ArithmeticError) as excinfo:
-            solve_pressure_poisson_step(block, omega=1.0)
+            solve_pressure_poisson_step(block, divergence_threshold=test_threshold, omega=1.0)
             
-        # Assertions: Verify the "Arithmetic Truth" of the failure
+        # VALIDATION: Verify Rule 7 Compliance
         assert "Poisoned Pressure Trial" in str(excinfo.value)
         assert "PPE CRITICAL" in caplog.text
-        # Use a more robust check or ensure the format matches exactly
         assert "Poisoned p_old" in caplog.text
         assert "Limit: 1.0e+10" in caplog.text
 
@@ -47,13 +48,16 @@ class TestPPESolverIntegrity:
         block.dx = block.dy = block.dz = 0.1
         block.center.get_field.return_value = 0.0 
         
-        # Correctly nested scope to satisfy Rule 5 (Explicit Initialization)
-        with patch("src.step3.ppe_solver.compute_local_divergence_v_star", return_value=float("nan")):
-            # EXECUTION: Shifted right to remain inside the patch context
-            with pytest.raises(ArithmeticError):
-                solve_pressure_poisson_step(block, omega=1.0)
+        # Mock neighbor values to be safe
+        for neighbor in [block.i_plus, block.i_minus, block.j_plus, block.j_minus, block.k_plus, block.k_minus]:
+            neighbor.get_field.return_value = 0.0
         
-        # VALIDATION: Traceability
+        # Use patch to inject NaN divergence
+        with patch("src.step3.ppe_solver.compute_local_divergence_v_star", return_value=float("nan")):
+            with pytest.raises(ArithmeticError):
+                # Signature update: (block, threshold, omega)
+                solve_pressure_poisson_step(block, divergence_threshold=1e12, omega=1.0)
+        
         assert "PPE MATH ERROR" in caplog.text
 
     def test_successful_ppe_update(self):
@@ -64,9 +68,12 @@ class TestPPESolverIntegrity:
         block.rho = 1.0
         
         # Valid physical values
+        block.center.get_field.return_value = 0.0
         for neighbor in [block.i_plus, block.i_minus, block.j_plus, block.j_minus, block.k_plus, block.k_minus]:
             neighbor.get_field.return_value = 0.0
         
-        delta = solve_pressure_poisson_step(block, omega=1.0)
+        # EXECUTION: Standard valid run
+        delta = solve_pressure_poisson_step(block, divergence_threshold=1e12, omega=1.0)
+        
         assert isinstance(delta, float)
         assert delta >= 0.0
