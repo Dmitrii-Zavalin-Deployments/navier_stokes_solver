@@ -1,6 +1,5 @@
 # tests/step3/test_ppe_solver.py
 
-import logging
 from unittest.mock import MagicMock
 
 import pytest
