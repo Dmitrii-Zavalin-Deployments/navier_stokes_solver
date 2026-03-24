@@ -18,7 +18,7 @@ jobs:
       APP_SECRET: ${{ secrets.APP_SECRET }}
       REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
       # Define the 'Gold Standard' test command here (e.g. # pytest -s tests/ -vv --cov=src --cov-report=term-missing)
-      TEST_COMMAND: "pytest -s tests/step3/test_ppe_solver.py::TestPPESolverIntegrity::test_catch_nan_divergence -vv"
+      TEST_COMMAND: "pytest -s tests/step3/test_ppe_solver.py::TestPPESolverIntegrity::test_successful_ppe_update -vv"
 
     steps:
       - name: 🗂️ Checkout Repository
