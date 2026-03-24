@@ -33,6 +33,7 @@ class TestPPESolverIntegrity:
         # Assertions: Verify the "Arithmetic Truth" of the failure
         assert "Poisoned Pressure Trial" in str(excinfo.value)
         assert "PPE CRITICAL" in caplog.text
+        # Use a more robust check or ensure the format matches exactly
         assert "Value: 1.4000e+13" in caplog.text
 
     def test_catch_nan_divergence(self, caplog):

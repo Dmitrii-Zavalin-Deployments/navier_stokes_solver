@@ -47,7 +47,7 @@ def solve_pressure_poisson_step(block: StencilBlock, omega: float) -> float:
 
     # --- RULE 7: PRE-UPDATE AUDIT (SCALAR CHECK) ---
     if not np.isfinite(np.min(p_old)) or np.abs(np.max(p_old)) > 1e12:
-        logger.error(f"PPE CRITICAL: Poisoned p_old in block {block.id} | Value: {p_old} | dt: {block.dt:.4e}")
+        logger.error(f"PPE CRITICAL: Poisoned p_old in block {block.id} | Value: {p_old:.4e} | dt: {block.dt:.4e}")
         raise ArithmeticError(f"Poisoned Pressure Trial: {p_old}")
 
     # 5. Calculate Trial Pressure
