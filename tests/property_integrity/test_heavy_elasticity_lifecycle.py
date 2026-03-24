@@ -85,25 +85,33 @@ class TestHeavyElasticityLifecycle:
         Scenario 2: THE ELASTICITY TEST.
         Uses a calculated CFL trigger to ensure the math fails initially.
         """
-        # --- CFL CALCULATOR & LOGGER ---
-        u = 35.0
-        dt_initial = 0.1
-        # Calculate dx: (x_max - x_min) / nx
-        dx = (base_input["grid"]["x_max"] - base_input["grid"]["x_min"]) / base_input["grid"]["nx"]
+        # --- CFL CALCULATOR & LOGGER (Rule 7: Atomic Numerical Truth) ---
+        # Using float64 to ensure the stability trigger is driven by physics, not rounding drift.
+        u = np.float64(35.0)
+        dt_initial = np.float64(0.1)
+        
+        # Calculate dx precisely from the grid bounds
+        x_max = np.float64(base_input["grid"]["x_max"])
+        x_min = np.float64(base_input["grid"]["x_min"])
+        nx = np.float64(base_input["grid"]["nx"])
+        dx = (x_max - x_min) / nx
+        
         courant_number = (u * dt_initial) / dx
         
-        logging.info(f"DEBUG: Initial Physics -> u={u}, dt={dt_initial}, dx={dx}")
-        logging.info(f"DEBUG: Initial Courant Number = {courant_number} (Target > 1.0 for trigger)")
+        logging.info(f"DEBUG: Initial Physics -> u={u:.2f}, dt={dt_initial:.2f}, dx={dx:.4f}")
+        logging.info(f"DEBUG: Initial Courant Number = {courant_number:.4f} (Target > 1.0 for trigger)")
 
-        # 1. Setup physics: Ensure Audit limit (50.0) is higher than u (25.0)
-        base_input["boundary_conditions"][0]["values"]["u"] = u
+        # 1. Setup physics: Set u below the Audit limit (40.0) but high enough to cause CFL > 1.0
+        base_input["boundary_conditions"][0]["values"]["u"] = float(u)
         base_input["physical_constraints"]["max_velocity"] = 40.0
         base_input["physical_constraints"]["max_pressure"] = 1000.0
         
-        # 2. Config: Force a downstep by starting with a huge DT
-        base_config["dt"] = dt_initial 
+        # 2. Config: Force a downstep by starting with a huge DT and providing PPE 'muscle'
+        base_config["dt"] = float(dt_initial) 
         base_config["dt_min_limit"] = 1e-6
-        base_config["ppe_max_retries"] = 10 
+        base_config["ppe_max_retries"] = 10
+        # Rule 7: Increasing iterations to handle the 1/dt spike during recovery
+        base_config["ppe_max_iter"] = 100 
         
         input_filename = "test_recovery_input.json"
         config_path = Path(BASE_DIR) / "config.json"
@@ -122,7 +130,7 @@ class TestHeavyElasticityLifecycle:
         trigger_found = any("STABILITY TRIGGER" in r.message for r in caplog.records)
         
         if not trigger_found:
-            print(f"\n[CFL FAIL] Courant was {courant_number}, but no trigger fired.")
+            print(f"\n[CFL FAIL] Courant was {courant_number:.4f}, but no trigger fired.")
             print("Records found:", [r.message for r in caplog.records if r.levelno >= 30])
             
         assert trigger_found, "Solver was too stable! Elasticity logic never fired."

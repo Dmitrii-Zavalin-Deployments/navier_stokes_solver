@@ -100,9 +100,6 @@ def run_solver(input_path: str) -> str:
                     is_first_pass=True
                 )
             
-            # Rule 7: Immediate Physics Verification
-            state.audit_physical_bounds()
-            
             # PPE ITERATION
             for _ in range(context.config.ppe_max_iter):
                 max_delta = 0.0
@@ -118,6 +115,9 @@ def run_solver(input_path: str) -> str:
 
                 if max_delta < context.config.ppe_tolerance:
                     break
+            
+            # Rule 7: Immediate Physics Verification
+            state.audit_physical_bounds()
             
             # Success signal
             elasticity.stabilization(is_needed=False)
