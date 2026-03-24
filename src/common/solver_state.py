@@ -511,8 +511,12 @@ class SolverState(ValidatedContainer):
         finite_mask = np.isfinite(fields)
         
         # 1.5. Velocity Magnitude Check
-        max_v = np.max(np.abs(fields))
-        # VIOLATION FIXED: No default value. Must be explicit in config.
+        v_fields = fields[:, [
+            FI.VX, FI.VY, FI.VZ,
+            FI.VX_STAR, FI.VY_STAR, FI.VZ_STAR
+        ]]
+        max_v = np.max(np.abs(v_fields))
+
         limit = pc.max_velocity 
         if max_v > limit:
             logger.error(f"AUDIT [Limit]: Velocity {max_v} exceeds physical limit {limit}.")
@@ -524,7 +528,6 @@ class SolverState(ValidatedContainer):
             raise ArithmeticError(f"NUMERICAL EXPLOSION: {num_nans} NaN/Inf detected.")
 
         # 2. Check Velocities
-        v_fields = fields[:, [FI.VX, FI.VY, FI.VZ, FI.VX_STAR, FI.VY_STAR, FI.VZ_STAR]]
         v_max_current = np.max(np.abs(v_fields))
         
         logger.debug(f"AUDIT [Metric]: V_max observed: {v_max_current:.4e} (Limit: {pc.max_velocity})")

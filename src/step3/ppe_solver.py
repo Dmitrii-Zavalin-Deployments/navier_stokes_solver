@@ -36,7 +36,7 @@ def solve_pressure_poisson_step(
         (block.j_plus.get_field(FI.P) - 2.0 * block.center.get_field(FI.P) + block.j_minus.get_field(FI.P)) / dy2 +
         (block.k_plus.get_field(FI.P) - 2.0 * block.center.get_field(FI.P) + block.k_minus.get_field(FI.P)) / dz2
     )
-    rhie_chow_term = 1000#block.dt * lap_p_n
+    rhie_chow_term = block.dt * lap_p_n
     
     # 3. Compute RHS
     div_v_star = compute_local_divergence_v_star(block)
