@@ -53,12 +53,15 @@ def solve_pressure_poisson_step(block: StencilBlock, omega: float) -> float:
     # 5. Calculate Trial Pressure
     p_new = (1.0 - omega) * p_old + (omega / stencil_denom) * (sum_neighbors - rhs)
     
-    # --- RULE 7: POST-UPDATE AUDIT (SCALAR CHECK) ---
-    if not np.isfinite(np.min(p_new)):
-        logger.error(f"PPE MATH ERROR: Non-finite p_new in block {block.id} | rhs: {rhs}")
+    # --- RULE 7: POST-UPDATE AUDIT (NUMPY-SAFE) ---
+    # np.atleast_1d ensures scalars work with .all()
+    p_new_audit = np.atleast_1d(p_new)
+    if not np.isfinite(p_new_audit).all():
+        logger.error(f"PPE MATH ERROR: Non-finite p_new in block {block.id}")
         raise ArithmeticError("Non-finite pressure generated in SOR step")
 
-    delta = float(np.abs(p_new - p_old))
+    # Use .max() for delta to catch the largest local change
+    delta = float(np.max(np.abs(p_new - p_old)))
     
     # 6. Direct write-back
     block.center.set_field(FI.P_NEXT, p_new)

@@ -21,13 +21,14 @@ class TestPPESolverIntegrity:
         block.dt = 1e-6
         block.dx = block.dy = block.dz = 0.1
         
-        # Simulate a 1.4M pressure spike in the trial buffer
-        # This mocks block.center.get_field(FI.P_NEXT)
-        block.center.get_field.return_value = 1.4e9 
+        # CRITICAL: Neighbors MUST return 0.0, not another Mock
+        for neighbor in [block.i_plus, block.i_minus, block.j_plus, block.j_minus, block.k_plus, block.k_minus]:
+            neighbor.get_field.return_value = 0.0
+            
+        block.center.get_field.return_value = 1.4e13 # The "slingshot" value
         
-        with caplog.at_level(logging.ERROR):
-            with pytest.raises(ArithmeticError) as excinfo:
-                solve_pressure_poisson_step(block, omega=1.0)
+        with pytest.raises(ArithmeticError):
+            solve_pressure_poisson_step(block, omega=1.0)
         
         # Assertions
         assert "Poisoned Pressure Trial" in str(excinfo.value)
