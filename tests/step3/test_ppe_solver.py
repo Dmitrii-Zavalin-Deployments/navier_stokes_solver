@@ -26,13 +26,14 @@ class TestPPESolverIntegrity:
             
         block.center.get_field.return_value = 1.4e13 # The "slingshot" value
         
-        with pytest.raises(ArithmeticError):
+        # Ensure we capture the exception info (excinfo) to verify Rule 7 Compliance
+        with pytest.raises(ArithmeticError) as excinfo:
             solve_pressure_poisson_step(block, omega=1.0)
-        
-        # Assertions
+            
+        # Assertions: Verify the "Arithmetic Truth" of the failure
         assert "Poisoned Pressure Trial" in str(excinfo.value)
         assert "PPE CRITICAL" in caplog.text
-        assert "Value: 1.4000e+09" in caplog.text
+        assert "Value: 1.4000e+13" in caplog.text
 
     def test_catch_nan_divergence(self, caplog):
         """
