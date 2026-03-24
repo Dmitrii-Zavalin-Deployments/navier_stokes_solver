@@ -86,7 +86,7 @@ class TestHeavyElasticityLifecycle:
         Uses a calculated CFL trigger to ensure the math fails initially.
         """
         # --- CFL CALCULATOR & LOGGER (Rule 7: Atomic Numerical Truth) ---
-        # Using float64 to ensure the stability trigger is driven by physics, not rounding drift.
+        # Force float64 for the setup math to ensure the trigger is deterministic
         u = np.float64(35.0)
         dt_initial = np.float64(0.1)
         
@@ -101,17 +101,18 @@ class TestHeavyElasticityLifecycle:
         logging.info(f"DEBUG: Initial Physics -> u={u:.2f}, dt={dt_initial:.2f}, dx={dx:.4f}")
         logging.info(f"DEBUG: Initial Courant Number = {courant_number:.4f} (Target > 1.0 for trigger)")
 
-        # 1. Setup physics: Set u below the Audit limit (40.0) but high enough to cause CFL > 1.0
+        # 1. Setup physics: Set u below the Audit limit (40.0)
+        # We use float() here for JSON serialization compatibility
         base_input["boundary_conditions"][0]["values"]["u"] = float(u)
         base_input["physical_constraints"]["max_velocity"] = 40.0
         base_input["physical_constraints"]["max_pressure"] = 1000.0
         
-        # 2. Config: Force a downstep by starting with a huge DT and providing PPE 'muscle'
+        # 2. Config: Start with the "huge" DT to force the first-pass failure
         base_config["dt"] = float(dt_initial) 
         base_config["dt_min_limit"] = 1e-6
         base_config["ppe_max_retries"] = 10
-        # Rule 7: Increasing iterations to handle the 1/dt spike during recovery
-        base_config["ppe_max_iter"] = 100 
+        # Rule 7: Give the PPE enough iterations to recover after the rollback
+        base_config["ppe_max_iter"] = 50 
         
         input_filename = "test_recovery_input.json"
         config_path = Path(BASE_DIR) / "config.json"
@@ -120,20 +121,21 @@ class TestHeavyElasticityLifecycle:
         config_path.write_text(json.dumps(base_config))
         input_path.write_text(json.dumps(base_input))
 
-        # We capture INFO level now so we can see our own debug logs too
+        # We capture INFO level to see the STABILITY TRIGGER logs
         with caplog.at_level(logging.INFO):
             zip_path = run_solver(input_filename)
         
         assert zip_path is not None
         
-        # Verify the logs show at least one reduction happened
+        # Verify the logs show the Anti-Frankenstein Rollback (Rule 9)
         trigger_found = any("STABILITY TRIGGER" in r.message for r in caplog.records)
+        rollback_found = any("ROLLBACK" in r.message for r in caplog.records)
         
-        if not trigger_found:
-            print(f"\n[CFL FAIL] Courant was {courant_number:.4f}, but no trigger fired.")
-            print("Records found:", [r.message for r in caplog.records if r.levelno >= 30])
+        if not (trigger_found and rollback_found):
+            print(f"\n[CFL FAIL] Courant was {courant_number:.4f}, but no trigger/rollback fired.")
             
         assert trigger_found, "Solver was too stable! Elasticity logic never fired."
+        assert rollback_found, "Stability triggered but Rollback (Rule 9) failed to execute."
         
         # Cleanup
         input_path.unlink(missing_ok=True)
