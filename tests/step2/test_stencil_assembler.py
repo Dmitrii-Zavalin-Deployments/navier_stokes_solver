@@ -1,11 +1,13 @@
 # tests/step2/test_stencil_assembler.py
 
 import logging
+
 import numpy as np
 import pytest
 
 from src.step2.stencil_assembler import CellRegistry, assemble_stencil_matrix
 from tests.helpers.solver_step1_output_dummy import make_step1_output_dummy
+
 
 def get_matrix_3d(stencil_list):
     """

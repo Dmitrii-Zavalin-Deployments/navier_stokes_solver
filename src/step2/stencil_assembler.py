@@ -1,6 +1,7 @@
 # src/step2/stencil_assembler.py
 
 import logging
+
 from src.common.field_schema import FI
 from src.common.grid_math import get_flat_index
 from src.common.solver_state import SolverState
