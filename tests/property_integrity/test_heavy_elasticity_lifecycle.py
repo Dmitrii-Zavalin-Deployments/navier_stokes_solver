@@ -12,7 +12,6 @@ import pytest
 
 from src.main_solver import BASE_DIR, run_solver
 
-
 class TestHeavyElasticityLifecycle:
 
     @pytest.fixture
@@ -35,15 +34,10 @@ class TestHeavyElasticityLifecycle:
         return {
             "domain_configuration": {"type": "INTERNAL"},
             "grid": {
-                "x_min": 0.0,
-                "x_max": 1.0,
-                "y_min": 0.0,
-                "y_max": 1.0,
-                "z_min": 0.0,
-                "z_max": 1.0,
-                "nx": 4,
-                "ny": 4,
-                "nz": 4,
+                "x_min": 0.0, "x_max": 1.0,
+                "y_min": 0.0, "y_max": 1.0,
+                "z_min": 0.0, "z_max": 1.0,
+                "nx": 4, "ny": 4, "nz": 4,
             },
             "fluid_properties": {"density": 1.0, "viscosity": 0.01},
             "initial_conditions": {"velocity": [0.1, 0.0, 0.0], "pressure": 1.0},
@@ -52,7 +46,6 @@ class TestHeavyElasticityLifecycle:
                 "total_time": 0.02,
                 "output_interval": 1,
             },
-            # --- [Rule 5 Alignment]: Strictly following your JSON Schema ---
             "physical_constraints": {
                 "min_velocity": -100.0,
                 "max_velocity": 40.0,
@@ -60,31 +53,44 @@ class TestHeavyElasticityLifecycle:
                 "max_pressure": 100.0,
             },
             "boundary_conditions": [
-                # Note: Even for slip/no-slip, the schema requires "values"
-                # to avoid a ValidationError, even if the kernel ignores them.
                 {"location": "y_min", "type": "free-slip", "values": {"u": 0.0}},
                 {"location": "y_max", "type": "free-slip", "values": {"u": 0.0}},
                 {"location": "z_min", "type": "free-slip", "values": {"u": 0.0}},
                 {"location": "z_max", "type": "free-slip", "values": {"u": 0.0}},
-                {
-                    "location": "x_min",
-                    "type": "inflow",
-                    "values": {"u": 1.0, "v": 0.0, "w": 0.0},
-                },
+                {"location": "x_min", "type": "inflow", "values": {"u": 1.0, "v": 0.0, "w": 0.0}},
                 {"location": "x_max", "type": "outflow", "values": {"p": 0.0}},
             ],
             "mask": [0] * 64,
             "external_forces": {"force_vector": [0.0, 0.0, 0.0]},
         }
 
+    def _run_with_config_protection(self, config_data, input_data, input_filename, caplog_level, logger_name="Solver.Main"):
+        """Helper to run solver while backing up and restoring the production config.json."""
+        config_path = Path(BASE_DIR) / "config.json"
+        input_path = Path(BASE_DIR) / input_filename
+        
+        # 1. Backup existing config
+        config_backup = config_path.read_text() if config_path.exists() else None
+        
+        try:
+            config_path.write_text(json.dumps(config_data))
+            input_path.write_text(json.dumps(input_data))
+            return run_solver(input_filename)
+        finally:
+            # 2. Cleanup input file
+            input_path.unlink(missing_ok=True)
+            # 3. RESTORE: Put back original config or delete if it wasn't there
+            if config_backup is not None:
+                config_path.write_text(config_backup)
+            else:
+                config_path.unlink(missing_ok=True)
+
     def test_scenario_1_pure_success(self, caplog, base_config, base_input):
         """Scenario 1: Normal run. No stability triggers should fire."""
         input_filename = "test_success_input.json"
-        (Path(BASE_DIR) / "config.json").write_text(json.dumps(base_config))
-        (Path(BASE_DIR) / input_filename).write_text(json.dumps(base_input))
-
+        
         with caplog.at_level(logging.WARNING, logger="Solver.Main"):
-            zip_path = run_solver(input_filename)
+            zip_path = self._run_with_config_protection(base_config, base_input, input_filename, logging.WARNING)
 
             triggers = [r for r in caplog.records if "STABILITY TRIGGER" in r.message]
             assert len(triggers) == 0
@@ -130,15 +136,10 @@ class TestHeavyElasticityLifecycle:
         base_config["ppe_tolerance"] = 1e-6
 
         input_filename = "test_elastic_terminal_fail.json"
-        config_path = Path(BASE_DIR) / "config.json"
-        input_path = Path(BASE_DIR) / input_filename
-
-        config_path.write_text(json.dumps(base_config))
-        input_path.write_text(json.dumps(base_input))
 
         with caplog.at_level(logging.INFO):
             with pytest.raises(RuntimeError) as excinfo:
-                run_solver(input_filename)
+                self._run_with_config_protection(base_config, base_input, input_filename, logging.INFO)
 
         error_msg = str(excinfo.value)
         assert "CRITICAL INSTABILITY" in error_msg
@@ -163,15 +164,9 @@ class TestHeavyElasticityLifecycle:
 
         input_filename = "test_terminal_fail.json"
 
-        config_path = Path(BASE_DIR) / "config.json"
-        input_path = Path(BASE_DIR) / input_filename
-
-        config_path.write_text(json.dumps(base_config))
-        input_path.write_text(json.dumps(base_input))
-
         with caplog.at_level(logging.WARNING):
             with pytest.raises(RuntimeError) as excinfo:
-                run_solver(input_filename)
+                self._run_with_config_protection(base_config, base_input, input_filename, logging.WARNING)
 
         error_msg = str(excinfo.value)
         assert "CRITICAL INSTABILITY" in error_msg
@@ -179,9 +174,6 @@ class TestHeavyElasticityLifecycle:
 
         assert "AUDIT [Limit]" in caplog.text
         assert "STABILITY TRIGGER" in caplog.text
-
-        input_path.unlink(missing_ok=True)
-        config_path.unlink(missing_ok=True)
 
     def test_scenario_4_retry_and_recover(self, caplog, base_config, base_input):
         """
@@ -191,29 +183,14 @@ class TestHeavyElasticityLifecycle:
         """
 
         from unittest.mock import patch
-
-        # Normal, stable physical setup (we are not testing physics here)
         input_filename = "test_recovery_input.json"
-        config_path = Path(BASE_DIR) / "config.json"
-        input_path = Path(BASE_DIR) / input_filename
 
-        config_path.write_text(json.dumps(base_config))
-        input_path.write_text(json.dumps(base_input))
-
-        # --- MOCK STRATEGY ---
-        # audit_physical_bounds() will:
-        #   1st call → raise ArithmeticError (forces elasticity)
-        #   2nd+ calls → succeed (allows recovery)
         side_effects = [ArithmeticError("Mocked explosion"), None, None, None]
 
-        with patch(
-            "src.common.solver_state.SolverState.audit_physical_bounds",
-            side_effect=side_effects
-        ):
+        with patch("src.common.solver_state.SolverState.audit_physical_bounds", side_effect=side_effects):
             with caplog.at_level(logging.INFO):
-                zip_path = run_solver(input_filename)
+                zip_path = self._run_with_config_protection(base_config, base_input, input_filename, logging.INFO)
 
-        # Solver must complete successfully
         assert zip_path is not None
 
         # Elasticity must have fired at least once
@@ -222,7 +199,3 @@ class TestHeavyElasticityLifecycle:
 
         # No terminal instability should occur
         assert "CRITICAL INSTABILITY" not in caplog.text
-
-        # Cleanup
-        input_path.unlink(missing_ok=True)
-        config_path.unlink(missing_ok=True)
