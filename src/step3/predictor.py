@@ -60,9 +60,9 @@ def compute_local_predictor_step(block: StencilBlock) -> None:
         # Calculate intermediate value
         # Note: If this fails, the logger above will have already told us which variable is the array.
         try:
-            v_star_val = v_n[i] + dt_over_rho * (
+            v_star_val = (v_n[i] + dt_over_rho * (
                 block.mu * lap_v[i] - block.rho * adv_v[i] + force[i] - grad_p[i]
-            )
+            )).item()
             
             # Final check before commitment
             if hasattr(v_star_val, "__len__"):
