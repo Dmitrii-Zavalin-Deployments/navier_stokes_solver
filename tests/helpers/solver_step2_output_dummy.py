@@ -4,87 +4,22 @@
 Archivist Testing: Snapshot-based Test Baseline (Step 2).
 
 Compliance:
-- Rule 6: Zero-Redundancy (Independent of Factory logic).
+- Rule 6: Zero-Redundancy (Uses production Cell for 100% parity).
 - Rule 7: Atomic Numerical Truth (Fixed data for verification).
-- Rule 9: Sentinel Integrity (Mocks must mirror pointer-to-buffer behavior).
+- Rule 9: Sentinel Integrity (Real pointers into monolithic foundation).
 """
 
 from src.common.field_schema import FI
 from src.common.stencil_block import StencilBlock
+from src.common.cell import Cell  # Mandate: Use production code over Mocks
 from tests.helpers.solver_step1_output_dummy import make_step1_output_dummy
 
-
-# Around line 17 in tests/helpers/solver_step2_output_dummy.py
-class SimpleCellMock:
-    """
-    Lightweight Mock Cell that mimics the pointer-behavior of the real Cell class.
-    
-    Compliance:
-    - Rule 0: __slots__ mandatory for memory footprint parity.
-    - Rule 9: Hybrid Memory Foundation (Pointer-to-Buffer).
-    """
-    __slots__ = ['index', 'is_ghost', 'fields_buffer', 'nx_buf', 'ny_buf']
-
-    def __init__(self, index, is_ghost, fields_buffer, nx_buf=6, ny_buf=6):
-        self.index = index
-        self.is_ghost = is_ghost
-        self.fields_buffer = fields_buffer
-        self.nx_buf = nx_buf
-        self.ny_buf = ny_buf
-
-    def set_field(self, field_idx, value): 
-        self.fields_buffer[self.index, field_idx] = value 
-
-    def get_field(self, field_idx):
-        return self.fields_buffer[self.index, field_idx]
-
-    # --- Field Accessors (Rule 9 Bridge) ---
-
-    @property
-    def vx(self) -> float: return self.fields_buffer[self.index, FI.VX]
-    @vx.setter
-    def vx(self, val): self.fields_buffer[self.index, FI.VX] = val
-
-    @property
-    def vy(self) -> float: return self.fields_buffer[self.index, FI.VY]
-    @vy.setter
-    def vy(self, val): self.fields_buffer[self.index, FI.VY] = val
-
-    @property
-    def vz(self) -> float: return self.fields_buffer[self.index, FI.VZ]
-    @vz.setter
-    def vz(self, val): self.fields_buffer[self.index, FI.VZ] = val
-
-    @property
-    def p(self) -> float: return self.fields_buffer[self.index, FI.P]
-    @p.setter
-    def p(self, val): self.fields_buffer[self.index, FI.P] = val
-
-    @property
-    def mask(self) -> float: return self.fields_buffer[self.index, FI.MASK]
-    @mask.setter
-    def mask(self, val): self.fields_buffer[self.index, FI.MASK] = val
-
-    @property
-    def vx_star(self): return self.get_field(FI.VX_STAR)
-    @property
-    def vy_star(self): return self.get_field(FI.VY_STAR)
-    @property
-    def vz_star(self): return self.get_field(FI.VZ_STAR)
-
-    def to_dict(self):
-        return {
-            "index": self.index,
-            "is_ghost": self.is_ghost,
-            "fields_buffer": self.fields_buffer.tolist(),
-            "nx_buf": self.nx_buf,
-            "ny_buf": self.ny_buf
-        }
 
 def make_step2_output_dummy(nx: int = 4, ny: int = 4, nz: int = 4):
     """
     Fixed Step 2 Dummy: Complies with Rule 7 (Offset 1 Topology).
     Maps Core [0...nx-1] to Memory Indices [1...nx].
+    Uses the production Cell class to ensure no technical debt drift.
     """
     state = make_step1_output_dummy(nx=nx, ny=ny, nz=nz)
     
@@ -96,7 +31,6 @@ def make_step2_output_dummy(nx: int = 4, ny: int = 4, nz: int = 4):
     
     state.stencil_matrix = []
     # Rule 7.2: 4x4x4 core maps to 6x6x6 memory structure
-    # nz_buf is unused in index calculation but defined for architectural clarity
     nx_buf, ny_buf, _ = nx + 2, ny + 2, nz + 2
     buffer = state.fields.data
     
@@ -109,17 +43,19 @@ def make_step2_output_dummy(nx: int = 4, ny: int = 4, nz: int = 4):
         for j in range(1, ny + 1):
             for i in range(1, nx + 1):
                 
-                cell_c = SimpleCellMock(get_idx(i, j, k), False, buffer)
+                # Instantiate REAL production Cells
+                # Parameters: index, fields_buffer, nx_buf, ny_buf, is_ghost
+                cell_c = Cell(get_idx(i, j, k), buffer, nx_buf, ny_buf, False)
                 
                 # Neighbors pull from the Unified Foundation (Ghosts at 0 and n+1)
-                cell_im = SimpleCellMock(get_idx(i-1, j, k), (i-1 == 0), buffer)
-                cell_ip = SimpleCellMock(get_idx(i+1, j, k), (i+1 == nx+1), buffer)
+                cell_im = Cell(get_idx(i-1, j, k), buffer, nx_buf, ny_buf, (i-1 == 0))
+                cell_ip = Cell(get_idx(i+1, j, k), buffer, nx_buf, ny_buf, (i+1 == nx+1))
                 
-                cell_jm = SimpleCellMock(get_idx(i, j-1, k), (j-1 == 0), buffer)
-                cell_jp = SimpleCellMock(get_idx(i, j+1, k), (j+1 == ny+1), buffer)
+                cell_jm = Cell(get_idx(i, j-1, k), buffer, nx_buf, ny_buf, (j-1 == 0))
+                cell_jp = Cell(get_idx(i, j+1, k), buffer, nx_buf, ny_buf, (j+1 == ny+1))
                 
-                cell_km = SimpleCellMock(get_idx(i, j, k-1), (k-1 == 0), buffer)
-                cell_kp = SimpleCellMock(get_idx(i, j, k+1), (k+1 == nz+1), buffer)
+                cell_km = Cell(get_idx(i, j, k-1), buffer, nx_buf, ny_buf, (k-1 == 0))
+                cell_kp = Cell(get_idx(i, j, k+1), buffer, nx_buf, ny_buf, (k+1 == nz+1))
                 
                 block = StencilBlock(
                     center=cell_c,

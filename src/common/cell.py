@@ -102,3 +102,21 @@ class Cell(ValidatedContainer):
     def p_next(self) -> np.ndarray: return self.fields_buffer[self.index:self.index+1, FI.P_NEXT]
     @p_next.setter
     def p_next(self, value: float): self.fields_buffer[self.index, FI.P_NEXT] = value
+
+    # --- Vector Properties (Rule 9 Sentinel Compliance) ---
+
+    @property
+    def u(self) -> np.ndarray:
+        """
+        Returns a live vector view of [VX, VY, VZ].
+        Used by the Foundation Integrity Sentinel for pre-flight pointer validation.
+        """
+        return self.fields_buffer[self.index, [FI.VX, FI.VY, FI.VZ]]
+
+    @u.setter
+    def u(self, value: np.ndarray):
+        """
+        Directly mutates the velocity components in the foundation buffer.
+        Expects a vector of length 3.
+        """
+        self.fields_buffer[self.index, [FI.VX, FI.VY, FI.VZ]] = value
