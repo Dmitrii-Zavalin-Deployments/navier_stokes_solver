@@ -1,7 +1,6 @@
 # src/common/cell.py
 
 import numpy as np
-
 from src.common.base_container import ValidatedContainer
 from src.common.field_schema import FI
 from src.common.grid_math import get_coords_from_index
@@ -23,6 +22,15 @@ class Cell(ValidatedContainer):
         object.__setattr__(self, 'is_ghost', is_ghost)
         object.__setattr__(self, 'nx_buf', nx_buf)
         object.__setattr__(self, 'ny_buf', ny_buf)
+
+    # --- Internal Helper for Type Safety ---
+    def _to_scalar(self, value):
+        """Collapses numpy arrays or sequences into a single float."""
+        if hasattr(value, "item"):
+            return value.item()
+        if isinstance(value, (list, tuple, np.ndarray)) and len(value) == 1:
+            return float(value[0])
+        return float(value)
 
     # --- Coordinate Properties (SSoT compliant derivation) ---
     
@@ -47,63 +55,61 @@ class Cell(ValidatedContainer):
         return self.fields_buffer[self.index:self.index+1, field_id]
 
     def set_field(self, field_id: int, value: float):
-        """Mutate the foundation buffer directly via schema index."""
-        self.fields_buffer[self.index, field_id] = value
+        """Mutate the foundation buffer directly with Sovereign Type Enforcement."""
+        self.fields_buffer[self.index, field_id] = self._to_scalar(value)
 
-    # --- Topological Access (View into Foundation) ---
+    # --- Topological Access ---
     @property
     def mask(self) -> int: 
         return int(self.fields_buffer[self.index, FI.MASK])
     
     @mask.setter
     def mask(self, value: int): 
-        self.fields_buffer[self.index, FI.MASK] = value
+        self.fields_buffer[self.index, FI.MASK] = int(self._to_scalar(value))
 
     # --- Physical Fields (View into Foundation) ---
-    # Returning slices [index:index+1] ensures the returned value is a 
-    # numpy.ndarray view. This satisfies .size and .shape checks in CI.
 
     @property
     def vx(self) -> np.ndarray: return self.fields_buffer[self.index:self.index+1, FI.VX]
     @vx.setter
-    def vx(self, value: float): self.fields_buffer[self.index, FI.VX] = value
+    def vx(self, value: float): self.fields_buffer[self.index, FI.VX] = self._to_scalar(value)
 
     @property
     def vy(self) -> np.ndarray: return self.fields_buffer[self.index:self.index+1, FI.VY]
     @vy.setter
-    def vy(self, value: float): self.fields_buffer[self.index, FI.VY] = value
+    def vy(self, value: float): self.fields_buffer[self.index, FI.VY] = self._to_scalar(value)
 
     @property
     def vz(self) -> np.ndarray: return self.fields_buffer[self.index:self.index+1, FI.VZ]
     @vz.setter
-    def vz(self, value: float): self.fields_buffer[self.index, FI.VZ] = value
+    def vz(self, value: float): self.fields_buffer[self.index, FI.VZ] = self._to_scalar(value)
 
     @property
     def vx_star(self) -> np.ndarray: return self.fields_buffer[self.index:self.index+1, FI.VX_STAR]
     @vx_star.setter
-    def vx_star(self, value: float): self.fields_buffer[self.index, FI.VX_STAR] = value
+    def vx_star(self, value: float): self.fields_buffer[self.index, FI.VX_STAR] = self._to_scalar(value)
 
     @property
     def vy_star(self) -> np.ndarray: return self.fields_buffer[self.index:self.index+1, FI.VY_STAR]
     @vy_star.setter
-    def vy_star(self, value: float): self.fields_buffer[self.index, FI.VY_STAR] = value
+    def vy_star(self, value: float): self.fields_buffer[self.index, FI.VY_STAR] = self._to_scalar(value)
 
     @property
     def vz_star(self) -> np.ndarray: return self.fields_buffer[self.index:self.index+1, FI.VZ_STAR]
     @vz_star.setter
-    def vz_star(self, value: float): self.fields_buffer[self.index, FI.VZ_STAR] = value
+    def vz_star(self, value: float): self.fields_buffer[self.index, FI.VZ_STAR] = self._to_scalar(value)
 
     @property
     def p(self) -> np.ndarray: return self.fields_buffer[self.index:self.index+1, FI.P]
     @p.setter
-    def p(self, value: float): self.fields_buffer[self.index, FI.P] = value
+    def p(self, value: float): self.fields_buffer[self.index, FI.P] = self._to_scalar(value)
 
     @property
     def p_next(self) -> np.ndarray: return self.fields_buffer[self.index:self.index+1, FI.P_NEXT]
     @p_next.setter
-    def p_next(self, value: float): self.fields_buffer[self.index, FI.P_NEXT] = value
+    def p_next(self, value: float): self.fields_buffer[self.index, FI.P_NEXT] = self._to_scalar(value)
 
-    # --- Vector Properties (Rule 9 Sentinel Compliance) ---
+    # --- Vector Properties ---
 
     @property
     def u(self) -> np.ndarray:
@@ -115,8 +121,5 @@ class Cell(ValidatedContainer):
 
     @u.setter
     def u(self, value: np.ndarray):
-        """
-        Directly mutates the velocity components in the foundation buffer.
-        Expects a vector of length 3.
-        """
+        # Vector properties expect a sequence of 3, handled by numpy's internal broadcasting
         self.fields_buffer[self.index, [FI.VX, FI.VY, FI.VZ]] = value
