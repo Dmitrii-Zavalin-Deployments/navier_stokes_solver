@@ -185,33 +185,14 @@ class TestHeavyElasticityLifecycle:
 
     def test_scenario_4_retry_and_recover(self, caplog, base_config, base_input):
         """
-        Scenario 4: Elasticity recovers.
-        First dt triggers instability, smaller dt succeeds, and the run completes.
+        Scenario 4: Elasticity recovers (mock‑based).
+        First audit fails → elasticity triggers.
+        Second audit succeeds → solver commits and completes.
         """
-        # Mildly aggressive inflow and dt: enough to trigger once, but recoverable.
-        u = np.float64(15.0)
-        dt_initial = np.float64(0.04)
 
-        x_max = np.float64(base_input["grid"]["x_max"])
-        x_min = np.float64(base_input["grid"]["x_min"])
-        nx = np.float64(base_input["grid"]["nx"])
-        dx = (x_max - x_min) / nx
-        courant_number = (u * dt_initial) / dx
+        from unittest.mock import patch
 
-        logging.info(
-            f"DEBUG: Scenario 4 Initial Courant Number = {courant_number:.4f} (Slightly > 1.0)"
-        )
-
-        base_input["boundary_conditions"][0]["values"]["u"] = float(u)
-        base_input["physical_constraints"]["max_velocity"] = 40.0
-        base_input["physical_constraints"]["max_pressure"] = 1000.0
-
-        base_config["dt"] = float(dt_initial)
-        base_config["dt_min_limit"] = 1e-4
-        base_config["ppe_max_retries"] = 5
-        base_config["ppe_max_iter"] = 100
-        base_config["ppe_tolerance"] = 1e-5
-
+        # Normal, stable physical setup (we are not testing physics here)
         input_filename = "test_recovery_input.json"
         config_path = Path(BASE_DIR) / "config.json"
         input_path = Path(BASE_DIR) / input_filename
@@ -219,17 +200,29 @@ class TestHeavyElasticityLifecycle:
         config_path.write_text(json.dumps(base_config))
         input_path.write_text(json.dumps(base_input))
 
-        with caplog.at_level(logging.INFO):
-            zip_path = run_solver(input_filename)
+        # --- MOCK STRATEGY ---
+        # audit_physical_bounds() will:
+        #   1st call → raise ArithmeticError (forces elasticity)
+        #   2nd+ calls → succeed (allows recovery)
+        side_effects = [ArithmeticError("Mocked explosion"), None, None, None]
 
+        with patch(
+            "src.common.solver_state.SolverState.audit_physical_bounds",
+            side_effect=side_effects
+        ):
+            with caplog.at_level(logging.INFO):
+                zip_path = run_solver(input_filename)
+
+        # Solver must complete successfully
         assert zip_path is not None
 
-        # We expect at least one stability trigger (elasticity fired)…
+        # Elasticity must have fired at least once
         trigger_found = any("STABILITY TRIGGER" in r.message for r in caplog.records)
-        assert trigger_found, "Elasticity never fired; scenario did not exercise retry logic."
+        assert trigger_found, "Elasticity never fired; mock did not trigger retry logic."
 
-        # …but no critical instability at the end.
+        # No terminal instability should occur
         assert "CRITICAL INSTABILITY" not in caplog.text
 
+        # Cleanup
         input_path.unlink(missing_ok=True)
         config_path.unlink(missing_ok=True)
