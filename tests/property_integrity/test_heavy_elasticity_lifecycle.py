@@ -12,6 +12,7 @@ import pytest
 
 from src.main_solver import BASE_DIR, run_solver
 
+
 class TestHeavyElasticityLifecycle:
 
     @pytest.fixture
