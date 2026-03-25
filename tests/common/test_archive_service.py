@@ -1,6 +1,7 @@
-# tests/unit/test_archive_service.py
+# tests/common/test_archive_service.py
 
 import zipfile
+import logging
 from pathlib import Path
 
 from src.common.archive_service import archive_simulation_artifacts
@@ -9,23 +10,25 @@ from src.main_solver import BASE_DIR
 
 class TestArchiveServiceIntegrity:
 
-    def test_archival_and_zero_debt_cleanup(self, tmp_path):
+    def test_archival_and_forensic_logging(self, tmp_path, caplog):
         """
-        Validates that archive_simulation_artifacts:
+        Validates the Instance-Optimized Archiver:
         1. Correctly packages simulation data.
-        2. Places the final ZIP in the SSoT 'data/testing-input-output' folder.
-        3. Leaves NO staging folders (navier_stokes_output) in the project root.
+        2. Places final ZIP in the SSoT 'data/testing-input-output' folder.
+        3. Emits explicit Forensic Logs (Rule 5).
+        4. Leaves staging folder intact for instance dissolution (Rule 8).
         """
+        # Set log level to capture our archive service logs
+        caplog.set_level(logging.INFO)
+
         # --- 1. SETUP MOCK STATE ---
-        # We simulate the solver having just finished and written files to a temp 'output'
         mock_output_dir = tmp_path / "simulation_output_raw"
         mock_output_dir.mkdir()
         
-        # Create dummy simulation artifacts
+        # Create dummy artifacts
         (mock_output_dir / "step_0.csv").write_text("u,v,w,p\n0,0,0,1")
         (mock_output_dir / "mesh.vtk").write_text("DATASET STRUCTURED_GRID")
 
-        # Mock a SolverState-like object with a manifest pointing to our temp output
         class MockManifest:
             def __init__(self, out_dir):
                 self.output_directory = str(out_dir)
@@ -37,36 +40,32 @@ class TestArchiveServiceIntegrity:
         state = MockState(mock_output_dir)
 
         # Define expected paths
-        expected_zip_name = "navier_stokes_output.zip"
         target_dir = Path(BASE_DIR) / "data" / "testing-input-output"
         staging_dir = Path.cwd() / "navier_stokes_output"
-        final_zip_path = target_dir / expected_zip_name
+        expected_zip_path = target_dir / "navier_stokes_output.zip"
 
-        try:
-            # --- 2. EXECUTION ---
-            result_path = archive_simulation_artifacts(state)
+        # --- 2. EXECUTION ---
+        result_path_str = archive_simulation_artifacts(state)
+        result_path = Path(result_path_str)
 
-            # --- 3. VERIFICATION: ARCHIVE EXISTENCE ---
-            assert Path(result_path).exists(), "Archive was not created."
-            assert result_path == str(final_zip_path), "Archive path mismatch."
-            
-            # --- 4. VERIFICATION: ZIP CONTENT ---
-            with zipfile.ZipFile(result_path, 'r') as zip_ref:
-                file_list = zip_ref.namelist()
-                # Ensure files are inside the zip (check for presence, flat or nested)
-                assert any("step_0.csv" in f for f in file_list)
-                assert any("mesh.vtk" in f for f in file_list)
+        # --- 3. VERIFICATION: ARCHIVE INTEGRITY ---
+        assert result_path.exists(), "Final ZIP was not created."
+        assert result_path.resolve() == expected_zip_path.resolve(), "Target path mismatch."
+        
+        with zipfile.ZipFile(result_path, 'r') as zip_ref:
+            file_list = zip_ref.namelist()
+            assert any("step_0.csv" in f for f in file_list), "CSV missing from ZIP."
+            assert any("mesh.vtk" in f for f in file_list), "VTK missing from ZIP."
 
-            # --- 5. VERIFICATION: ZERO DEBT (The "Janitor" Check) ---
-            # The raw output should be gone (moved by archiver)
-            assert not mock_output_dir.exists(), "Source directory was not moved/cleaned."
-            
-            # The staging directory should NOT exist in the current working directory
-            # If your archive_service currently leaves 'navier_stokes_output' behind,
-            # we need to add a 'shutil.rmtree(renamed_dir)' at the end of archive_service.py.
-            assert not staging_dir.exists(), f"DEBT FOUND: Staging directory {staging_dir} still exists!"
+        # --- 4. VERIFICATION: SOURCE CLEANUP ---
+        # The raw output should be gone because it was moved to staging
+        assert not mock_output_dir.exists(), "Raw source directory was not moved."
 
-        finally:
-            # Cleanup the target directory so we don't pollute the actual project data
-            if final_zip_path.exists():
-                final_zip_path.unlink()
+        # --- 5. VERIFICATION: FORENSIC LOGS (Rule 5) ---
+        assert "Initiating artifact packaging" in caplog.text
+        assert "Source moved to staging" in caplog.text
+        assert "ARCHIVE COMPLETE" in caplog.text
+
+        # --- 6. VERIFICATION: INSTANCE PERSISTENCE (Rule 8) ---
+        # We assert that the staging folder remains, confirming the ephemeral-only design.
+        assert staging_dir.exists(), "Archiver logic error: Staging folder should persist."
