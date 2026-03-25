@@ -1,17 +1,15 @@
 #!/bin/bash
 echo "🔍 STARTING DEEP FORENSIC AUDIT: FLOATING POINT PRECISION"
 
-# 1. DIAGNOSTICS: Check the specific calculation causing the drift
-echo "--- [Calculation Audit: elasticity.py] ---"
-cat -n src/common/elasticity.py | grep -A 5 "self._dt_range ="
+# 1. SMOKING GUN: Check the specific calculation causing the drift
+echo "--- [Source Audit: elasticity.py] ---"
+cat -n src/common/elasticity.py | sed -n '30,33p'
 
-# 2. ROOT CAUSE: Binary representation of (self.dt_floor - self._dt) / self._runs 
-# creates a tiny remainder that accumulates over the range.
+# 2. REPAIR STRATEGY:
+# Force the test to use a numerical epsilon via pytest.approx.
+# This ensures that a drift of 1e-17 doesn't break our CI pipeline.
 
-# 3. REPAIR STRATEGY:
-# We will use pytest.approx to allow for the ~1e-17 drift.
+# A. Replace the rigid equality check with an approximate one
+sed -i 's/assert manager._dt_range\[-1\] == config.dt_min_limit/assert manager._dt_range[-1] == pytest.approx(config.dt_min_limit)/' tests/common/test_elasticity_manager.py
 
-# A. Patch the test_safety_ladder_initialization to use approx()
-# sed -i 's/assert manager._dt_range\[-1\] == config.dt_min_limit/assert manager._dt_range[-1] == pytest.approx(config.dt_min_limit)/' tests/common/test_elasticity_manager.py
-
-echo "✅ Forensic Audit Complete. Numerical tolerance applied."
+echo "✅ Forensic Audit Complete. Numerical tolerance applied via sed."
