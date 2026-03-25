@@ -1,7 +1,7 @@
 # src/step3/predictor.py
 
 import logging
-import numpy as np
+
 from src.common.field_schema import FI
 from src.common.stencil_block import StencilBlock
 from src.step3.ops.advection import compute_local_advection_vector
