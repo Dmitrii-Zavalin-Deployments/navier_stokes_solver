@@ -53,7 +53,7 @@ def test_safety_ladder_initialization(config, state_mock):
     # Range should be [0.5, 0.333..., 0.166..., 0.001]
     assert len(manager._dt_range) == config.ppe_max_retries + 1
     assert manager._dt_range[0] == 0.5
-    assert manager._dt_range[-1] == config.dt_min_limit
+    assert manager._dt_range[-1] == pytest.approx(config.dt_min_limit)
 
 def test_stabilization_descent_logic(config, state_mock):
     """Verifies that is_needed=True correctly moves down the ladder."""
