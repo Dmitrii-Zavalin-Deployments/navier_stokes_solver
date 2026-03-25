@@ -1,9 +1,11 @@
 # tests/helpers/solver_step3_output_dummy.py
 
 from src.common.field_schema import FI
-from tests.helpers.solver_step2_output_dummy import make_step2_output_dummy
+
 # Ensure we have the logic that wires cells to the data buffer
-from src.step2.stencil_assembler import assemble_stencils 
+from src.step2.stencil_assembler import assemble_stencils
+from tests.helpers.solver_step2_output_dummy import make_step2_output_dummy
+
 
 def make_step3_output_dummy(nx: int = 4, ny: int = 4, nz: int = 4, block_index: int = 0):
     """
