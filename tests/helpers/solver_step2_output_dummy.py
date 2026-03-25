@@ -9,9 +9,8 @@ Compliance:
 - Rule 9: Sentinel Integrity (Real pointers into monolithic foundation).
 """
 
-from src.common.field_schema import FI
-from src.common.stencil_block import StencilBlock
 from src.common.cell import Cell  # Mandate: Use production code over Mocks
+from src.common.stencil_block import StencilBlock
 from tests.helpers.solver_step1_output_dummy import make_step1_output_dummy
 
 
