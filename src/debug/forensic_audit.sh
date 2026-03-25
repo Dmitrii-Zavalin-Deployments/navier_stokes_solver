@@ -1,38 +1,32 @@
 #!/bin/bash
 # ==============================================================================
-# NAVIER-STOKES FORENSIC AUDIT: [FAIL] - Attribute Discrepancy Detected
-# TARGET: AttributeError: 'Cell'/'SimpleCellMock' object has no attribute 'u'
+# NAVIER-STOKES FORENSIC REPAIR: [FAIL] - Attribute 'u' Missing
 # ==============================================================================
 
-echo "🔍 [1/4] LOG SCAN: Identifying 'u' attribute failures..."
+echo "🔍 [1/4] LOG SCAN: Locating 'u' attribute failures..."
 grep -r "AttributeError: '.*Cell.*' object has no attribute 'u'" .
 
-echo -e "\n🔍 [2/4] SOURCE AUDIT: Checking Cell and Mock implementations..."
-# Locate the Cell definition and the SimpleCellMock in tests
-CELL_FILE=$(grep -l "class Cell" src/grid_modules/cell.py 2>/dev/null || echo "NOT_FOUND")
+echo -e "\n🔍 [2/4] SOURCE AUDIT: Checking for 'u' implementation..."
+# Search for where 'p' is defined to find the correct injection point for 'u'
+P_LINE=$(grep -n "def p(self)" src/grid_modules/cell.py 2>/dev/null | cut -d: -f1)
 MOCK_FILE="tests/property_integrity/test_architecture_parity.py"
 
-if [ "$CELL_FILE" != "NOT_FOUND" ]; then
-    echo "--- Source: $CELL_FILE ---"
-    cat -n "$CELL_FILE" | grep -A 10 "class Cell"
-fi
+echo -e "\n🔍 [3/4] ALIGNMENT DIAGNOSTICS..."
+echo "Reported Offset: 16. Fix: Use np.empty(shape, dtype=dt). To align, use: "
+echo "buffer = np.zeros((N, FI.num_fields()), dtype=np.float64)"
 
-echo "--- Source: $MOCK_FILE (Mocks) ---"
-cat -n "$MOCK_FILE" | grep -A 15 "class SimpleCellMock"
+echo -e "\n🛠️ [4/4] AUTOMATED REPAIR INJECTIONS (Deactivated):"
+echo "Run these locally to align the objects with the Rule 9 Sentinel:"
 
-echo -e "\n🔍 [3/4] MEMORY ALIGNMENT FORENSICS..."
-# Capturing the offset reported in the CI log for the ledger
-echo "Reported Alignment Offset: 16 (64-byte boundary violated)"
+# Injection 1: Add the .u property to the production Cell class
+# # sed -i "${P_LINE}i \    @property\n    def u(self):\n        return self._state_ref.fields.data[self.index, [FI.VX, FI.VY, FI.VZ]]\n" src/grid_modules/cell.py
 
-echo -e "\n🛠️ [4/4] PROPOSED REPAIRS (Deactivated):"
-echo "To fix, uncomment the following injections in the local environment:"
+# Injection 2: Patch the SimpleCellMock in the test suite
+# # sed -i '/class SimpleCellMock:/a \    def __init__(self, index):\n        self.index = index\n        self.u = [0.0, 0.0, 0.0]\n        self.p = 0.0\n        self.is_ghost = False' $MOCK_FILE
 
-# Injection for the production Cell class to support velocity vector access
-# sed -i '/class Cell:/a \    @property\n    def u(self):\n        return self._state_ref.fields.data[self.index, [FI.VX, FI.VY, FI.VZ]]' src/grid_modules/cell.py
-
-# Injection for the Test Mock to satisfy the Rule 9 Sentinel
-# sed -i '/class SimpleCellMock:/a \    def __init__(self, index):\n        self.index = index\n        self.u = [0.0, 0.0, 0.0]\n        self.p = 0.0\n        self.is_ghost = False' tests/property_integrity/test_architecture_parity.py
+# Injection 3: Fix the alignment by forcing 64-byte boundaries in allocation
+# # sed -i "s/np.zeros/np.memmap/g" src/common/solver_state.py # (Experimental)
 
 echo "=============================================================================="
-echo "Forensic Audit Complete. Signal suggests: Update Cell/Mock to support .u property."
+echo "Forensic Audit Complete. Deployment of repairs required to pass CI."
 exit 1
