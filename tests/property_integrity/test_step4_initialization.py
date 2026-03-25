@@ -1,17 +1,13 @@
 # tests/property_integrity/test_step4_initialization.py
 
-import numpy as np
 import pytest
-from tests.helpers.solver_step4_output_dummy import make_step4_output_dummy
 
 from src.common.simulation_context import SimulationContext
 from src.common.solver_config import SolverConfig
 from src.common.solver_state import (
-    DomainManager,
     FieldManager,
     GridManager,
     ManifestManager,
-    MaskManager,
     SimulationParameterManager,
     SolverState,
 )
@@ -20,6 +16,7 @@ from src.step4.orchestrate_step4 import orchestrate_step4
 # --- MANDATE: Vertical Integrity Dummy Imports ---
 from tests.helpers.solver_input_schema_dummy import create_validated_input
 from tests.helpers.solver_output_schema_dummy import make_output_schema_dummy
+from tests.helpers.solver_step4_output_dummy import make_step4_output_dummy
 
 
 class TestStep4Initialization:
