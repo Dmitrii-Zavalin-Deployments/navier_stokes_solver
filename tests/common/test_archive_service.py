@@ -1,7 +1,7 @@
 # tests/common/test_archive_service.py
 
-import zipfile
 import logging
+import zipfile
 from pathlib import Path
 
 from src.common.archive_service import archive_simulation_artifacts
