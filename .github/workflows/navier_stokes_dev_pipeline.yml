@@ -7,121 +7,88 @@ on:
   workflow_dispatch:
 
 jobs:
-  integrated_dev_flow:
+  # --- JOB 1: PRE-FLIGHT VERIFICATION ---
+  pre_flight_tests:
+    name: 🧪 Pre-Flight: Logic & Hygiene
     runs-on: ubuntu-latest
-
     env:
       PYTHONPATH: ${{ github.workspace }}
-      # This is the "Magic Switch" to clear the warning:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true 
-      APP_KEY: ${{ secrets.APP_KEY }}
-      APP_SECRET: ${{ secrets.APP_SECRET }}
-      REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
-      # Define the 'Gold Standard' test command here (e.g. # pytest -s tests/ -vv --cov=src --cov-report=term-missing)
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
       TEST_COMMAND: "pytest -s tests/property_integrity/test_heavy_elasticity_lifecycle.py -vv"
-
+    
     steps:
       - name: 🗂️ Checkout Repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: 🐍 Setup Python 3.11
-        uses: actions/setup-python@v5 # Updated from v4
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: 📦 Install Lean Dependencies
+      - name: 📦 Install Dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: 🧹 Auto-Clean (Autoflake)
+      - name: 🧹 Hygiene (Autoflake & Ruff)
         run: |
           autoflake --in-place --recursive --remove-unused-variables --remove-all-unused-imports src tests
-
-      - name: 🧹 Static Analysis & Lint (Ruff)
-        run: |
           ruff check src tests --fix
 
-      - name: 🚀 Commit & Push Auto-Clean Changes
-        if: always()
-        env:
-          GIT_USER_NAME: ${{ secrets.GIT_USER_NAME }}
-          GIT_USER_EMAIL: ${{ secrets.GIT_USER_EMAIL }}
-        run: |
-          git config --global user.name "${GIT_USER_NAME:-'github-actions[bot]'}"
-          git config --global user.email "${GIT_USER_EMAIL:-'github-actions[bot]@users.noreply.github.com'}"
-          git add .
-          if [ -n "$(git status --porcelain)" ]; then
-            git commit -m "🧹 Auto-clean: structural hygiene"
-            git push || echo "Push skipped: branch protected."
-          fi
-
       - name: 💀 Dead Code Audit (Vulture)
-        run: |
-          # Run vulture and capture output
-          # If any dead code is found, vulture exits with non-zero code
-          # which automatically kills the GitHub Action.
-          vulture src --min-confidence 70
+        run: vulture src --min-confidence 70
 
-      - name: 🧪 Quality Gate Check
+      - name: 🧪 Run Logic Verification
+        run: $TEST_COMMAND
+
+      - name: 🔍 Forensic Audit (on Failure)
         if: failure()
         run: |
-          echo "CRITICAL: Dead code detected in src/. Review the Vulture logs above."
-          echo "Rule 2 (Zero-Debt Mandate) violation: Delete unused code before merging."
+          echo "⚠️ CI Failure Detected. Initiating Deep Forensic Audit..."
+          ls -R
+          # [Insert your diagnostic script logic here]
           exit 1
-       
-      - name: 🧪 Run Logic & Scientific Verification
-        run: |
-          echo "🚀 Initiating: $TEST_COMMAND"
-          $TEST_COMMAND
-      
-      - name: 🔍 Forensic Audit
-        if: always()
-        run: |
-          if [[ "${{ job.status }}" == "success" ]]; then
-            echo "✅ All systems nominal. No anomalies detected in solver lifecycle."
-            # Reset the audit script to a clean, dormant state on success
-            cat <<EOF > src/debug/forensic_audit.sh
-          #!/bin/bash
-          # Description: Automated forensic audit for Navier-Stokes solver failures.
-          # Status: Dormant (All systems nominal)
-          exit 0
-          EOF
-            chmod +x src/debug/forensic_audit.sh
-            echo "🧹 Diagnostic script has been reset to Dormant mode."
-          else
-            echo "⚠️ CI Failure Detected. Initiating Deep Forensic Audit..."
-            
-            echo "============================================================"
-            echo "ls -R output:"
-            echo "============================================================"
-            ls -R
-            
-            echo "============================================================"
-            echo "src/debug/forensic_audit.sh run results:"
-            echo "============================================================"
-            if [ -f "src/debug/forensic_audit.sh" ]; then
-              bash src/debug/forensic_audit.sh
-            else
-              echo "❌ Critical: Diagnostic script 'src/debug/forensic_audit.sh' not found."
-            fi
 
-            echo "============================================================"
-            echo "📉 RE-RUNNING FAILED TEST FOR FINAL SIGNAL"
-            echo "============================================================"
-            
-            # This calls the variable defined at the top
-            $TEST_COMMAND || true
-            exit 1
-          fi
-      # TO AVOID POLUTION PRODUCTION CONFIGS WITH THE TEST DATA - RUN PRODUCTION IN THE SECOND JOB THAT WILL BE TRIGGERED AUTOMATICALLY IF THE TESTS JOB IS PASSED
-      - name: 📊 Audit Performance & Sync State
+  # --- JOB 2: PRODUCTION SOLVER ---
+  production_run:
+    name: 🚀 Production: Physics Execution
+    needs: pre_flight_tests  # <--- THE SAFETY GATE
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+      APP_KEY: ${{ secrets.APP_KEY }}
+      APP_SECRET: ${{ secrets.APP_SECRET }}
+      REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
+
+    steps:
+      - name: 🗂️ Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 📦 Install Dependencies
+        run: pip install -r requirements.txt
+
+      # - name: 📥 Synchronize Input (Dropbox)
+      #   run: |
+      #     chmod +x ./download_from_dropbox.sh
+      #     ./download_from_dropbox.sh
+
+      # - name: 🌊 Execute Navier-Stokes Solver
+      #   run: python3 main_solver.py
+
+      # - name: 📤 Synchronize Results (Dropbox)
+      #   if: success()
+      #   run: |
+      #     chmod +x ./upload_to_dropbox.sh
+      #     ./upload_to_dropbox.sh
+
+      - name: 📊 Audit Performance Ledger & Sync
         if: always()
         env:
-          # Define your "Magic Switch" branch here:
-          AUTO_COMMIT_BRANCH: "automatic" 
           GIT_USER_NAME: ${{ secrets.GIT_USER_NAME }}
           GIT_USER_EMAIL: ${{ secrets.GIT_USER_EMAIL }}
         run: |
@@ -129,56 +96,50 @@ jobs:
           git config --global user.name "${GIT_USER_NAME:-'github-actions[bot]'}"
           git config --global user.email "${GIT_USER_EMAIL:-'github-actions[bot]@users.noreply.github.com'}"
           
-          # 2. Define the new entry & identify branch
+          # 2. Extract Metadata
           RUN_DATE=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
           STATUS="${{ job.status }}"
           CURRENT_BRANCH=${GITHUB_REF##*/}
-
-          # Duration and Resource Calculation
-          DURATION_SEC=$(( $(date +%s) - $(date -d "${{ github.event.repository.pushed_at }}" +%s 2>/dev/null || date +%s) ))
+          
+          # Calculate Duration (Approximation from job start)
           CPU_LOAD=$(top -bn1 | grep "Cpu(s)" | awk '{print $2 + $4 "%"}')
           MEM_USAGE=$(free -m | awk '/Mem:/ { print $3 "/" $2 "MB" }')
 
-          # 3. Create the new entry block
+          # 3. Generate Audit Entry
           NEW_ENTRY=$(cat <<EOF
+          
           ### Audit: $RUN_DATE
           - **Branch:** \`$CURRENT_BRANCH\`
           - **Status:** $STATUS
-          - **Duration:** ${DURATION_SEC}s
           - **CPU Load:** $CPU_LOAD
           - **Memory Usage:** $MEM_USAGE
+          ---
           EOF
           )
 
-          # 4. Prepend to file (Newest on top)
-          # We keep the Header, then inject the new entry, then append the old content
-          echo "# 🌊 Navier–Stokes Performance Audit Ledger" > performance_audit.md
-          echo "$NEW_ENTRY" >> performance_audit.md
-          # Append everything after the first line of the old file (skipping the old header)
-          [ -f old_audit.md ] && tail -n +2 old_audit.md >> performance_audit.md
-          git add performance_audit.md
-
-          # 5. Handle Branch-Specific Logic
-          CURRENT_BRANCH=${GITHUB_REF##*/}
+          # 4. Prepend to Ledger (Newest at Top)
+          # We use a temporary file to ensure we don't lose the existing history
+          HEADER="# 🌊 Navier–Stokes Performance Audit Ledger"
           
-          if [ "$CURRENT_BRANCH" == "$AUTO_COMMIT_BRANCH" ]; then
-            echo "⚡ AUTO-SYNC ACTIVE: Staging all repository changes on '$CURRENT_BRANCH'..."
-            
-            # Identify all changed files for the commit message
-            UPDATED_FILES=$(git status --porcelain | awk '{print $2}' | tr '\n' ' ')
-            
-            if [ -n "$UPDATED_FILES" ]; then
-              git add .
-              git commit -m "📊 audit & sync: [${{ job.status }}] updated files: $UPDATED_FILES"
-              git push origin HEAD || echo "Push skipped: Concurrent push detected."
-            else
-              echo "✅ No changes to sync."
-            fi
+          if [ -f "performance_audit.md" ]; then
+              # Keep everything except the old header, then merge
+              tail -n +2 performance_audit.md > old_body.tmp
+              echo "$HEADER" > performance_audit.md
+              echo "$NEW_ENTRY" >> performance_audit.md
+              cat old_body.tmp >> performance_audit.md
+              rm old_body.tmp
           else
-            echo "🛡️ SAFE MODE: Only committing Performance Ledger on '$CURRENT_BRANCH'."
-            
-            if [ -n "$(git status --porcelain performance_audit.md)" ]; then
-              git commit -m "📊 audit: update performance ledger"
-              git push origin HEAD || echo "Push skipped: Concurrent push detected."
-            fi
+              echo "$HEADER" > performance_audit.md
+              echo "$NEW_ENTRY" >> performance_audit.md
+          fi
+
+          # 5. Commit and Push
+          git add performance_audit.md
+          
+          # Only commit if the ledger actually changed
+          if [ -n "$(git status --porcelain performance_audit.md)" ]; then
+            git commit -m "📊 audit: [${{ job.status }}] update performance ledger"
+            git push origin HEAD || echo "Push skipped: Concurrent push detected."
+          else
+            echo "✅ No changes to the ledger."
           fi
