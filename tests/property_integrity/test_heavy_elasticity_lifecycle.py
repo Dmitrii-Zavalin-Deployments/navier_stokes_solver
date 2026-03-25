@@ -82,8 +82,6 @@ class TestHeavyElasticityLifecycle:
             # 3. RESTORE: Put back original config or delete if it wasn't there
             if config_backup is not None:
                 config_path.write_text(config_backup)
-            else:
-
     def test_scenario_1_pure_success(self, caplog, base_config, base_input):
         """Scenario 1: Normal run. No stability triggers should fire."""
         input_filename = "test_success_input.json"
