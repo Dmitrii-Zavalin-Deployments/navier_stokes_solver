@@ -1,4 +1,4 @@
-name: Navier–Stokes Solver Pipeline
+name: Navier–Stokes Solver
 
 on:
   push:
