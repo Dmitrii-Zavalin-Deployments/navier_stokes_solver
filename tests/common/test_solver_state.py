@@ -85,8 +85,14 @@ class TestSolverStateFoundation:
 
     def test_audit_pressure_reconstruction_and_bounds(self, populated_state):
         """Verifies Real-Pressure reconstruction triggers on out-of-bounds results."""
-        # Induce high pressure trial (Dummy has p_max = 1e6)
-        populated_state.fields.data[:, FI.P_NEXT] = 10_000_000.0
+        # Rule 7 Check: We need a localized spike so that even after 
+        # subtracting the boundary mean, the peak value exceeds the corridor.
+        
+        # 1. Zero out the entire field (Reference boundary mean becomes 0.0)
+        populated_state.fields.data[:, FI.P_NEXT] = 0.0
+        
+        # 2. Inject a 20M spike at a single index (Dummy limit is 1e6)
+        populated_state.fields.data[0, FI.P_NEXT] = 20_000_000.0
         
         with pytest.raises(ArithmeticError, match="Pressure Corridor Violation"):
             populated_state.audit_physical_bounds()
