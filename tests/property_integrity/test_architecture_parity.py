@@ -75,18 +75,35 @@ def test_lifecycle_grid_dimensions_match_fields(stage_name, factory):
 
 @pytest.mark.parametrize("stage_name, factory", BLOCK_BASED_STAGES)
 def test_block_allocation_integrity(stage_name, factory):
-    """Validation: Verify StencilBlocks allocate individual component arrays correctly."""
+    """
+    Validation: Verify StencilBlocks are wired to the global Foundation buffer.
+    In Step 3, Cell attributes (vx, vy, etc.) act as views into the monolithic array.
+    """
     nx, ny, nz = 5, 5, 5
+    # The total volume including the +2 ghost padding: (5+2)^3 = 343
     n_expected = (nx + 2) * (ny + 2) * (nz + 2)
+    
     block = factory(nx=nx, ny=ny, nz=nz)
     
-    # In Step 3, we move to individual component arrays
+    # Audit each physical field for wiring integrity
     for attr in ["vx", "vy", "vz", "p"]:
         val = getattr(block.center, attr)
+        
         assert val is not None, f"{stage_name}: Component {attr} is None"
-        assert val.size == n_expected, (
-            f"{stage_name}: {attr} size mismatch. "
-            f"Expected {n_expected}, got {val.size}"
+        
+        # SSoT Audit: We check '.base' to ensure the Cell is a VIEW of the full buffer.
+        # Direct 'val.size' is 1 (the cell), but 'val.base.size' is the full memory block.
+        # Strict Rule 9 Audit: Ensure the attribute is a VIEW and not a detached scalar or copy.
+        assert hasattr(val, "base") and val.base is not None, (
+            f"{stage_name}: {attr} is a detached copy. "
+            "Memory must be a VIEW of the global Foundation buffer."
+        )
+        actual_buffer_size = val.base.size
+        
+        assert actual_buffer_size == n_expected, (
+            f"{stage_name}: {attr} wiring mismatch. "
+            f"Cell is not connected to the full {n_expected} node buffer. "
+            f"Detected buffer size: {actual_buffer_size}"
         )
 
 # --- PHYSICS & BOUNDARY PERSISTENCE ---
