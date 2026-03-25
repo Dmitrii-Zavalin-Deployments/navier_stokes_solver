@@ -1,9 +1,10 @@
 # tests/property_integrity/test_state_transitions.py
 
-import pytest
 import numpy as np
-from tests.helpers.solver_step4_output_dummy import make_step4_output_dummy
+
 from tests.helpers.solver_output_schema_dummy import make_output_schema_dummy
+from tests.helpers.solver_step4_output_dummy import make_step4_output_dummy
+
 
 def test_bridge_step4_to_output_integrity():
     """
