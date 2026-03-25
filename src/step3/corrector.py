@@ -1,11 +1,14 @@
 # src/step3/corrector.py
 
+import logging
+import numpy as np
 
 from src.common.field_schema import FI
 from src.common.stencil_block import StencilBlock
 from src.step3.ops.gradient import compute_local_gradient_p
 from src.step3.ops.scaling import get_dt_over_rho
 
+logger = logging.getLogger("Solver.Corrector")
 
 def apply_local_velocity_correction(block: StencilBlock) -> None:
     """
@@ -14,8 +17,8 @@ def apply_local_velocity_correction(block: StencilBlock) -> None:
     Formula: v^{n+1} = v^* - (dt/rho) * grad(p^{n+1})
     
     Compliance:
-    - Rule 7: Fail-Fast math audit. If the correction results in non-finite 
-      values, an ArithmeticError is raised to trigger Elasticity Panic Mode.
+    - Rule 7: Fail-Fast math audit. 
+    - Rule 9: In-place update of Trial Fields (VX_STAR, etc.)
     """
     
     # 1. Compute the pressure gradient at p^{n+1} (FI.P_NEXT)
@@ -32,14 +35,35 @@ def apply_local_velocity_correction(block: StencilBlock) -> None:
     )
     
     # 4. Calculate new velocities
-    v_new = (
+    # Stencil operations here often promote results to NumPy arrays
+    v_new_raw = [
         v_star[0] - (scaling * grad_p[0]),
         v_star[1] - (scaling * grad_p[1]),
         v_star[2] - (scaling * grad_p[2])
-    )
+    ]
     
+    # --- FORENSIC DNA AUDIT & SCALAR ENFORCEMENT ---
+    v_final = []
+    for i, val in enumerate(v_new_raw):
+        # Identify if this is the "Array Leak" culprit
+        if hasattr(val, "shape") and val.shape != ():
+            logger.debug(
+                f"AUDIT [Correction]: Detected array leak in Block {block.id} | "
+                f"Component {i} | Shape {val.shape}. Extracting scalar..."
+            )
+            v_final.append(val.item())
+        else:
+            v_final.append(float(val))
+
+    # --- RULE 7: FAIL-FAST MATH CHECK ---
+    if not np.isfinite(v_final).all():
+        logger.error(f"CORRECTOR CRITICAL: Non-finite velocity in block {block.id} | {v_final=}")
+        raise ArithmeticError(f"Instability detected during velocity correction at block {block.id}")
+
     # 5. Apply velocity correction in-place to the STAR buffer
-    # Note: These will be committed to the Foundation by ElasticManager.validate_and_commit
-    block.center.set_field(FI.VX_STAR, v_new[0])
-    block.center.set_field(FI.VY_STAR, v_new[1])
-    block.center.set_field(FI.VZ_STAR, v_new[2])
+    # v_final is now guaranteed to be a list of Python floats
+    block.center.set_field(FI.VX_STAR, v_final[0])
+    block.center.set_field(FI.VY_STAR, v_final[1])
+    block.center.set_field(FI.VZ_STAR, v_final[2])
+
+    logger.debug(f"CORRECT [Success]: Block {block.id} updated with corrected velocities.")
