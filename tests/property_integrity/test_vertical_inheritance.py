@@ -1,13 +1,11 @@
 # tests/property_integrity/test_vertical_inheritance.py
 
-import pytest
-import numpy as np
 import os
 
+import pytest
+
 # Core Logic
-from src.common.elasticity import ElasticManager
 from src.common.simulation_context import SimulationContext
-from src.common.solver_config import SolverConfig
 from src.step1.orchestrate_step1 import orchestrate_step1
 from src.step2.orchestrate_step2 import orchestrate_step2
 from src.step3.orchestrate_step3 import orchestrate_step3
@@ -18,7 +16,6 @@ from tests.helpers.solver_input_schema_dummy import create_validated_input
 from tests.helpers.solver_step1_output_dummy import make_step1_output_dummy
 from tests.helpers.solver_step2_output_dummy import make_step2_output_dummy
 from tests.helpers.solver_step3_output_dummy import make_step3_output_dummy
-from tests.helpers.solver_step4_output_dummy import make_step4_output_dummy
 
 # Rule 5: Explicit numerical settings
 MOCK_CONFIG = {
