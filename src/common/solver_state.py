@@ -18,8 +18,8 @@ logger = logging.getLogger(__name__)
 def verify_foundation_integrity(state):
     """
     POST (Power-On Self-Test): Performs a 'Pre-Flight Check' on the memory wiring.
-    Uses Identity Priming: Value = Index + (Field_ID / 10.0).
-    Verifies that object-pointers map correctly to the monolithic fields_buffer.
+    Rule 9 Sentinel: Uses Identity Priming [Value = Index + (Field_ID / 10.0)].
+    Verifies object-pointer mapping and physical memory alignment.
     """
     if state.fields is None or state.fields.data is None:
         logger.error("POST FAILED: Fields buffer not initialized.")
@@ -27,31 +27,51 @@ def verify_foundation_integrity(state):
         
     logger.info("POST: Initiating Pre-Flight Memory Integrity Check...")
     
+    # 1. Physical Alignment Check (Performance Sentinel)
+    # Checks if the buffer is 64-byte aligned for optimal SIMD/Vectorized operations
+    alignment = state.fields.data.ctypes.data % 64
+    if alignment != 0:
+        logger.warning(f"POST ALIGNMENT: Buffer is not 64-byte aligned (Offset: {alignment}). Efficiency may drop.")
+    else:
+        logger.debug("POST ALIGNMENT: 64-byte memory boundary verified.")
+
+    # 2. Architecture Bounds Check
     num_cells = state.fields.data.shape[0]
     if len(state.stencil_matrix) > num_cells:
         logger.error(f"POST OVERFLOW: Stencil count ({len(state.stencil_matrix)}) > Buffer size ({num_cells})")
         raise RuntimeError("POST OVERFLOW: Architecture integrity compromised.")
         
+    # 3. Identity Priming (The "Memory Tracker")
+    # Store original state to restore after the test
     original_data = state.fields.data.copy()
     
-    # Prime the buffer for pointer validation
-    for f in FI:
-        state.fields.data[:, f] = np.arange(num_cells, dtype=float) + (float(f) / 10.0)
-
     try:
+        # Prime EVERY field in the monolithic buffer with a unique coordinate-based ID
+        for f in FI:
+            state.fields.data[:, f] = np.arange(num_cells, dtype=float) + (float(f) / 10.0)
+
+        # 4. Pointer Validation Loop
         for idx, block in enumerate(state.stencil_matrix):
             c = block.center
             if c.is_ghost:
                 continue
             
+            # Verify P-field pointer
             expected_p = float(c.index) + (float(FI.P) / 10.0)
             if not np.isclose(c.p, expected_p):
-                logger.critical(f"MEMORY DRIFT: Index {idx} | Expected P {expected_p}, Got {c.p}")
+                logger.critical(f"MEMORY DRIFT [P]: Index {idx} | Expected {expected_p}, Got {c.p}")
                 raise RuntimeError(f"CRITICAL: Memory Swap at Stencil Index {idx}!")
+
+            # Verify Velocity-field pointers (X-component check)
+            expected_vx = float(c.index) + (float(FI.VX) / 10.0)
+            if not np.isclose(c.u[0], expected_vx):
+                logger.critical(f"MEMORY DRIFT [VX]: Index {idx} | Expected {expected_vx}, Got {c.u[0]}")
+                raise RuntimeError(f"CRITICAL: Vector Component Displacement at Index {idx}!")
         
-        logger.info("POST: Memory integrity verified. All pointers aligned.")
+        logger.info("POST: Memory integrity verified. All pointers aligned to Monolithic Foundation.")
 
     finally:
+        # Restore the actual simulation data
         state.fields.data[:] = original_data
 
 # =========================================================
