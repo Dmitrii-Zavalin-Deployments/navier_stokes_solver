@@ -79,12 +79,10 @@ class TestHeavyElasticityLifecycle:
             return run_solver(input_filename)
         finally:
             # 2. Cleanup input file
-            input_path.unlink(missing_ok=True)
             # 3. RESTORE: Put back original config or delete if it wasn't there
             if config_backup is not None:
                 config_path.write_text(config_backup)
             else:
-                config_path.unlink(missing_ok=True)
 
     def test_scenario_1_pure_success(self, caplog, base_config, base_input):
         """Scenario 1: Normal run. No stability triggers should fire."""
@@ -151,8 +149,6 @@ class TestHeavyElasticityLifecycle:
         # And the physical audit must have been involved
         assert "AUDIT [Explosion]" in caplog.text or "AUDIT [Limit]" in caplog.text
 
-        input_path.unlink(missing_ok=True)
-        config_path.unlink(missing_ok=True)
 
     def test_scenario_3_terminal_failure_hard_config(self, caplog, base_config, base_input):
         """
