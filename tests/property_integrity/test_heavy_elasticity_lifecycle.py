@@ -82,24 +82,45 @@ class TestHeavyElasticityLifecycle:
             # 3. RESTORE: Put back original config or delete if it wasn't there
             if config_backup is not None:
                 config_path.write_text(config_backup)
+
     def test_scenario_1_pure_success(self, caplog, base_config, base_input):
-        """Scenario 1: Normal run. No stability triggers should fire."""
+        """
+        Scenario 1: System Gatekeeper & Physics Success.
+        Verifies production plumbing (paths, size, zip) and numerical stability.
+        """
         input_filename = "test_success_input.json"
+        # Define the target testing directory used by the solver
+        test_data_dir = Path(BASE_DIR) / "data" / "testing-input-output"
         
         with caplog.at_level(logging.WARNING, logger="Solver.Main"):
-            zip_path = self._run_with_config_protection(base_config, base_input, input_filename, logging.WARNING)
+            # 1. Execute via the protection helper
+            zip_path_str = self._run_with_config_protection(
+                base_config, base_input, input_filename, logging.WARNING
+            )
+            zip_path = Path(zip_path_str)
 
+            # 2. PLUMBING AUDIT: Verify the 'Gatekeeper' requirements
+            assert zip_path.exists(), "GATEKEEPER FAIL: ZIP artifact not found on disk."
+            assert zip_path.stat().st_size > 0, "GATEKEEPER FAIL: ZIP artifact is empty (0 bytes)."
+            assert test_data_dir in zip_path.parents, f"PATH FAIL: ZIP landed in wrong directory: {zip_path.parent}"
+
+            # 3. STABILITY AUDIT: Ensure no elasticity triggers fired
             triggers = [r for r in caplog.records if "STABILITY TRIGGER" in r.message]
-            assert len(triggers) == 0
+            assert len(triggers) == 0, f"STABILITY FAIL: Unexpected triggers in a 'Pure Success' run: {triggers}"
 
+            # 4. DATA INTEGRITY: Inspect the internal HDF5 payload
             with zipfile.ZipFile(zip_path, "r") as archive:
                 h5_files = [f for f in archive.namelist() if f.endswith(".h5")]
-                assert len(h5_files) > 0
+                assert len(h5_files) > 0, "INTEGRITY FAIL: No .h5 files found inside the result ZIP."
 
+                # Audit the final frame for finite physics
                 with archive.open(h5_files[-1]) as f:
                     with h5py.File(BytesIO(f.read()), "r") as h5_audit:
-                        assert "vx" in h5_audit.keys()
-                        assert np.all(np.isfinite(h5_audit["vx"][:]))
+                        assert "vx" in h5_audit.keys(), "SCHEMA FAIL: 'vx' dataset missing from HDF5."
+                        vx_data = h5_audit["vx"][:]
+                        assert np.all(np.isfinite(vx_data)), "PHYSICS FAIL: Non-finite values detected in final velocity field."
+                        
+            print(f"\n✅ Scenario 1 Passed: Plumbing and Physics are nominal. Artifact: {zip_path.name}")
 
     def test_scenario_2_elasticity_terminal_failure(self, caplog, base_config, base_input):
         """
