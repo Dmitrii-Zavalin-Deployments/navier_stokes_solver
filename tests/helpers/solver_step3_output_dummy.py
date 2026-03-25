@@ -1,8 +1,9 @@
 # tests/helpers/solver_step3_output_dummy.py
 
 from src.common.field_schema import FI
+from src.step2.stencil_assembler import assemble_stencil_matrix
 from tests.helpers.solver_step2_output_dummy import make_step2_output_dummy
-from src.step2.stencil_assembler import assemble_stencil_matrix 
+
 
 def make_step3_output_dummy(nx: int = 4, ny: int = 4, nz: int = 4, block_index: int = 0):
     """
