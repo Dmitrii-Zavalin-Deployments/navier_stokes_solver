@@ -1,10 +1,8 @@
 # tests/common/test_elasticity_manager.py
 
-from types import SimpleNamespace
-
-import numpy as np
 import pytest
-
+import numpy as np
+from types import SimpleNamespace
 from src.common.elasticity import ElasticManager
 from src.common.field_schema import FI
 from tests.helpers.solver_input_schema_dummy import create_validated_input
@@ -15,14 +13,9 @@ from tests.helpers.solver_input_schema_dummy import create_validated_input
 
 class MockConfig:
     def __init__(self):
-        self.dt_initial = 0.5
+        # Aligned with ElasticManager requirements
         self.dt_min_limit = 0.001
-        self.dt_min = 1e-6
-        self.reduction_factor = 0.5
-        self.divergence_threshold = 1e6
-        self.ppe_omega = 1.7
-        self.ppe_max_iter = 50
-        self.ppe_max_retries = 3 # FIX: Added missing attribute
+        self.ppe_max_retries = 3
 
 @pytest.fixture
 def config():
@@ -30,86 +23,102 @@ def config():
 
 @pytest.fixture
 def state_mock():
-    """Creates a mock state for sync_state logic."""
+    """
+    Creates a mock state that satisfies the SSoT requirements of ElasticManager.
+    Includes simulation_parameters and a placeholder for audit_physical_bounds.
+    """
     data = np.zeros((10, 20)) 
     fields = SimpleNamespace(data=data)
-    # We add simulation_parameters so the Manager can initialize if needed
     sim_params = SimpleNamespace(time_step=0.5)
-    return SimpleNamespace(fields=fields, simulation_parameters=sim_params)
-
-def trigger_instability(state):
-    state.fields.data[:, FI.VX_STAR] = 1e12
-
-def trigger_stability(state):
-    for field in [FI.VX_STAR, FI.VY_STAR, FI.VZ_STAR, FI.P_NEXT]:
-        state.fields.data[:, field] = 1.0
+    
+    state = SimpleNamespace(
+        fields=fields, 
+        simulation_parameters=sim_params,
+        iteration=0,
+        time=0.0
+    )
+    
+    # Mock the audit method to prevent errors during commit tests
+    state.audit_physical_bounds = lambda: None 
+    return state
 
 # ----------------------------------------------------------------
 # 2. THE INTEGRATED TEST SUITE
 # ----------------------------------------------------------------
 
-def test_manual_stabilization_reduction_logic(config):
-    """
-    STABILITY AUDIT: Verifies manual dt reduction (triggered by main_solver except block).
-    """
-    # Using the dummy helper for real-world context validation
-    dummy_input = create_validated_input() 
-    manager = ElasticManager(config, dummy_input)
-    
+def test_safety_ladder_initialization(config, state_mock):
+    """Verifies Rule 5: Ladder is correctly pre-calculated from SSoT."""
+    manager = ElasticManager(config, state_mock)
+    # Range should be [0.5, 0.333..., 0.166..., 0.001]
+    assert len(manager._dt_range) == config.ppe_max_retries + 1
+    assert manager._dt_range[0] == 0.5
+    assert manager._dt_range[-1] == config.dt_min_limit
+
+def test_stabilization_descent_logic(config, state_mock):
+    """Verifies that is_needed=True correctly moves down the ladder."""
+    manager = ElasticManager(config, state_mock)
     initial_dt = manager.dt
+    
     manager.stabilization(is_needed=True)
-    assert manager.dt == initial_dt * config.reduction_factor
-
-def test_manual_stabilization_safety_floor(config):
-    """
-    STABILITY AUDIT: Verifies manual reduction never passes the absolute floor.
-    """
-    config.dt_min = 1e-6
-    # FIX: Never pass None to ElasticManager
-    dummy_input = create_validated_input()
-    manager = ElasticManager(config, dummy_input)
-
-    for _ in range(20):
-        manager.stabilization(is_needed=True)
-
-    assert manager.dt >= config.dt_min
-
-def test_sync_state_monotonic_decay(config, state_mock):
-    # FIX: Removed initial_dt keyword, using state_mock to set dt
-    manager = ElasticManager(config, state_mock)
-    trigger_instability(state_mock)
     
-    last_dt = manager.dt
-    for _ in range(3):
-        try:
-            manager.sync_state(state_mock)
-            assert manager.dt < last_dt
-            last_dt = manager.dt
-        except RuntimeError:
-            return
+    assert manager.dt < initial_dt
+    assert manager._iteration == 1
+    assert manager.dt == manager._dt_range[1]
 
-def test_omega_and_max_iter_adaptation(config, state_mock):
+def test_stabilization_exhaustion_error(config, state_mock):
+    """Verifies RuntimeError triggers when the ladder floor is hit."""
     manager = ElasticManager(config, state_mock)
-    trigger_instability(state_mock)
-    manager.sync_state(state_mock)
-    
-    assert manager.omega < config.ppe_omega
-    assert manager.max_iter > config.ppe_max_iter
 
-def test_edge_case_nan_inf_handling(config, state_mock):
-    manager = ElasticManager(config, state_mock)
-    state_mock.fields.data[0, FI.VX_STAR] = np.nan
-    assert manager.sync_state(state_mock) is False
+    # Exhaust the 3 retries
+    with pytest.raises(RuntimeError, match="CRITICAL INSTABILITY"):
+        for _ in range(config.ppe_max_retries + 1):
+            manager.stabilization(is_needed=True)
 
-def test_dt_recovery_clamping(config, state_mock):
+def test_stabilization_recovery_logic(config, state_mock):
+    """Verifies is_needed=False resets the ladder and commits data."""
     manager = ElasticManager(config, state_mock)
-    target = manager.dt
     
-    trigger_instability(state_mock)
-    manager.sync_state(state_mock) 
+    # 1. Descend to the bottom of the ladder
+    manager.stabilization(is_needed=True)
+    assert manager.dt < 0.5
     
-    trigger_stability(state_mock)
-    for _ in range(20):
-        manager.sync_state(state_mock)
+    # 2. Trigger success (is_needed=False)
+    # This calls validate_and_commit() internally
+    manager.stabilization(is_needed=False)
+    
+    # 3. Verify Reset
+    assert manager.dt == 0.5
+    assert manager._iteration == 0
+
+def test_validate_and_commit_data_transfer(config, state_mock):
+    """Verifies Rule 9: Trial (_STAR) data is promoted to Foundation fields."""
+    manager = ElasticManager(config, state_mock)
+    
+    # Set trial values
+    state_mock.fields.data[:, FI.VX_STAR] = 1.23
+    state_mock.fields.data[:, FI.P_NEXT] = 4.56
+    
+    # Manual commit check
+    manager.validate_and_commit()
+    
+    # Verify foundation updated
+    assert np.all(state_mock.fields.data[:, FI.VX] == 1.23)
+    assert np.all(state_mock.fields.data[:, FI.P] == 4.56)
+    assert state_mock.iteration == 1
+    assert state_mock.time == 0.5
+
+def test_audit_failure_propagation(config, state_mock):
+    """Verifies that an audit failure blocks the data commit."""
+    manager = ElasticManager(config, state_mock)
+    
+    # Override mock to simulate a physics violation (e.g., NaN detected)
+    def fail_audit():
+        raise ArithmeticError("Physics Violation")
+    state_mock.audit_physical_bounds = fail_audit
+    
+    # Try to stabilize (success signal)
+    with pytest.raises(ArithmeticError, match="Physics Violation"):
+        manager.stabilization(is_needed=False)
         
-    assert manager.dt <= target
+    # Verify iteration did not increment because commit was blocked
+    assert state_mock.iteration == 0
