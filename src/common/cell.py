@@ -1,6 +1,7 @@
 # src/common/cell.py
 
 import numpy as np
+
 from src.common.base_container import ValidatedContainer
 from src.common.field_schema import FI
 from src.common.grid_math import get_coords_from_index
