@@ -169,7 +169,7 @@ jobs:
 
           # 4. Prepend to Ledger (Newest at Top)
           # We use a temporary file to ensure we don't lose the existing history
-          HEADER="# 🌊 Navier–Stokes Performance Audit Ledger"
+          HEADER="# 🌊 Navier–Stokes Solver Performance Audit"
           
           if [ -f "performance_audit.md" ]; then
               # Keep everything except the old header, then merge
