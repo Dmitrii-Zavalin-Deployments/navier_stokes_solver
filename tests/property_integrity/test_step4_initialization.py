@@ -1,5 +1,6 @@
 # tests/property_integrity/test_step4_initialization.py
 
+import numpy as np
 import pytest
 
 from src.common.simulation_context import SimulationContext
@@ -8,6 +9,7 @@ from src.common.solver_state import (
     FieldManager,
     GridManager,
     ManifestManager,
+    MaskManager,
     SimulationParameterManager,
     SolverState,
 )
@@ -67,6 +69,11 @@ class TestStep4Initialization:
         grid.y_min, grid.y_max = 0.0, 1.0
         grid.z_min, grid.z_max = 0.0, 1.0
         state.grid = grid
+
+        # Rule 4 Compliance: io_archivist requires a valid mask for snapshot serialization
+        masks = MaskManager()
+        masks.mask = np.zeros((4, 4, 4), dtype=np.int32)
+        state.mask = masks
         
         # Manifest is the primary target for Step 4
         state.manifest = ManifestManager()
@@ -103,7 +110,7 @@ class TestStep4Initialization:
         Verifies alignment between Step 4 (Archivist) and the final Solver Output.
         """
         nx, ny, nz = 4, 4, 4
-        # make_step4_output_dummy now provides the converged, post-commit state
+        # make_step4_output_dummy provides the converged, post-commit state
         intermediate_state = make_step4_output_dummy(nx=nx, ny=ny, nz=nz)
         terminal_state = make_output_schema_dummy(nx=nx, ny=ny, nz=nz)
 
@@ -130,6 +137,5 @@ class TestStep4Initialization:
         # Termination check: state must acknowledge the simulation is finished
         assert state.time >= state.simulation_parameters.total_time
         
-        # Once the loop exits, the readiness flag is usually locked down or wiped
-        # This prevents accidental re-entry without a fresh orchestration.
-        assert state.ready_for_time_loop is True # Current state of time-stepping
+        # At terminal state, the time loop readiness should be False (exit condition met)
+        assert state.ready_for_time_loop is False
