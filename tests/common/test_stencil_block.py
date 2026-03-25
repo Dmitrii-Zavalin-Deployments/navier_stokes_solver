@@ -2,9 +2,11 @@
 
 import logging
 from unittest.mock import MagicMock
+
 import pytest
 
 from src.common.stencil_block import StencilBlock
+
 
 def test_dt_sync_logging(caplog):
     """
