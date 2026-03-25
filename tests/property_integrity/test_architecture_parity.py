@@ -91,19 +91,28 @@ def test_block_allocation_integrity(stage_name, factory):
         
         assert val is not None, f"{stage_name}: Component {attr} is None"
         
-        # SSoT Audit: We check '.base' to ensure the Cell is a VIEW of the full buffer.
-        # Direct 'val.size' is 1 (the cell), but 'val.base.size' is the full memory block.
-        # Strict Rule 9 Audit: Ensure the attribute is a VIEW and not a detached scalar or copy.
+        # GATE 1: The "View" Integrity (Object Layer)
+        # Each Cell attribute must be a single-element view (size 1)
+        assert val.size == 1, (
+            f"{stage_name}: {attr} should be a single-element view, "
+            f"but detected size {val.size}."
+        )
+
+        # GATE 2: The "Foundation" Integrity (NumPy Layer)
+        # We check '.base' to ensure it is wired to the global [Cells x Fields] buffer.
         assert hasattr(val, "base") and val.base is not None, (
-            f"{stage_name}: {attr} is a detached copy. "
+            f"{stage_name}: {attr} is a detached copy (Rule 9 Violation). "
             "Memory must be a VIEW of the global Foundation buffer."
         )
+        
+        # Calculation: 343 cells * 9 fields = 3087
+        n_total_foundation = n_expected * FI.num_fields()
         actual_buffer_size = val.base.size
         
-        assert actual_buffer_size == n_expected, (
+        assert actual_buffer_size == n_total_foundation, (
             f"{stage_name}: {attr} wiring mismatch. "
-            f"Cell is not connected to the full {n_expected} node buffer. "
-            f"Detected buffer size: {actual_buffer_size}"
+            f"Expected global buffer of {n_total_foundation}, "
+            f"but detected {actual_buffer_size}."
         )
 
 # --- PHYSICS & BOUNDARY PERSISTENCE ---
