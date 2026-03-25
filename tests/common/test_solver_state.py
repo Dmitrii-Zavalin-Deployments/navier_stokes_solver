@@ -1,12 +1,16 @@
 # tests/common/test_solver_state.py
 
 import logging
+
 import numpy as np
 import pytest
-from src.common.solver_state import verify_foundation_integrity
+
 from src.common.field_schema import FI
+from src.common.solver_state import verify_foundation_integrity
+
 # Import your dummy helper
 from tests.helpers.solver_step1_output_dummy import make_step1_output_dummy
+
 
 class TestSolverStateFoundation:
 
