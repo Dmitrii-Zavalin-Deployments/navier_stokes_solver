@@ -1,14 +1,20 @@
 # tests/common/test_solver_state.py
 
 import logging
+
 import numpy as np
 import pytest
-from src.common.solver_state import (
-    SolverState, verify_foundation_integrity, 
-    GridManager, PhysicalConstraintsManager, BoundaryConditionManager,
-    BoundaryCondition
-)
+
 from src.common.field_schema import FI
+from src.common.solver_state import (
+    BoundaryCondition,
+    BoundaryConditionManager,
+    GridManager,
+    PhysicalConstraintsManager,
+    SolverState,
+    verify_foundation_integrity,
+)
+
 
 class TestSolverStateFoundation:
 
