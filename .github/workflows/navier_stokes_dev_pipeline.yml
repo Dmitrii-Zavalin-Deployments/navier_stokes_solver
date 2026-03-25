@@ -206,13 +206,17 @@ jobs:
               echo "$NEW_ENTRY" >> performance_audit.md
           fi
 
-          # 5. Commit and Push
+          # 5. Pull, Rebase, and Push
           git add performance_audit.md
           
-          # Only commit if the ledger actually changed
           if [ -n "$(git status --porcelain performance_audit.md)" ]; then
             git commit -m "📊 audit: [${{ job.status }}] update performance ledger"
-            git push origin HEAD || echo "Push skipped: Concurrent push detected."
+            
+            # Use rebase to integrate upstream changes (like Auto-clean or Forensic Reset)
+            # without creating a messy merge commit.
+            git pull --rebase origin HEAD
+            
+            git push origin HEAD
           else
             echo "✅ No changes to the ledger."
           fi
