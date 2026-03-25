@@ -6,6 +6,7 @@ import pytest
 from src.common.solver_input import GridInput
 from src.step1.helpers import generate_3d_masks
 
+
 def create_test_grid(nx, ny, nz):
     """
     Hydrates a GridInput object following the ValidatedContainer pattern.
