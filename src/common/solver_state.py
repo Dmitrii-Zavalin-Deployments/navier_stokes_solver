@@ -502,126 +502,85 @@ class SolverState(ValidatedContainer):
     def audit_physical_bounds(self):
         """
         Rule 7: Vectorized Physical Audit with Forensic Logging.
+        Strictly enforces JSON Schema constraints: [min/max velocity, min/max pressure].
         """
         pc = self.physical_constraints
         fields = self.fields.data 
+        nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 
         logger.debug(f"AUDIT [Start]: Iteration {self.iteration}")
         
-        # 1. Check Finite Status
-        finite_mask = np.isfinite(fields)
+        # 1. Finite Status & Velocity Check
+        v_indices = [FI.VX, FI.VY, FI.VZ, FI.VX_STAR, FI.VY_STAR, FI.VZ_STAR]
+        v_fields = fields[:, v_indices]
         
-        # 1.5. Velocity Magnitude Check
-        v_fields = fields[:, [
-            FI.VX, FI.VY, FI.VZ,
-            FI.VX_STAR, FI.VY_STAR, FI.VZ_STAR
-        ]]
-        max_v = np.max(np.abs(v_fields))
+        if not np.isfinite(v_fields).all():
+            logger.error(f"AUDIT [Explosion]: NaN/Inf detected in velocity fields.")
+            raise ArithmeticError("NUMERICAL EXPLOSION: NaN/Inf detected.")
 
-        limit = pc.max_velocity 
-        if max_v > limit:
-            logger.error(f"AUDIT [Limit]: Velocity {max_v} exceeds physical limit {limit}.")
-            raise ArithmeticError(f"STABILITY TRIGGER: {max_v} > {limit}")
+        # --- [New]: Min/Max Velocity Enforcement ---
+        v_min_observed = np.min(v_fields)
+        v_max_observed = np.max(v_fields)
 
-        if not finite_mask.all():
-            num_nans = np.count_nonzero(~finite_mask)
-            logger.error(f"AUDIT [Explosion]: Found {num_nans} NaN/Inf values.")
-            raise ArithmeticError(f"NUMERICAL EXPLOSION: {num_nans} NaN/Inf detected.")
+        if v_max_observed > pc.max_velocity or v_min_observed < pc.min_velocity:
+            logger.error(
+                f"AUDIT [Limit]: Velocity range [{v_min_observed:.4e}, {v_max_observed:.4e}] "
+                f"exceeds physical bounds [{pc.min_velocity:.4e}, {pc.max_velocity:.4e}]."
+            )
+            raise ArithmeticError(f"STABILITY TRIGGER: Velocity Corridor Violation.")
 
-        # 2. Check Velocities
-        v_max_current = np.max(np.abs(v_fields))
+        # 2. Real Physical Pressure Reconstruction
         
-        logger.debug(f"AUDIT [Metric]: V_max observed: {v_max_current:.4e} (Limit: {pc.max_velocity})")
-
-        if v_max_current > pc.max_velocity:
-            logger.error(f"AUDIT [Explosion]: Velocity {v_max_current:.4e} > Limit {pc.max_velocity}")
-            raise ArithmeticError("PHYSICAL EXPLOSION: Velocity out of bounds.")
-
-        # 3. Check Pressure (Real Physical Pressure Audit)
-
-        # 3.1. Find reference pressure boundary (Dirichlet pressure BC)
-        ref_bc = None
-        for bc in self.boundary_conditions.conditions:
-            if bc.type in ("pressure", "outflow", "inflow") and "p" in bc.values:
-                ref_bc = bc
-                break
+        # 2.1 Find reference boundary (Search for Dirichlet 'p' anchor)
+        ref_bc = next((bc for bc in self.boundary_conditions.conditions 
+                    if bc.type in ("pressure", "outflow", "inflow") and "p" in bc.values), None)
 
         if ref_bc is None:
-            raise RuntimeError("No pressure reference boundary found for real-pressure reconstruction.")
+            raise RuntimeError("No pressure reference boundary found (Required for Rule 7).")
 
-        # 3.2. Compute reference boundary indices from grid geometry
-        nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
-        ref_indices = []
-
-        # Helper alias
-        gfi = get_flat_index
-
+        # 2.2 Vectorized Index Extraction (Geometric Slicing via SSoT)
+        # Generates the coordinate map using the central grid_math logic
+        all_indices = np.fromfunction(
+            lambda k, j, i: get_flat_index(i, j, k, nx, ny),
+            (nz, ny, nx),
+            dtype=int
+        )
+        
         loc = ref_bc.location
-
-        if loc == "x_min":
-            i = 0
-            for j in range(ny):
-                for k in range(nz):
-                    ref_indices.append(gfi(i, j, k, nx, ny))
-
-        elif loc == "x_max":
-            i = nx - 1
-            for j in range(ny):
-                for k in range(nz):
-                    ref_indices.append(gfi(i, j, k, nx, ny))
-
-        elif loc == "y_min":
-            j = 0
-            for i in range(nx):
-                for k in range(nz):
-                    ref_indices.append(gfi(i, j, k, nx, ny))
-
-        elif loc == "y_max":
-            j = ny - 1
-            for i in range(nx):
-                for k in range(nz):
-                    ref_indices.append(gfi(i, j, k, nx, ny))
-
-        elif loc == "z_min":
-            k = 0
-            for i in range(nx):
-                for j in range(ny):
-                    ref_indices.append(gfi(i, j, k, nx, ny))
-
-        elif loc == "z_max":
-            k = nz - 1
-            for i in range(nx):
-                for j in range(ny):
-                    ref_indices.append(gfi(i, j, k, nx, ny))
-
+        if loc == "x_min":   ref_indices = all_indices[:, :, 0]
+        elif loc == "x_max": ref_indices = all_indices[:, :, -1]
+        elif loc == "y_min": ref_indices = all_indices[:, 0, :]
+        elif loc == "y_max": ref_indices = all_indices[:, -1, :]
+        elif loc == "z_min": ref_indices = all_indices[0, :, :]
+        elif loc == "z_max": ref_indices = all_indices[-1, :, :]
         else:
-            raise RuntimeError(f"Unsupported boundary location '{loc}' for pressure reference.")
+            raise RuntimeError(f"Unsupported boundary location '{loc}'")
 
-        if len(ref_indices) == 0:
-            raise RuntimeError(f"No cells found for reference boundary '{loc}'.")
-
-        # 3.3. PPE pressure at reference boundary
+        # 2.3 Pressure Grounding
         p_trial = fields[:, FI.P_NEXT]
-        p_ref_value = np.mean(p_trial[ref_indices])
-
-        # 3.4. Physical reference pressure from BC
+        p_ref_value = np.mean(p_trial[ref_indices.ravel()])
         p_ref_physical = ref_bc.values["p"]
-
-        # 3.5. Real physical pressure
+        
         p_real = p_trial - p_ref_value + p_ref_physical
 
-        # 3.6. Audit real pressure range
-        p_min = p_real.min()
-        p_max = p_real.max()
-
-        logger.debug(f"AUDIT [Metric]: P_real_range: [{p_min:.4e}, {p_max:.4e}]")
+        # 3. Pressure Range Audit
+        p_min, p_max = p_real.min(), p_real.max()
+        
+        if not (np.isfinite(p_min) and np.isfinite(p_max)):
+            logger.error("AUDIT [Explosion]: NaN/Inf detected in pressure field.")
+            raise ArithmeticError("NUMERICAL EXPLOSION: Pressure NaN/Inf detected.")
 
         if p_min < pc.min_pressure or p_max > pc.max_pressure:
             logger.error(
-                f"AUDIT [Explosion]: Real pressure [{p_min:.4e}, {p_max:.4e}] "
-                f"out of bounds [{pc.min_pressure:.4e}, {pc.max_pressure:.4e}]."
+                f"AUDIT [Explosion]: Real pressure [{p_min:.2e}, {p_max:.2e}] "
+                f"out of bounds [{pc.min_pressure:.2e}, {pc.max_pressure:.2e}]."
             )
-            raise ArithmeticError("PHYSICAL EXPLOSION: Pressure out of bounds.")
+            raise ArithmeticError(f"STABILITY TRIGGER: Pressure Corridor Violation.")
+
+        logger.debug(
+            f"AUDIT [Success]: V_range: [{v_min_observed:.2e}, {v_max_observed:.2e}], "
+            f"P_range: [{p_min:.2e}, {p_max:.2e}]"
+        )
 
     def validate_physical_readiness(self):
         if self.fields is None or self.fields.data is None:
