@@ -11,18 +11,36 @@ from tests.helpers.solver_input_schema_dummy import create_validated_input
 from tests.helpers.solver_output_schema_dummy import make_output_schema_dummy
 
 
-# Instead of importing a non-existent utility, we define how to find the schemas
 def load_schema(schema_name: str) -> dict:
     """Helper to load schemas from the project's /schema directory."""
-    # This finds the 'schema' folder at the root of your repo
+    # Locates the 'schema' folder at the project root
     project_root = Path(__file__).parent.parent.parent
     schema_path = project_root / "schema" / schema_name
     
     if not schema_path.exists():
-        pytest.fail(f"Schema not found at {schema_path}")
+        pytest.fail(f"Schema file missing at {schema_path}")
         
     with open(schema_path) as f:
         return json.load(f)
+
+
+def to_json_safe(obj):
+    """
+    Recursively converts NumPy types to JSON-serializable Python types.
+    Essential for Rule 4 (SSoT) compliance when validating against JSON schemas.
+    """
+    if isinstance(obj, dict):
+        return {k: to_json_safe(v) for k, v in obj.items()}
+    elif isinstance(obj, (list, tuple)):
+        return [to_json_safe(i) for i in obj]
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, (np.integer, np.int64, np.int32)):
+        return int(obj)
+    elif isinstance(obj, (np.floating, np.float64, np.float32)):
+        return float(obj)
+    return obj
+
 
 class TestSchemaContracts:
     """
@@ -31,40 +49,38 @@ class TestSchemaContracts:
     """
 
     def test_input_dummy_matches_schema(self):
+        """Validates that the SolverInput dummy matches solver_input_schema.json"""
         schema = load_schema("solver_input_schema.json")
+        
+        # Create input and convert to dict
         input_obj = create_validated_input(nx=4, ny=4, nz=4)
         payload = input_obj.to_dict()
         
-        try:
-            jsonschema.validate(instance=payload, schema=schema)
-        except jsonschema.exceptions.ValidationError as e:
-            pytest.fail(f"Input Contract Violation: {e.message}")
-
-    def test_output_dummy_matches_schema(self):
-        # 1. Load the Output Schema
-        schema = load_schema("solver_output_schema.json")
+        # Sanitize for JSON Schema (converts numpy arrays/scalars)
+        json_safe_payload = to_json_safe(payload)
         
-        # 2. Generate the Output Dummy (SolverState)
-        state = make_output_schema_dummy(nx=4, ny=4, nz=4)
-        
-        # 3. Transform to dict using the correct method
-        payload = state.to_dict()
-        
-        # 4. MANUALLY SANITIZE NUMPY (Since to_json_safe is missing)
-        # We must convert any numpy arrays to lists for jsonschema to read them
-        def sanitize(obj):
-            if isinstance(obj, dict):
-                return {k: sanitize(v) for k, v in obj.items()}
-            elif isinstance(obj, list):
-                return [sanitize(i) for i in obj]
-            elif isinstance(obj, np.ndarray):
-                return obj.tolist()
-            return obj
-
-        json_safe_payload = sanitize(payload)
-        
-        # 5. Validate Contract
         try:
             jsonschema.validate(instance=json_safe_payload, schema=schema)
         except jsonschema.exceptions.ValidationError as e:
-            pytest.fail(f"Output Contract Violation: {e.message}")
+            # We provide the path to the error to make fixing the dummy easier
+            error_path = " -> ".join([str(p) for p in e.path])
+            pytest.fail(f"Input Contract Violation at [{error_path}]: {e.message}")
+
+    def test_output_dummy_matches_schema(self):
+        """Validates that the SolverState dummy matches solver_output_schema.json"""
+        schema = load_schema("solver_output_schema.json")
+        
+        # Generate the Output Dummy (SolverState)
+        state = make_output_schema_dummy(nx=4, ny=4, nz=4)
+        
+        # Transform to dict
+        payload = state.to_dict()
+        
+        # Sanitize
+        json_safe_payload = to_json_safe(payload)
+        
+        try:
+            jsonschema.validate(instance=json_safe_payload, schema=schema)
+        except jsonschema.exceptions.ValidationError as e:
+            error_path = " -> ".join([str(p) for p in e.path])
+            pytest.fail(f"Output Contract Violation at [{error_path}]: {e.message}")

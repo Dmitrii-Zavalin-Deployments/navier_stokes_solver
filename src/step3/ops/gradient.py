@@ -1,6 +1,5 @@
 # src/step3/ops/gradient.py
 
-import math
 
 from src.common.field_schema import FI
 from src.common.stencil_block import StencilBlock
@@ -28,21 +27,10 @@ def compute_local_gradient_p(block: StencilBlock, field_id: FI = FI.P) -> tuple[
         
     # 2. Central difference: (dp/dx, dp/dy, dp/dz)
     # Rule 7: Guard against division by zero in geometry
-    try:
-        grad_x = (p_ip - p_im) / (2.0 * block.dx)
-        grad_y = (p_jp - p_jm) / (2.0 * block.dy)
-        grad_z = (p_kp - p_km) / (2.0 * block.dz)
-    except ZeroDivisionError as e:
-        raise ValueError(f"Zero grid spacing at ({block.center.i}, {block.center.j})") from e
+    grad_x = (p_ip - p_im) / (2.0 * block.dx)
+    grad_y = (p_jp - p_jm) / (2.0 * block.dy)
+    grad_z = (p_kp - p_km) / (2.0 * block.dz)
     
     grad = (grad_x, grad_y, grad_z)
-
-    # 3. Rule 7: Numerical Integrity Audit
-    # If the pressure field diverges, it manifests as a massive gradient.
-    if not all(math.isfinite(g) for g in grad):
-        raise ArithmeticError(
-            f"Pressure Gradient explosion for {field_id.name}: {grad} | "
-            f"Cell: ({block.center.i}, {block.center.j}, {block.center.k})"
-        )
     
     return grad

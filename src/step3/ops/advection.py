@@ -1,6 +1,5 @@
 # src/step3/ops/advection.py
 
-import math
 
 from src.common.field_schema import FI
 from src.common.stencil_block import StencilBlock
@@ -30,12 +29,9 @@ def compute_local_advection(block: StencilBlock, field_id: FI) -> float:
     
     # Rule 7: Guard against division by zero in geometry
     # (Though usually caught in higher orchestrators, we keep it here for ops-level safety)
-    try:
-        df_dx = (f_ip - f_im) / (2.0 * block.dx)
-        df_dy = (f_jp - f_jm) / (2.0 * block.dy)
-        df_dz = (f_kp - f_km) / (2.0 * block.dz)
-    except ZeroDivisionError as e:
-        raise ValueError(f"Zero grid spacing detected at {block.center.i}, {block.center.j}") from e
+    df_dx = (f_ip - f_im) / (2.0 * block.dx)
+    df_dy = (f_jp - f_jm) / (2.0 * block.dy)
+    df_dz = (f_kp - f_km) / (2.0 * block.dz)
 
     # 2. Compute cell-centered velocities
     u_c = block.center.get_field(FI.VX)
@@ -44,14 +40,6 @@ def compute_local_advection(block: StencilBlock, field_id: FI) -> float:
     
     # 3. Assemble advection term: (v ⋅ ∇)f
     advection_val = (u_c * df_dx) + (v_c * df_dy) + (w_c * df_dz)
-
-    # 4. Rule 7: Immediate Numerical Audit
-    if not math.isfinite(advection_val):
-        raise ArithmeticError(
-            f"Advection divergence for {field_id.name}: val={advection_val} | "
-            f"Gradients: [{df_dx:.2e}, {df_dy:.2e}, {df_dz:.2e}]"
-            f"Derivatives: ({df_dx:.2e}, {df_dy:.2e}, {df_dz:.2e})"
-        )
 
     return advection_val
 

@@ -1,6 +1,5 @@
 # src/step3/ops/divergence.py
 
-import math
 
 from src.common.field_schema import FI
 from src.common.stencil_block import StencilBlock
@@ -33,21 +32,10 @@ def compute_local_divergence_v_star(block: StencilBlock) -> float:
     
     # 2. Central difference: ∂u/∂x + ∂v/∂y + ∂w/∂z
     # Rule 7: Guard against division by zero in geometry
-    try:
-        div_x = (u_ip - u_im) / (2.0 * block.dx)
-        div_y = (v_jp - v_jm) / (2.0 * block.dy)
-        div_z = (w_kp - w_km) / (2.0 * block.dz)
-    except ZeroDivisionError as e:
-        raise ValueError(f"Zero grid spacing at ({block.center.i}, {block.center.j})") from e
+    div_x = (u_ip - u_im) / (2.0 * block.dx)
+    div_y = (v_jp - v_jm) / (2.0 * block.dy)
+    div_z = (w_kp - w_km) / (2.0 * block.dz)
     
     divergence_val = div_x + div_y + div_z
-
-    # 3. Rule 7: Numerical Integrity Audit
-    if not math.isfinite(divergence_val):
-        # We log the specific components to see which axis exploded
-        raise ArithmeticError(
-            f"Divergence explosion: val={divergence_val} | "
-            f"Components: [dx:{div_x:.2e}, dy:{div_y:.2e}, dz:{div_z:.2e}]"
-        )
     
     return divergence_val

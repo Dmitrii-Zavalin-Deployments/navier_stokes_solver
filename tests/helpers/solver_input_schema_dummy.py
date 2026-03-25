@@ -42,6 +42,14 @@ def get_explicit_solver_config(nx: int, ny: int, nz: int) -> dict[str, Any]:
             "total_time": 0.1,
             "output_interval": 1,
         },
+        # --- NEW PHYSICAL CONSTRAINTS BLOCK ---
+        "physical_constraints": {
+            "min_velocity": -100.0,
+            "max_velocity": 100.0,
+            "min_pressure": -1e6,
+            "max_pressure": 1e6,
+        },
+        # --------------------------------------
         "boundary_conditions": [
             {"location": "x_min", "type": "inflow", "values": {"u": 1.0, "v": 0.0, "w": 0.0}},
             {"location": "x_max", "type": "outflow", "values": {"p": 0.0}},

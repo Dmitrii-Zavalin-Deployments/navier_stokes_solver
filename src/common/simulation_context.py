@@ -1,5 +1,3 @@
-# src/common/simulation_context.py
-
 from dataclasses import dataclass
 
 from src.common.solver_config import SolverConfig
@@ -16,20 +14,11 @@ class SimulationContext:
 
     @classmethod
     def create(cls, input_dict: dict, config_dict: dict) -> "SimulationContext":
-        """
-        Factory method to assemble the context.
-        """
-        # 1. Load physical data
+        # Rule 4: Extract physical data first
         input_data = SolverInput.from_dict(input_dict)
-        
-        # 2. Extract the base time_step from physical input
-        # This becomes the 'Target DT' for the ElasticManager
-        base_dt = input_data.simulation_parameters.time_step
-        
-        # 3. Inject it into the numerical config
-        # Even if it's 'unchanged' elsewhere, it MUST exist here 
-        # so Elasticity can compare self._dt against self.config.dt
+
+        # Rule 5: Ensure 'dt' doesn't contaminate the static config object
         config_dict.pop("dt", None)
-        config = SolverConfig(dt=base_dt, **config_dict)
-        
+        config = SolverConfig(**config_dict)
+
         return cls(input_data=input_data, config=config)

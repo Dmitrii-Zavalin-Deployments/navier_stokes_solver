@@ -8,100 +8,55 @@ from src.common.base_container import ValidatedContainer
 @dataclass
 class SolverConfig(ValidatedContainer):
     """
-    Static numerical configuration for the Navier-Stokes solver.
-    Uses VerifiedContainer accessors to enforce deterministic initialization.
+    Static numerical configuration. No dynamic state allowed.
     """
-    # Rule 4: dt is removed from here because it's injected from Simulation Input
     __slots__ = [
-        '_ppe_tolerance', '_ppe_atol', '_ppe_max_iter', 
-        '_ppe_omega', '_dt_min_limit', '_divergence_threshold'
+        '_dt_min_limit', '_ppe_tolerance', '_ppe_atol', 
+        '_ppe_max_iter', '_ppe_omega', '_divergence_threshold',
+        '_ppe_max_retries'
     ]
 
     def __init__(self, **kwargs):
-        # Assign directly using the validated setters to ensure 
-        # type-checking and value-range constraints are enforced.
-        self.dt = kwargs.get('dt')
+        # Map JSON keys to slots via setters for validation
         self.dt_min_limit = kwargs.get('dt_min_limit')
         self.ppe_tolerance = kwargs.get('ppe_tolerance')
         self.ppe_atol = kwargs.get('ppe_atol')
         self.ppe_max_iter = kwargs.get('ppe_max_iter')
         self.ppe_omega = kwargs.get('ppe_omega')
         self.divergence_threshold = kwargs.get('divergence_threshold')
-        
-        # Rule 5 check: Ensure the floor is defined
-        required_fields = [
-            'dt', 'dt_min_limit', 'ppe_tolerance', 'ppe_atol', 
-            'ppe_max_iter', 'ppe_omega', 'divergence_threshold'
-        ]
-        for field in required_fields:
-            if getattr(self, field) is None:
-                raise AttributeError(f"CONTRACT VIOLATION: '{field}' must be in JSON.")
+        self.ppe_max_retries = kwargs.get('ppe_max_retries')
 
     @property
-    def dt_min_limit(self) -> float: 
-        return self._get_safe("dt_min_limit")
-
+    def dt_min_limit(self) -> float: return self._get_safe("dt_min_limit")
     @dt_min_limit.setter
-    def dt_min_limit(self, v: float):
-        if v is not None and v <= 0: raise ValueError("dt_min_limit must be > 0")
-        self._set_safe("dt_min_limit", v, float)
-    
-    @property
-    def dt(self) -> float:
-        return self._get_safe("dt")
-
-    @dt.setter
-    def dt(self, v: float):
-        if v is not None and v <= 0:
-            raise ValueError(f"dt must be > 0, got {v}")
-        self._set_safe("dt", v, float)
+    def dt_min_limit(self, v: float): self._set_safe("dt_min_limit", v, float)
 
     @property
-    def ppe_tolerance(self) -> float: 
-        return self._get_safe("ppe_tolerance")
-
+    def ppe_tolerance(self) -> float: return self._get_safe("ppe_tolerance")
     @ppe_tolerance.setter
-    def ppe_tolerance(self, v: float):
-        if v is not None and v <= 0: 
-            raise ValueError(f"ppe_tolerance must be > 0, got {v}")
-        self._set_safe("ppe_tolerance", v, float)
+    def ppe_tolerance(self, v: float): self._set_safe("ppe_tolerance", v, float)
 
     @property
-    def ppe_atol(self) -> float: 
-        return self._get_safe("ppe_atol")
-
+    def ppe_atol(self) -> float: return self._get_safe("ppe_atol")
     @ppe_atol.setter
-    def ppe_atol(self, v: float):
-        if v is not None and v < 0: 
-            raise ValueError(f"ppe_atol must be >= 0, got {v}")
-        self._set_safe("ppe_atol", v, float)
+    def ppe_atol(self, v: float): self._set_safe("ppe_atol", v, float)
 
     @property
-    def ppe_max_iter(self) -> int: 
-        return self._get_safe("ppe_max_iter")
-
+    def ppe_max_iter(self) -> int: return self._get_safe("ppe_max_iter")
     @ppe_max_iter.setter
-    def ppe_max_iter(self, v: int):
-        if v is not None and v < 1: 
-            raise ValueError(f"ppe_max_iter must be >= 1, got {v}")
-        self._set_safe("ppe_max_iter", v, int)
+    def ppe_max_iter(self, v: int): self._set_safe("ppe_max_iter", v, int)
 
     @property
-    def ppe_omega(self) -> float: 
-        return self._get_safe("ppe_omega")
-
+    def ppe_omega(self) -> float: return self._get_safe("ppe_omega")
     @ppe_omega.setter
-    def ppe_omega(self, v: float):
-        if v is not None and not (0 < v < 2): 
-            raise ValueError(f"ppe_omega must be in (0, 2), got {v}")
-        self._set_safe("ppe_omega", v, float)
+    def ppe_omega(self, v: float): self._set_safe("ppe_omega", v, float)
 
     @property
-    def divergence_threshold(self) -> float:
-        return self._get_safe("divergence_threshold")
-
+    def divergence_threshold(self) -> float: return self._get_safe("divergence_threshold")
     @divergence_threshold.setter
-    def divergence_threshold(self, v: float):
-        if v is not None and v <= 0:
-            raise ValueError(f"divergence_threshold must be > 0, got {v}")
-        self._set_safe("divergence_threshold", v, float)
+    def divergence_threshold(self, v: float): self._set_safe("divergence_threshold", v, float)
+
+    @property
+    def ppe_max_retries(self) -> int: return self._get_safe("ppe_max_retries")
+    @ppe_max_retries.setter
+    def ppe_max_retries(self, v: int): self._set_safe("ppe_max_retries", v, int)

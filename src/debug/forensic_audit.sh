@@ -1,4 +1,4 @@
 #!/bin/bash
 # Description: Automated forensic audit for Navier-Stokes solver failures.
-# Status: Waiting for the next payload
+# Status: Dormant (All systems nominal)
 exit 0

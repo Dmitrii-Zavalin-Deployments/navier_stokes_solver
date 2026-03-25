@@ -1,10 +1,16 @@
 # src/common/solver_state.py
 
+import logging
+
 import numpy as np
 
 from src.common.base_container import ValidatedContainer
 from src.common.field_schema import FI
+from src.common.grid_math import get_flat_index
 
+logger = logging.getLogger(__name__)
+
+# ... [Previous Managers: PhysicalConstraints, Domain, Grid, etc. remain unchanged] ...
 # =========================================================
 # POST: PRE-FLIGHT INTEGRITY CHECK (Rule 9 Sentinel)
 # =========================================================
@@ -12,65 +18,100 @@ from src.common.field_schema import FI
 def verify_foundation_integrity(state):
     """
     POST (Power-On Self-Test): Performs a 'Pre-Flight Check' on the memory wiring.
-    Uses Identity Priming: Value = Index + (Field_ID / 10.0).
-    Verifies that object-pointers map correctly to the monolithic fields_buffer.
+    Rule 9 Sentinel: Uses Identity Priming [Value = Index + (Field_ID / 10.0)].
+    Verifies object-pointer mapping and physical memory alignment.
     """
     if state.fields is None or state.fields.data is None:
+        logger.error("POST FAILED: Fields buffer not initialized.")
         raise RuntimeError("POST FAILED: Fields buffer not initialized.")
         
-    # print("🚀 POST: Initiating Pre-Flight Memory Integrity Check...")
+    logger.info("POST: Initiating Pre-Flight Memory Integrity Check...")
     
-    # 1. Structural Synchronicity Check
-    # We allow the stencil_matrix to be smaller than the buffer (to accommodate 
-    # safety padding), but it must never overflow the foundation.
+    # 1. Physical Alignment Check (Performance Sentinel)
+    # Checks if the buffer is 64-byte aligned for optimal SIMD/Vectorized operations
+    alignment = state.fields.data.ctypes.data % 64
+    if alignment != 0:
+        logger.warning(f"POST ALIGNMENT: Buffer is not 64-byte aligned (Offset: {alignment}). Efficiency may drop.")
+    else:
+        logger.debug("POST ALIGNMENT: 64-byte memory boundary verified.")
+
+    # 2. Architecture Bounds Check
     num_cells = state.fields.data.shape[0]
-    
     if len(state.stencil_matrix) > num_cells:
-        raise RuntimeError(
-            f"POST OVERFLOW: Stencil count ({len(state.stencil_matrix)}) "
-            f"> Buffer size ({num_cells}). Architecture integrity compromised."
-        )
+        logger.error(f"POST OVERFLOW: Stencil count ({len(state.stencil_matrix)}) > Buffer size ({num_cells})")
+        raise RuntimeError("POST OVERFLOW: Architecture integrity compromised.")
         
+    # 3. Identity Priming (The "Memory Tracker")
+    # Store original state to restore after the test
     original_data = state.fields.data.copy()
     
-    # Prime the buffer: Value = Index + (Field_ID / 10.0)
-    # We prime the entire buffer to ensure all potential mappings are testable.
-    for f in FI:
-        state.fields.data[:, f] = np.arange(num_cells, dtype=float) + (float(f) / 10.0)
-
-    # 2. The Inquisition: Verify pointer-to-buffer alignment
     try:
-        # We sample representative blocks from the stencil_matrix.
-        # Since the matrix only covers the active domain, we only test those present.
+        # Prime EVERY field in the monolithic buffer with a unique coordinate-based ID
+        for f in FI:
+            state.fields.data[:, f] = np.arange(num_cells, dtype=float) + (float(f) / 10.0)
+
+        # 4. Pointer Validation Loop
         for idx, block in enumerate(state.stencil_matrix):
             c = block.center
-            
-            # RULE 9: Sentinel Integrity - Ignore ghost cells for pointer-mapping validation
-            # as they may map to the padding foundation outside the standard simulation.
             if c.is_ghost:
                 continue
             
-            # Verify Pressure (FI.P) and Velocity (FI.VX)
-            # The indices must map accurately back to the primed buffer data.
+            # Verify P-field pointer
             expected_p = float(c.index) + (float(FI.P) / 10.0)
-            expected_vx = float(c.index) + (float(FI.VX) / 10.0)
-            
-            if not np.isclose(c.p, expected_p) or not np.isclose(c.vx, expected_vx):
-                raise RuntimeError(
-                    f"CRITICAL: Memory Swap at Stencil Index {idx}! "
-                    f"Cell {c.index} pointers detected drift. "
-                    f"Expected P: {expected_p}, Got: {c.p}"
-                )
+            if not np.isclose(c.p, expected_p):
+                logger.critical(f"MEMORY DRIFT [P]: Index {idx} | Expected {expected_p}, Got {c.p}")
+                raise RuntimeError(f"CRITICAL: Memory Swap at Stencil Index {idx}!")
 
-        # print("✅ POST SUCCESS: Foundation wiring verified and 'Frozen'.")
+            # Verify Velocity-field pointers (X-component check)
+            expected_vx = float(c.index) + (float(FI.VX) / 10.0)
+            if not np.isclose(c.u[0], expected_vx):
+                logger.critical(f"MEMORY DRIFT [VX]: Index {idx} | Expected {expected_vx}, Got {c.u[0]}")
+                raise RuntimeError(f"CRITICAL: Vector Component Displacement at Index {idx}!")
+        
+        logger.info("POST: Memory integrity verified. All pointers aligned to Monolithic Foundation.")
 
     finally:
-        # 3. Restore actual simulation data
+        # Restore the actual simulation data
         state.fields.data[:] = original_data
 
 # =========================================================
 # THE DEPARTMENT SAFES (Memory-Hardened Managers)
 # =========================================================
+
+class PhysicalConstraintsManager(ValidatedContainer):
+    __slots__ = ['_min_velocity', '_max_velocity', '_min_pressure', '_max_pressure']
+    
+    def __init__(self):
+        self._min_velocity = self._max_velocity = None
+        self._min_pressure = self._max_pressure = None
+
+    def to_dict(self):
+        return {
+            "min_velocity": self.min_velocity,
+            "max_velocity": self.max_velocity,
+            "min_pressure": self.min_pressure,
+            "max_pressure": self.max_pressure
+        }
+
+    @property
+    def min_velocity(self) -> float: return self._get_safe("min_velocity")
+    @min_velocity.setter
+    def min_velocity(self, v: float): self._set_safe("min_velocity", v, (float, int))
+
+    @property
+    def max_velocity(self) -> float: return self._get_safe("max_velocity")
+    @max_velocity.setter
+    def max_velocity(self, v: float): self._set_safe("max_velocity", v, (float, int))
+
+    @property
+    def min_pressure(self) -> float: return self._get_safe("min_pressure")
+    @min_pressure.setter
+    def min_pressure(self, v: float): self._set_safe("min_pressure", v, (float, int))
+
+    @property
+    def max_pressure(self) -> float: return self._get_safe("max_pressure")
+    @max_pressure.setter
+    def max_pressure(self, v: float): self._set_safe("max_pressure", v, (float, int))
 
 class DomainManager(ValidatedContainer):
     __slots__ = ['_type', '_reference_velocity']
@@ -96,11 +137,8 @@ class DomainManager(ValidatedContainer):
         self._set_safe("reference_velocity", value, np.ndarray)
 
 class GridManager(ValidatedContainer):
-    __slots__ = [
-        '_x_min', '_x_max', '_y_min', '_y_max', '_z_min', '_z_max', 
-        '_nx', '_ny', '_nz'
-    ]
-
+    __slots__ = ['_x_min', '_x_max', '_y_min', '_y_max', '_z_min', '_z_max', '_nx', '_ny', '_nz']
+    
     def __init__(self):
         self._x_min = self._x_max = self._y_min = self._y_max = self._z_min = self._z_max = None
         self._nx = self._ny = self._nz = None
@@ -362,19 +400,31 @@ class SolverState(ValidatedContainer):
     __slots__ = [
         '_domain_configuration', '_grid', '_fluid_properties', '_initial_conditions', 
         '_boundary_conditions', '_external_forces', '_simulation_parameters', 
+        '_physical_constraints',
         '_mask', '_fields', '_stencil_matrix', 
-        '_iteration', '_time', '_ready_for_time_loop', '_manifest'
+        '_iteration', '_time', '_ready_for_time_loop', '_manifest',
+        '_cache_buffer'
     ]
 
     def __init__(self):
         super().__init__()
+        self._physical_constraints = None
         self._domain_configuration = self._grid = self._fluid_properties = self._initial_conditions = None
         self._boundary_conditions = self._external_forces = self._simulation_parameters = None
         self._mask = self._fields = self._stencil_matrix = None
         self._iteration = 0
         self._time = 0.0
         self._ready_for_time_loop = False
-        self.manifest = ManifestManager() 
+        self._manifest = ManifestManager() 
+        self._cache_buffer = None # Lazy allocation
+
+    @property
+    def physical_constraints(self) -> PhysicalConstraintsManager: 
+        return self._get_safe("physical_constraints")
+    
+    @physical_constraints.setter
+    def physical_constraints(self, value: PhysicalConstraintsManager): 
+        self._set_safe("physical_constraints", value, PhysicalConstraintsManager)
 
     @property
     def manifest(self) -> ManifestManager: return self._get_safe("manifest")
@@ -441,9 +491,125 @@ class SolverState(ValidatedContainer):
     @time.setter
     def time(self, value: float): self._time = value
 
+    # =========================================================
+    # RULE 9: MEMORY RECOVERY (Anti-Frankenstein Protocol)
+    # =========================================================
+
+    def capture_stable_state(self):
+        """Rule 9: Deep-copying the foundation to prevent pointer aliasing."""
+        if self._cache_buffer is None:
+            self._cache_buffer = np.zeros_like(self.fields.data)
+            logger.info("CACHE: Rollback buffer allocated.")
+        
+        # FIX: Use np.copyto or .copy() to ensure data is physically moved in RAM
+        np.copyto(self._cache_buffer, self.fields.data)
+        logger.debug("CACHE: Stable state captured.")
+
+    def rollback_to_stable_state(self):
+        """
+        Reverts the fields buffer to the last stable snapshot.
+        Wipes the 'numerical storm' left by a failed attempt.
+        """
+        if self._cache_buffer is None:
+            raise RuntimeError("CRITICAL: Rollback requested but no cache exists.")
+        
+        self.fields.data[:] = self._cache_buffer[:]
+        logger.warning(f"ROLLBACK: Memory reverted to state at start of Iteration {self.iteration}.")
+
+    # =========================================================
+    # RULE 7: VECTORIZED PHYSICAL AUDIT
+    # =========================================================
+    def audit_physical_bounds(self):
+        """
+        Rule 7: Vectorized Physical Audit with Forensic Logging.
+        Strictly enforces JSON Schema constraints: [min/max velocity, min/max pressure].
+        """
+        pc = self.physical_constraints
+        fields = self.fields.data 
+        nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
+
+        logger.debug(f"AUDIT [Start]: Iteration {self.iteration}")
+        
+        # 1. Finite Status & Velocity Check
+        v_indices = [FI.VX, FI.VY, FI.VZ, FI.VX_STAR, FI.VY_STAR, FI.VZ_STAR]
+        v_fields = fields[:, v_indices]
+        
+        if not np.isfinite(v_fields).all():
+            logger.error(f"AUDIT [Explosion]: NaN/Inf detected in velocity fields.")
+            raise ArithmeticError("NUMERICAL EXPLOSION: NaN/Inf detected.")
+
+        # --- [New]: Min/Max Velocity Enforcement ---
+        v_min_observed = np.min(v_fields)
+        v_max_observed = np.max(v_fields)
+
+        if v_max_observed > pc.max_velocity or v_min_observed < pc.min_velocity:
+            logger.error(
+                f"AUDIT [Limit]: Velocity range [{v_min_observed:.4e}, {v_max_observed:.4e}] "
+                f"exceeds physical bounds [{pc.min_velocity:.4e}, {pc.max_velocity:.4e}]."
+            )
+            raise ArithmeticError(f"STABILITY TRIGGER: Velocity Corridor Violation.")
+
+        # 2. Real Physical Pressure Reconstruction
+        
+        # 2.1 Find reference boundary (Search for Dirichlet 'p' anchor)
+        ref_bc = next((bc for bc in self.boundary_conditions.conditions 
+                    if bc.type in ("pressure", "outflow", "inflow") and "p" in bc.values), None)
+
+        if ref_bc is None:
+            raise RuntimeError("No pressure reference boundary found (Required for Rule 7).")
+
+        # 2.2 Vectorized Index Extraction (Geometric Slicing via SSoT)
+        # Generates the coordinate map using the central grid_math logic
+        all_indices = np.fromfunction(
+            lambda k, j, i: get_flat_index(i, j, k, nx, ny),
+            (nz, ny, nx),
+            dtype=int
+        )
+        
+        loc = ref_bc.location
+        if loc == "x_min":   ref_indices = all_indices[:, :, 0]
+        elif loc == "x_max": ref_indices = all_indices[:, :, -1]
+        elif loc == "y_min": ref_indices = all_indices[:, 0, :]
+        elif loc == "y_max": ref_indices = all_indices[:, -1, :]
+        elif loc == "z_min": ref_indices = all_indices[0, :, :]
+        elif loc == "z_max": ref_indices = all_indices[-1, :, :]
+        else:
+            raise RuntimeError(f"Unsupported boundary location '{loc}'")
+
+        # 2.3 Pressure Grounding
+        p_trial = fields[:, FI.P_NEXT]
+        p_ref_value = np.mean(p_trial[ref_indices.ravel()])
+        p_ref_physical = ref_bc.values["p"]
+        
+        p_real = p_trial - p_ref_value + p_ref_physical
+
+        # 3. Pressure Range Audit
+        p_min, p_max = p_real.min(), p_real.max()
+        
+        if not (np.isfinite(p_min) and np.isfinite(p_max)):
+            logger.error("AUDIT [Explosion]: NaN/Inf detected in pressure field.")
+            raise ArithmeticError("NUMERICAL EXPLOSION: Pressure NaN/Inf detected.")
+
+        if p_min < pc.min_pressure or p_max > pc.max_pressure:
+            logger.error(
+                f"AUDIT [Explosion]: Real pressure [{p_min:.2e}, {p_max:.2e}] "
+                f"out of bounds [{pc.min_pressure:.2e}, {pc.max_pressure:.2e}]."
+            )
+            raise ArithmeticError(f"STABILITY TRIGGER: Pressure Corridor Violation.")
+
+        logger.debug(
+            f"AUDIT [Success]: V_range: [{v_min_observed:.2e}, {v_max_observed:.2e}], "
+            f"P_range: [{p_min:.2e}, {p_max:.2e}]"
+        )
+
     def validate_physical_readiness(self):
         if self.fields is None or self.fields.data is None:
             raise RuntimeError("CRITICAL: Foundation buffer is missing.")
+        
+        # Enforce that constraints are actually set before starting
+        if self.physical_constraints is None:
+             raise RuntimeError("CRITICAL: Physical Constraints are not defined.")
+
         if np.any(np.isnan(self.fields.data)) or np.any(np.isinf(self.fields.data)):
             raise RuntimeError("CRITICAL: NaNs/Infs detected in Foundation buffer!")
         if self.grid.nx is None or self.grid.nx < 1:
@@ -459,7 +625,7 @@ class SolverState(ValidatedContainer):
             verify_foundation_integrity(self)
             self.validate_physical_readiness()
         self._ready_for_time_loop = value
-    
+
     def to_dict(self):
         """
         Serializes the solver state by delegating to sub-container methods.
@@ -471,6 +637,7 @@ class SolverState(ValidatedContainer):
             "fluid_properties": self.fluid_properties.to_dict(),
             "initial_conditions": self.initial_conditions.to_dict(),
             "simulation_parameters": self.simulation_parameters.to_dict(),
+            "physical_constraints": self.physical_constraints.to_dict(),
             "boundary_conditions": self.boundary_conditions.to_dict(),
             "mask": self.mask.to_dict(),
             "external_forces": self.external_forces.to_dict(),

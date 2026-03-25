@@ -11,9 +11,37 @@
     "boundary_conditions",
     "mask",
     "external_forces",
-    "domain_configuration"
+    "domain_configuration",
+    "physical_constraints"
   ],
   "properties": {
+    "physical_constraints": {
+      "type": "object",
+      "required": [
+        "min_velocity",
+        "max_velocity",
+        "min_pressure",
+        "max_pressure"
+      ],
+      "properties": {
+        "min_velocity": {
+          "type": "number",
+          "description": "Lower bound for any velocity component (u, v, w). Often 0 or negative for turbulence."
+        },
+        "max_velocity": {
+          "type": "number",
+          "description": "Upper bound for any velocity component. Triggers recovery if exceeded."
+        },
+        "min_pressure": {
+          "type": "number",
+          "description": "Lower bound for pressure. Prevents non-physical vacuum/sink divergence."
+        },
+        "max_pressure": {
+          "type": "number",
+          "description": "Upper bound for pressure. Prevents numerical explosions."
+        }
+      }
+    },
     "domain_configuration": {
       "type": "object",
       "required": [

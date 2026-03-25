@@ -1,28 +1,31 @@
 # src/common/stencil_block.py
 
+import logging
+
 from src.common.base_container import ValidatedContainer
 
 from .cell import Cell
 
+logger = logging.getLogger(__name__)
 
 class StencilBlock(ValidatedContainer):
     """
     Logical Wiring: Represents the 7-point stencil topology.
     Acts as the graph node connecting neighboring Cells.
-    
-    Physics parameters are injected during assembly to maintain O(1) access
-    within the inner simulation loops.
     """
 
     __slots__ = [
         '_center', '_i_minus', '_i_plus', '_j_minus', '_j_plus', '_k_minus', '_k_plus',
-        '_dx', '_dy', '_dz', '_dt', '_rho', '_mu', '_f_vals'
+        '_dx', '_dy', '_dz', '_dt', '_rho', '_mu', '_f_vals', '_id'
     ]
 
     def __init__(self, center: Cell, i_minus: Cell, i_plus: Cell, 
                  j_minus: Cell, j_plus: Cell, k_minus: Cell, k_plus: Cell,
                  dx: float, dy: float, dz: float, dt: float, 
                  rho: float, mu: float, f_vals: tuple):
+        
+        # Unique ID for tracking in logs - assigned first for traceability
+        object.__setattr__(self, '_id', f"Block_{id(self) % 1000}")
         
         # Explicit initialization (Rule 5: Deterministic Initialization)
         object.__setattr__(self, '_center', center)
@@ -44,33 +47,27 @@ class StencilBlock(ValidatedContainer):
 
     # --- Topological Accessors ---
     @property
+    def id(self) -> str: return self._id
+
+    @property
     def center(self) -> Cell: return self._center
-    
     @property
     def i_minus(self) -> Cell: return self._i_minus
-    
     @property
     def i_plus(self) -> Cell: return self._i_plus
-    
     @property
     def j_minus(self) -> Cell: return self._j_minus
-    
     @property
     def j_plus(self) -> Cell: return self._j_plus
-    
     @property
     def k_minus(self) -> Cell: return self._k_minus
-    
     @property
     def k_plus(self) -> Cell: return self._k_plus
 
-    # --- Physics Facades (High-speed cached access) ---
     @property
     def dx(self) -> float: return self._dx
-    
     @property
     def dy(self) -> float: return self._dy
-    
     @property
     def dz(self) -> float: return self._dz
     
@@ -82,17 +79,22 @@ class StencilBlock(ValidatedContainer):
     def dt(self, value: float):
         """
         Rule 4 Sync Gate: Allows ElasticityManager to update the block's time-step.
-        Uses object.__setattr__ to bypass ValidatedContainer's strict write-protection.
         """
         if value <= 0:
+            logger.error(f"STABILITY CRASH: {self._id} rejected invalid dt={value}")
             raise ValueError(f"Numerical Instability: dt must be positive, got {value}")
+        
+        # --- [STRATEGIC DIAGNOSTIC LOG] ---
+        logger.debug(f"SYNC [Physics]: {self._id} updated dt -> {value:.4e}")
+        
         object.__setattr__(self, '_dt', float(value))
     
     @property
     def rho(self) -> float: return self._rho
-    
     @property
     def mu(self) -> float: return self._mu
-    
     @property
     def f_vals(self) -> tuple: return self._f_vals
+
+    def __repr__(self):
+        return f"<{self._id} dt={self._dt:.2e}>"

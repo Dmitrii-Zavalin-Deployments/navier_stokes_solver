@@ -9,6 +9,33 @@ from src.common.base_container import ValidatedContainer
 # =========================================================
 
 @dataclass
+class PhysicalConstraintsInput(ValidatedContainer):
+    __slots__ = ['_min_velocity', '_max_velocity', '_min_pressure', '_max_pressure']
+    
+    def __init__(self):
+        for slot in self.__slots__: setattr(self, slot, None)
+
+    @property
+    def min_velocity(self) -> float: return self._get_safe("min_velocity")
+    @min_velocity.setter
+    def min_velocity(self, v: float): self._set_safe("min_velocity", v, float)
+
+    @property
+    def max_velocity(self) -> float: return self._get_safe("max_velocity")
+    @max_velocity.setter
+    def max_velocity(self, v: float): self._set_safe("max_velocity", v, float)
+
+    @property
+    def min_pressure(self) -> float: return self._get_safe("min_pressure")
+    @min_pressure.setter
+    def min_pressure(self, v: float): self._set_safe("min_pressure", v, float)
+
+    @property
+    def max_pressure(self) -> float: return self._get_safe("max_pressure")
+    @max_pressure.setter
+    def max_pressure(self, v: float): self._set_safe("max_pressure", v, float)
+
+@dataclass
 class DomainConfigInput(ValidatedContainer):
     __slots__ = ['_type', '_reference_velocity']
     
@@ -226,8 +253,11 @@ class ExternalForcesInput(ValidatedContainer):
 
 @dataclass
 class SolverInput(ValidatedContainer):
-    __slots__ = ['domain_configuration', 'grid', 'fluid_properties', 'initial_conditions', 
-                 'simulation_parameters', 'external_forces', 'mask', 'boundary_conditions']
+    __slots__ = [
+        'domain_configuration', 'grid', 'fluid_properties', 'initial_conditions', 
+        'simulation_parameters', 'external_forces', 'mask', 'boundary_conditions',
+        'physical_constraints'
+    ]
     
     def __init__(self):
         for slot in self.__slots__: object.__setattr__(self, slot, None)
@@ -235,6 +265,7 @@ class SolverInput(ValidatedContainer):
     @classmethod
     def from_dict(cls, data: dict) -> "SolverInput":
         obj = cls()
+        # Initialize sub-containers
         obj.domain_configuration = DomainConfigInput()
         obj.grid = GridInput()
         obj.fluid_properties = FluidInput()
@@ -243,7 +274,8 @@ class SolverInput(ValidatedContainer):
         obj.external_forces = ExternalForcesInput()
         obj.mask = MaskInput()
         obj.boundary_conditions = BoundaryConditionsInput()
-        
+        obj.physical_constraints = PhysicalConstraintsInput() # New Instance
+
         # Ingestion logic
         obj.boundary_conditions.items = data["boundary_conditions"]
         
@@ -273,6 +305,12 @@ class SolverInput(ValidatedContainer):
         obj.mask.data = data["mask"]
         obj.boundary_conditions.items = data["boundary_conditions"]
         
+        pc = data["physical_constraints"]
+        obj.physical_constraints.min_velocity = pc["min_velocity"]
+        obj.physical_constraints.max_velocity = pc["max_velocity"]
+        obj.physical_constraints.min_pressure = pc["min_pressure"]
+        obj.physical_constraints.max_pressure = pc["max_pressure"]
+        
         return obj
 
     def to_dict(self) -> dict:
@@ -281,6 +319,12 @@ class SolverInput(ValidatedContainer):
             domain_cfg["reference_velocity"] = self.domain_configuration.reference_velocity
             
         return {
+            "physical_constraints": {
+                "min_velocity": self.physical_constraints.min_velocity,
+                "max_velocity": self.physical_constraints.max_velocity,
+                "min_pressure": self.physical_constraints.min_pressure,
+                "max_pressure": self.physical_constraints.max_pressure
+            },
             "domain_configuration": domain_cfg,
             "grid": {k: getattr(self.grid, k) for k in ["x_min", "x_max", "y_min", "y_max", "z_min", "z_max", "nx", "ny", "nz"]},
             "fluid_properties": {"density": self.fluid_properties.density, "viscosity": self.fluid_properties.viscosity},

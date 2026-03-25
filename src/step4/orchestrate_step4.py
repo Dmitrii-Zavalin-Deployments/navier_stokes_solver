@@ -1,37 +1,31 @@
 # src/step4/orchestrate_step4.py
 
 from src.common.simulation_context import SimulationContext
-from src.common.stencil_block import StencilBlock
-from src.step4.boundary_applier import apply_boundary_values
-from src.step4.boundary_dispatcher import get_applicable_boundary_configs
+from src.common.solver_state import SolverState
+from src.step4.io_archivist import save_snapshot
 
 
-def orchestrate_step4(
-    block: StencilBlock, 
-    context: SimulationContext, 
-    state_grid: object, 
-    state_bc_manager: object
-) -> StencilBlock:
+def orchestrate_step4(state: SolverState, context: SimulationContext) -> SolverState:
+    print('DEBUG: Explicitly flushing field buffers to archive...')
     """
-    Step 4: Boundary Enforcement Orchestration.
+    Step 5: The Archivist Orchestration.
     
     Compliance:
-    - Rule 4 (SSoT): Uses the SSoT components (grid/bc_manager) passed from the state.
-    - Rule 9 (Hybrid Memory): Orchestrates in-place mutation of Foundation buffers.
+    - Rule 4 (SSoT): Accesses output interval exclusively via simulation_parameters.
+    - Rule 5 (Deterministic Init): Relies on explicit iteration counts from the input schema.
+    - Rule 9 (Hybrid Memory): Logic-layer remains thin; archiving is delegated.
     """
     
-    # 1. Identify applicable boundary rules
-    # We pass the domain type from the context for rule dispatching.
-    rules = get_applicable_boundary_configs(
-        block, 
-        state_bc_manager.to_dict(),
-        state_grid, 
-        context.input_data.domain_configuration.to_dict()
-    )
+    # Rule 4: SSoT Compliance
+    # Output frequency is a simulation parameter defined in the Input Schema,
+    # not an algorithmic tuning parameter (SolverConfig).
+    interval = context.input_data.simulation_parameters.output_interval
     
-    # 2. Apply updates
-    # The applier performs direct in-place mutation of the Foundation buffer (Rule 9).
-    for rule in rules:
-        apply_boundary_values(block, rule)
+    # Logic-layer operation: Decision to archive
+    # state.iteration is a property managed within the SolverState lifecycle
+    if state.iteration % interval == 0:
+        # Rule 4: Data persistence delegated to the Archivist.
+        # No serialization logic here; orchestration stays thin and focused.
+        save_snapshot(state)
         
-    return block
+    return state
