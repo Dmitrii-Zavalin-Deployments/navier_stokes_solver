@@ -1,6 +1,7 @@
 # tests/quality_gates/logic_gate/test_pressure_configuration.py
 
 import pytest
+
 from src.common.simulation_context import SimulationContext
 from src.step1.orchestrate_step1 import orchestrate_step1
 from tests.helpers.solver_input_schema_dummy import get_explicit_solver_config
