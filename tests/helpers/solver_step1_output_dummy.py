@@ -83,7 +83,7 @@ def make_step1_output_dummy(nx: int = 4, ny: int = 4, nz: int = 4) -> SolverStat
     # Create individual conditions
     conds = []
     for loc, typ, vals in [
-        ('x_min', 'inflow', {'u': 1.0, 'v': 0.0, 'w': 0.0, 'p': 1.0}),
+        ('x_min', 'inflow', {'u': 1.0, 'v': 0.0, 'w': 0.0}),
         ('x_max', 'outflow', {'p': 0.0}),
         ('y_min', 'no-slip', {'u': 0.0, 'v': 0.0, 'w': 0.0}),
         ('y_max', 'no-slip', {'u': 0.0, 'v': 0.0, 'w': 0.0}),
