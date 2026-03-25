@@ -13,7 +13,7 @@ jobs:
     env:
       PYTHONPATH: ${{ github.workspace }}
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-      TEST_COMMAND: "pytest -s tests/common/test_elasticity_manager.py -vv"
+      TEST_COMMAND: "pytest -s tests/property_integrity/test_step1_initialization.py -vv"
     
     steps:
       - name: 🗂️ Checkout Repository
