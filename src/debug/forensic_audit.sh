@@ -1,29 +1,23 @@
 #!/bin/bash
-# Forensic Audit: Heavy Elasticity Lifecycle Failure
-# Focus: NumPy-to-String formatting TypeError in Predictor diagnostics
+# Forensic Audit & Auto-Repair: Heavy Elasticity Lifecycle
+# Issue: NumPy array formatting error in Predictor diagnostics
 
-echo "--- [1] SMOKING GUN: SOURCE AUDIT ---"
-# Highlight the line causing the TypeError in the predictor
-cat -n src/step3/predictor.py | sed -n '45,60p'
+echo "--- [1] TARGETED SOURCE AUDIT ---"
+# Check the immediate vicinity of the failure in predictor.py
+cat -n src/step3/predictor.py | sed -n '50,56p'
 
-echo -e "\n--- [2] TYPE INVESTIGATION ---"
-# Check if the mock or the field retrieval is returning arrays instead of scalars
-grep -r "get_field" src/foundation/ | head -n 5
-grep -r "compute_local_" src/step3/ | head -n 5
+echo -e "\n--- [2] AUTOMATED REPAIR: DIAGNOSTIC LOGS ---"
+# Fix the f-string by forcing v_star_val to a float using .item()
+# This prevents the TypeError while keeping the high-precision logging.
+sed -i '53s/{v_star_val:.4e}/{v_star_val.item():.4e}/' src/step3/predictor.py
 
-echo -e "\n--- [3] REPAIR STRATEGY: TYPE CASTING & FORMATTING ---"
-# We need to ensure v_star_val is a float before formatting.
-# Using .item() is the safest way to extract a scalar from a 1-element NumPy array.
+echo -e "\n--- [3] AUTOMATED REPAIR: TYPE SAFETY ---"
+# To be extra safe and comply with Rule 7 (Fail-Fast math), we can cast the 
+# calculation result to a scalar explicitly before it even hits the log.
+sed -i 's/v_star_val = /v_star_val = float(/; s/force\[i\] - grad_p\[i\]/force[i] - grad_p[i])/' src/step3/predictor.py
 
-# Repair 1: Inject .item() into the print statement for v_star_val
-# sed -i 's/v_star_val:.4e/v_star_val.item():.4e/g' src/step3/predictor.py
+echo -e "\n--- [4] VERIFICATION ---"
+# Verify the injection worked without corrupting syntax
+cat -n src/step3/predictor.py | sed -n '50,56p'
 
-# Repair 2: Alternatively, cast the calculation to float64 to ensure scalar behavior
-# sed -i 's/v_star_val = /v_star_val = np.float64(/g' src/step3/predictor.py
-# sed -i 's/force\[i\] - grad_p\[i\]/force[i] - grad_p[i]).item()/g' src/step3/predictor.py
-
-echo -e "\n--- [4] REPAIR STRATEGY: LOGGING ROBUSTNESS ---"
-# If we just want to avoid the crash regardless of type:
-# sed -i 's/f"Calculated VX_STAR: {v_star_val:.4e}"/f"Calculated VX_STAR: {np.array(v_star_val).flatten()[0]:.4e}"/g' src/step3/predictor.py
-
-echo "Audit Complete. Suggested action: Apply .item() to diagnostic prints."
+echo "Audit and Repair Complete. Re-run tests to confirm elasticity recovery."
