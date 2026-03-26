@@ -102,7 +102,7 @@ def test_corrector_success_audit_log(caplog):
     with caplog.at_level(logging.DEBUG):
         apply_local_velocity_correction(block)
         
-    assert "AUDIT [Correction]: Success" in caplog.text
+    assert "CORRECT [Success]" in caplog.text
     assert f"Block {block.id}" in caplog.text
 
 def test_corrector_array_leak_detection_log(caplog):
@@ -119,7 +119,7 @@ def test_corrector_array_leak_detection_log(caplog):
     with caplog.at_level(logging.DEBUG):
         apply_local_velocity_correction(block)
         
-    assert "AUDIT [Correction]: Success" in caplog.text
+    assert "CORRECT [Success]" in caplog.text
 
 def test_corrector_instability_crash_log(caplog):
     """Verifies ERROR log and ArithmeticError on non-finite velocity (Rule 7)."""

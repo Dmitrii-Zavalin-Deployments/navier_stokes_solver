@@ -72,7 +72,7 @@ def test_applier_enforcement_real_memory(caplog):
     # B. Forensic Audit Trail (Rule 7)
     assert "APPLY [Success]: Block ExplosionBlock_99" in caplog.text
     assert f"Mapping u to Field {int(FI.VX_STAR)}" in caplog.text 
-    assert "APPLY [Success]: Verified Field 3 = 1.0000e+10" in caplog.text
+    assert "APPLY [Success]: Block 3 = 1.0000e+10" in caplog.text
 
 def test_applier_unsupported_key_contract_violation(caplog):
     """Rule 8: Invalid keys must trigger a Contract Violation and KeyError."""

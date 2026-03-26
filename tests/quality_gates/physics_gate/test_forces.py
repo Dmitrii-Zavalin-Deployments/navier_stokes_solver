@@ -89,7 +89,7 @@ def test_body_force_numerical_instability_logger(caplog):
         with pytest.raises(ArithmeticError, match="force is non-finite"):
             get_local_body_force(block)
             
-    assert "PPE MATH ERROR" in caplog.text
+    assert "MATH FAILURE" in caplog.text
     assert "F_vals: [" in caplog.text
 
 def test_body_force_success_trace(caplog):

@@ -89,7 +89,7 @@ def test_predictor_audit_logging(caplog):
     with caplog.at_level(logging.DEBUG):
         compute_local_predictor_step(block)
         
-    assert "DEBUG [Predictor]" in caplog.text
+    assert "DEBUG [Predictor]: Type=Sovereign" in caplog.text
     assert "PREDICT [Success]" in caplog.text
     assert "Type=" in caplog.text
 
@@ -100,7 +100,7 @@ def test_predictor_component_info_logging(caplog):
     with caplog.at_level(logging.INFO):
         compute_local_predictor_step(block)
         
-    assert "DEBUG [Predictor]" in caplog.text
+    assert "DEBUG [Predictor]: Type=Sovereign" in caplog.text
     assert "VX_STAR:" in caplog.text
 
 def test_predictor_contamination_recovery(caplog):

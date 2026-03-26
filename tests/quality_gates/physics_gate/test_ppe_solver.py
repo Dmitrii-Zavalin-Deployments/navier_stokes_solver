@@ -126,4 +126,4 @@ def test_ppe_non_finite_divergence_guard(caplog):
         with pytest.raises(ArithmeticError, match="Divergence exploded"):
             solve_pressure_poisson_step(block, 1e6, 1.0)
             
-    assert "PPE MATH ERROR" in caplog.text
+    assert "MATH FAILURE" in caplog.text
