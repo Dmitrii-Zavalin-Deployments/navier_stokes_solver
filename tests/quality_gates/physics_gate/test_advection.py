@@ -21,7 +21,7 @@ def setup_analytical_stencil(velocity_vec, scalar_func):
     Sets up a 1.0 unit coordinate system for clean analytical verification.
     """
     # Get a real production block from the dummy helper
-    block = make_step3_output_dummy(nx=4, ny=4, nz=nz=4)
+    block = make_step3_output_dummy(nx=4, ny=4, nz=4)
     
     # Rule 5: Deterministic Override for math purity
     # We use object.__setattr__ because these are slotted/protected
