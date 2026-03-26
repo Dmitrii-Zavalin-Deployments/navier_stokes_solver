@@ -10,7 +10,6 @@ from src.common.grid_math import get_flat_index
 
 logger = logging.getLogger(__name__)
 
-# ... [Previous Managers: PhysicalConstraints, Domain, Grid, etc. remain unchanged] ...
 # =========================================================
 # POST: PRE-FLIGHT INTEGRITY CHECK (Rule 9 Sentinel)
 # =========================================================

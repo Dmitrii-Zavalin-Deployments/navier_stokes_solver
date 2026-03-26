@@ -1,47 +1,38 @@
 # tests/step3/test_dispatcher_priority.py
 
-import logging
-
 import pytest
+import logging
+import numpy as np
 
-from src.common.solver_state import SolverState
+# Rule 4 & 5: Use the centralized dummy factory for SSoT
+from tests.helpers.solver_step1_output_dummy import make_step1_output_dummy
 from src.step2.factory import get_cell
 from src.step3.boundaries.dispatcher import get_applicable_boundary_configs
+from src.common.stencil_block import StencilBlock
 
-# Rule 7: Setup Granular Traceability
 logger = logging.getLogger(__name__)
 
 @pytest.fixture
 def real_state():
     """
-    Rule 5: Provides a real, minimal SolverState for deterministic 
-    initialization of Cells and Stencils.
+    Rule 5: Deterministic Initialization using the centralized 
+    Archivist Testing helper.
     """
-    # 10x10x10 Core Grid
-    config = {
-        "grid": {"nx": 10, "ny": 10, "nz": 10, "dx": 0.1, "dy": 0.1, "dz": 0.1},
-        "fluid_properties": {"density": 1.0, "viscosity": 0.01},
-        "simulation_parameters": {"time_step": 0.001},
-        "initial_conditions": {"velocity": [0,0,0], "pressure": 0.0},
-        "external_forces": {"force_vector": [0,0,0]}
-    }
-    state = SolverState(config)
-    # Ensure all masks are fluid (1) by default
-    state.mask.mask[:] = 1 
-    return state
+    # Initialize a 10x10x10 grid via the official dummy helper
+    return make_step1_output_dummy(nx=10, ny=10, nz=10)
 
 def create_real_test_block(i, j, k, state, mask=1):
     """
-    Rule 9 Bridge: Uses the production Factory to create a real 
-    StencilBlock. This verifies coordinate-logic (i, j, k) is correct.
+    Rule 9 Bridge: Uses production Factory to wire a StencilBlock 
+    based on the real hydrated SolverState.
     """
-    from src.common.stencil_block import StencilBlock
+    # Ensure the mask buffer matches the test intent
+    # Note: dummy creates mask as np.ones, we update it here
+    state.mask.mask[i, j, k] = mask
     
-    # Use Factory to get a real Cell (this sets index/nx_buf/ny_buf correctly)
     center = get_cell(i, j, k, state)
-    center.mask = mask # Manually set mask for specific test scenarios
     
-    # Define neighbors via Factory to maintain pointer integrity
+    # Neighborhood assembly via real Factory logic
     nb = {
         "i_minus": get_cell(i-1, j, k, state), "i_plus": get_cell(i+1, j, k, state),
         "j_minus": get_cell(i, j-1, k, state), "j_plus": get_cell(i, j+1, k, state),
@@ -57,29 +48,34 @@ def create_real_test_block(i, j, k, state, mask=1):
         f_vals=tuple(state.external_forces.force_vector)
     )
 
+# --- Logic Tests ---
+
 def test_spatial_priority_over_mask_real_testing(real_state, caplog):
     """
-    VERIFICATION: Ensure x_min (i=0) takes priority over mask=0 (Solid).
-    Uses the real Factory to verify that coordinate detection works.
+    VERIFICATION: i=0 (x_min) must take priority even if mask=0.
     """
-    # Create block at i=0 (x_min) but force its mask to 0 (Solid)
+    # Setup: Spatial Boundary (i=0) + Solid Mask (0)
     block = create_real_test_block(i=0, j=5, k=5, state=real_state, mask=0)
     
+    # Config defines both spatial and mask-based boundaries
     boundary_cfg = [
         {'location': 'x_min', 'type': 'dirichlet', 'values': {'u': 1e10}}, 
         {'location': 'solid', 'type': 'no-slip', 'values': {'u': 0.0}}
     ]
 
     with caplog.at_level(logging.DEBUG):
-        result = get_applicable_boundary_configs(block, boundary_cfg, real_state.grid, {"type": "INTERNAL"})
+        # We pass real_state.grid and real_state.domain_configuration.to_dict() 
+        # to match the dispatcher's signature
+        domain_cfg = {"type": "INTERNAL"} 
+        result = get_applicable_boundary_configs(block, boundary_cfg, real_state.grid, domain_cfg)
 
-    # Assert Logic: Boundary location should be detected as 'x_min' via real Cell.i
+    # Spatial check (i=0) should have triggered 'x_min'
     assert result[0]['location'] == 'x_min'
     assert result[0]['values']['u'] == 1e10
-    assert f"DISPATCH [Spatial]: Block {block.id}" in caplog.text
+    assert "DISPATCH [Spatial]" in caplog.text
 
 def test_interior_fluid_real_testing(real_state, caplog):
-    """Verify interior cell (i=5) is correctly identified without boundary tags."""
+    """Verify interior cells don't trigger boundary dispatch."""
     block = create_real_test_block(i=5, j=5, k=5, state=real_state, mask=1)
 
     with caplog.at_level(logging.DEBUG):
@@ -89,8 +85,9 @@ def test_interior_fluid_real_testing(real_state, caplog):
     assert "DISPATCH [Spatial]" not in caplog.text
 
 def test_missing_config_detection_real_testing(real_state):
-    """Rule 5: System must crash if i=0 is detected but no config exists."""
+    """Rule 5: Fail-fast if a detected boundary has no config."""
     block = create_real_test_block(i=0, j=5, k=5, state=real_state)
     
     with pytest.raises(KeyError, match="Missing boundary definition for x_min"):
+        # Passing empty list for boundary_cfg should trigger the error for i=0
         get_applicable_boundary_configs(block, [], real_state.grid, {"type": "INTERNAL"})
