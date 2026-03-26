@@ -30,7 +30,7 @@ def verify_foundation_integrity(state):
     # Checks if the buffer is 64-byte aligned for optimal SIMD/Vectorized operations
     alignment = state.fields.data.ctypes.data % 64
     if alignment != 0:
-        logger.warning(f"POST ALIGNMENT: Buffer is not 64-byte aligned (Offset: {alignment}). Efficiency may drop.")
+        logger.warning(f"POST ALIGNMENT: Buffer is not 64-byte aligned (Offset: {alignment}). Efficiency may drop.\n")
     else:
         logger.debug("POST ALIGNMENT: 64-byte memory boundary verified.")
 
