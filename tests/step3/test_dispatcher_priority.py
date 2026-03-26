@@ -1,8 +1,8 @@
 # tests/step3/test_dispatcher_priority.py
 
-import numpy as np
-import pytest
 import logging
+
+import pytest
 
 from src.common.solver_state import SolverState
 from src.step2.factory import get_cell
