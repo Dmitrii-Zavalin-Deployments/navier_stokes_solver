@@ -1,6 +1,7 @@
 # src/step3/ops/forces.py
 
 import logging
+
 import numpy as np
 
 from src.common.stencil_block import StencilBlock
