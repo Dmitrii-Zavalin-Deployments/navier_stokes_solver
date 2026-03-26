@@ -1,11 +1,12 @@
 # tests/common/test_stencil_block.py
 
-import numpy as np
-import pytest
 import logging
 
-from src.common.field_schema import FI
+import numpy as np
+import pytest
+
 from src.common.cell import Cell
+from src.common.field_schema import FI
 from src.common.stencil_block import StencilBlock
 
 # Rule 7: Setup Granular Traceability
