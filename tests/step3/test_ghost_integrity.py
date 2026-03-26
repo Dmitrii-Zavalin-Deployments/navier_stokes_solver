@@ -1,12 +1,13 @@
 # tests/step3/test_ghost_integrity.py
 
-import numpy as np
-import pytest
 import logging
 import math
 
-from src.common.field_schema import FI
+import numpy as np
+import pytest
+
 from src.common.cell import Cell
+from src.common.field_schema import FI
 from src.common.stencil_block import StencilBlock
 from src.step3.ops.ghost_handler import sync_ghost_trial_buffers
 
