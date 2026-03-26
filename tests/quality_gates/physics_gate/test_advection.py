@@ -10,6 +10,8 @@ from src.step3.ops.advection import (
     compute_local_advection,
     compute_local_advection_vector,
 )
+
+from tests.helpers.solver_step1_output_dummy import make_step1_output_dummy
 from tests.helpers.solver_step3_output_dummy import make_step3_output_dummy
 
 # Rule 7: Granular Traceability
