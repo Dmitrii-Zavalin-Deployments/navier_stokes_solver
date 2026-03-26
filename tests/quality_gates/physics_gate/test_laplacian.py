@@ -123,7 +123,7 @@ def test_laplacian_instability_logger(caplog):
         with pytest.raises(ArithmeticError, match="Laplacian exploded"):
             compute_local_laplacian(block, FI.P)
             
-    assert "NUMERICAL INSTABILITY" in caplog.text
+    assert "PPE MATH ERROR" in caplog.text
     assert "Field: P" in caplog.text
 
 def test_laplacian_vector_failure_logger(caplog):

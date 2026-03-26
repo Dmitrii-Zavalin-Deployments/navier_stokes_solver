@@ -69,7 +69,7 @@ def test_scaling_instability_logger_dt_rho(caplog):
         with pytest.raises(ArithmeticError, match="dt/rho is non-finite"):
             get_dt_over_rho(block)
             
-    assert "NUMERICAL INSTABILITY" in caplog.text
+    assert "PPE MATH ERROR" in caplog.text
 
 def test_scaling_instability_logger_rho_dt(caplog):
     """Verify ERROR log when rho/dt explodes into non-finite values."""
@@ -80,4 +80,4 @@ def test_scaling_instability_logger_rho_dt(caplog):
         with pytest.raises(ArithmeticError, match="rho/dt is non-finite"):
             get_rho_over_dt(block)
             
-    assert "NUMERICAL INSTABILITY" in caplog.text
+    assert "PPE MATH ERROR" in caplog.text

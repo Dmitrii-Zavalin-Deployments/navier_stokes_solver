@@ -105,5 +105,5 @@ def test_gradient_numerical_instability_logger(caplog):
         with pytest.raises(ArithmeticError, match="gradient is non-finite"):
             compute_local_gradient_p(block)
             
-    assert "NUMERICAL INSTABILITY" in caplog.text
+    assert "PPE MATH ERROR" in caplog.text
     assert "Field: P" in caplog.text

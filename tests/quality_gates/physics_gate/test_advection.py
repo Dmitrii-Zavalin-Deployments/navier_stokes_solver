@@ -89,7 +89,7 @@ def test_advection_numerical_instability_logger(caplog):
     with caplog.at_level(logging.ERROR):
         with pytest.raises(ArithmeticError, match="Advection term exploded"):
             compute_local_advection(block, FI.P)
-    assert "NUMERICAL INSTABILITY" in caplog.text
+    assert "PPE MATH ERROR" in caplog.text
 
 def test_advection_topology_crash_logger(caplog):
     """Verify Rule 7: Missing neighbors trigger CRITICAL logs."""

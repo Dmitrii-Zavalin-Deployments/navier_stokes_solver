@@ -70,7 +70,7 @@ def test_applier_enforcement_real_memory(caplog):
     assert math.isclose(actual_val, 1e10, rel_tol=1e-12)
     
     # B. Forensic Audit Trail (Rule 7)
-    assert "APPLY [Start]: Block ExplosionBlock_99" in caplog.text
+    assert "APPLY [Success]: Block ExplosionBlock_99" in caplog.text
     assert f"Mapping u to Field {int(FI.VX_STAR)}" in caplog.text 
     assert "APPLY [Success]: Verified Field 3 = 1.0000e+10" in caplog.text
 

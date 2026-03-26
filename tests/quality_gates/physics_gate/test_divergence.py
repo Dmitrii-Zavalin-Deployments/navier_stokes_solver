@@ -102,5 +102,5 @@ def test_divergence_instability_logger(caplog):
         with pytest.raises(ArithmeticError, match="PPE source term is poisoned"):
             compute_local_divergence_v_star(block)
             
-    assert "NUMERICAL INSTABILITY" in caplog.text
+    assert "PPE MATH ERROR" in caplog.text
     assert "Components:" in caplog.text
