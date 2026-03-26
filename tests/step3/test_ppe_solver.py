@@ -1,12 +1,12 @@
 # tests/step3/test_ppe_solver.py
 
+import logging
+
 import numpy as np
 import pytest
-import logging
-import math
 
-from src.common.field_schema import FI
 from src.common.cell import Cell
+from src.common.field_schema import FI
 from src.common.stencil_block import StencilBlock
 from src.step3.ppe_solver import solve_pressure_poisson_step
 
