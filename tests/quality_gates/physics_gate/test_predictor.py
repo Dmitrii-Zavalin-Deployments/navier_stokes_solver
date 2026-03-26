@@ -104,22 +104,34 @@ def test_predictor_component_info_logging(caplog):
     assert "VX_STAR:" in caplog.text
 
 def test_predictor_contamination_recovery(caplog):
-    """Verifies Rule 7: Contamination Detection."""
+    """
+    Verifies Rule 7: DNA Audit.
+    Ensures that if the Laplacian promotes a float to an array, the 
+    predictor logs the contamination and recovers using .item().
+    """
     block = setup_predictor_block()
     
+    # 1. Access the predictor module for monkeypatching
     from src.step3 import predictor
     original_lap = predictor.compute_local_laplacian_v_n
-    # Inject a 1-element array to trigger the check
+    
+    # 2. Inject a 1-element array to trigger the hasattr(val, "__len__") check
+    # We return a tuple where the first element is a NumPy array
     predictor.compute_local_laplacian_v_n = lambda b: (np.array([0.0]), 0.0, 0.0)
     
     try:
-        # FIX: Explicitly target the "Solver.Predictor" logger name
+        # 3. FIX: Explicitly target the "Solver.Predictor" logger
+        # This captures the ERROR even if propagation is disabled
         with caplog.at_level(logging.ERROR, logger="Solver.Predictor"):
             compute_local_predictor_step(block)
             
+        # 4. Forensic Verification
         assert "CONTAMINATION DETECTED" in caplog.text
+        # Verify it was logged as an ERROR, not just a warning
+        assert any(record.levelname == "ERROR" for record in caplog.records)
+        
     finally:
-        # Restore original function to avoid test bleed
+        # 5. Restore original function to maintain test isolation
         predictor.compute_local_laplacian_v_n = original_lap
 
 def test_predictor_math_failure_traceback(caplog):
