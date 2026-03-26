@@ -196,6 +196,13 @@ class TestHeavyElasticityLifecycle:
         Scenario 4: Elasticity recovers (mock‑based).
         First audit fails → elasticity triggers.
         Second audit succeeds → solver commits and completes.
+        
+        SCIENTIFIC JUSTIFICATION: 
+        A Mock is used here to simulate a 'Rare Scenario' in physics (e.g., a 
+        singular pressure spike or divergent velocity) that is difficult to 
+        reproduce deterministically with stable input. This verifies that 
+        the Elasticity Manager's 'Retry-and-Recover' logic is robust even 
+        when the underlying kernel momentarily fails Rule 7 audits.
         """
 
         from unittest.mock import patch
