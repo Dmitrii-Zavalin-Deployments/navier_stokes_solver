@@ -110,9 +110,9 @@ def test_block_allocation_integrity(stage_name, factory):
 
         # Action: Set value via the Object's explicit setter
         # Example: block.center.set_vx(123.456)
-        setter_name = f"set_{attr.lower()}"
-        attr_setter = getattr(block.center, setter_name)
-        attr_setter(test_signature)
+        setter_name = attr.lower()
+        # Property alignment
+        setattr(block.center, setter_name, test_signature)
 
         # Validation: Access the global buffer directly through the factory/manager
         # This confirms that the setter wrote to the SHARED memory, not a local copy.
