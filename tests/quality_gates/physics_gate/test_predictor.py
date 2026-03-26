@@ -105,47 +105,105 @@ def test_predictor_component_info_logging(caplog):
 
 def test_predictor_contamination_recovery(caplog):
     """
-    Verifies Rule 7: DNA Audit.
-    Ensures that if the Laplacian promotes a float to an array, the 
-    predictor logs the contamination and recovers using .
+    Verifies Rule 7: DNA Audit with Forensic Tracing.
     """
-    block = setup_predictor_block()
+    print("\n--- [START] test_predictor_contamination_recovery ---")
     
-    # 1. Access the predictor module for monkeypatching
+    # 1. Setup Block
+    block = setup_predictor_block()
+    print(f"DEBUG [Test]: Block initialized | ID: {getattr(block, 'id', 'Unknown')}")
+    
+    # 2. Access the predictor module
     from src.step3 import predictor
     original_lap = predictor.compute_local_laplacian_v_n
+    print("DEBUG [Test]: Captured original_lap function reference.")
     
-    # 2. Inject a 1-element array to trigger the hasattr(val, "__len__") check
-    # We return a tuple where the first element is a NumPy array
-    predictor.compute_local_laplacian_v_n = lambda b: (np.array([0.0]), 0.0, 0.0)
+    # 3. Inject the "Contaminant" (NumPy array instead of float)
+    contaminant = (np.array([0.0]), 0.0, 0.0)
+    predictor.compute_local_laplacian_v_n = lambda b: contaminant
+    print(f"DEBUG [Test]: Monkeypatch injected | Value: {contaminant} | Type of [0]: {type(contaminant[0])}")
     
     try:
-        # 3. FIX: Explicitly target the "Solver.Predictor" logger
-        # This captures the ERROR even if propagation is disabled
+        print("DEBUG [Test]: Entering caplog context (Level: ERROR, Logger: Solver.Predictor)")
         with caplog.at_level(logging.ERROR, logger="Solver.Predictor"):
-            compute_local_predictor_step(block)
             
-        # 4. Forensic Verification
-        assert "PREDICTOR FAILURE" in caplog.text
-        # Verify it was logged as an ERROR, not just a warning
-        assert any(record.levelname == "CRITICAL" for record in caplog.records)
+            print("DEBUG [Test]: Calling compute_local_predictor_step...")
+            compute_local_predictor_step(block)
+            print("DEBUG [Test]: compute_local_predictor_step returned successfully.")
+            
+        # 4. Forensic Verification of the Logs
+        log_content = caplog.text
+        print(f"DEBUG [Test]: Captured Log Content Length: {len(log_content)} chars")
+        
+        # Check for the specific failure string
+        has_failure_msg = "PREDICTOR FAILURE" in log_content
+        print(f"DEBUG [Test]: Search for 'PREDICTOR FAILURE' | Found: {has_failure_msg}")
+        assert has_failure_msg
+        
+        # Verify it was logged as CRITICAL (Rule 3 Sync)
+        critical_records = [r for r in caplog.records if r.levelname == "CRITICAL"]
+        print(f"DEBUG [Test]: Critical Records Found: {len(critical_records)}")
+        for i, rec in enumerate(critical_records):
+            print(f"  -> Record {i}: {rec.message}")
+            
+        assert len(critical_records) > 0, "No CRITICAL level logs found in caplog.records"
+        
+    except Exception as e:
+        print(f"ERROR [Test]: Unexpected Exception during execution: {type(e).__name__} - {e}")
+        raise e
         
     finally:
-        # 5. Restore original function to maintain test isolation
+        # 5. Restore original function
         predictor.compute_local_laplacian_v_n = original_lap
+        print("DEBUG [Test]: Restored original_lap. Test isolation preserved.")
+        print("--- [END] test_predictor_contamination_recovery ---\n")
 
 def test_predictor_math_failure_traceback(caplog):
-    """Verifies CRITICAL log on mathematical collapse (Rule 7)."""
+    """Verifies CRITICAL log on mathematical collapse (Rule 7) with Trace."""
+    print("\n--- [START] test_predictor_math_failure_traceback ---")
+    
+    # 1. Setup Block and identify state
     block = setup_predictor_block()
+    has_mu_initially = hasattr(block, '_mu')
+    print(f"DEBUG [Test]: Block ID: {getattr(block, 'id', 'Unknown')} | Has _mu: {has_mu_initially}")
     
-    # 1. Force a specific contract failure by deleting the viscosity coefficient
-    delattr(block, '_mu')
+    # 2. Intentional Sabotage (Rule 5: Zero-Default Policy check)
+    # Deleting _mu should trigger an immediate AttributeError in Rule-compliant code.
+    print("DEBUG [Test]: Sabotaging block by deleting '_mu' attribute...")
+    if has_mu_initially:
+        delattr(block, '_mu')
+    print(f"DEBUG [Test]: Attribute check after deletion | Has _mu: {has_mu_initially}")
     
+    # 3. Execution Context
+    print("DEBUG [Test]: Entering caplog context (Level: DEBUG)")
     with caplog.at_level(logging.DEBUG):
-        # 2. Rule 7/B017: Target AttributeError specifically to ensure 
-        # the test doesn't pass for the wrong reasons (like a SyntaxError).
-        with pytest.raises(AttributeError):
-            compute_local_predictor_step(block)
+        
+        print("DEBUG [Test]: Expecting AttributeError from compute_local_predictor_step...")
+        try:
+            with pytest.raises(AttributeError) as exc_info:
+                compute_local_predictor_step(block)
             
-    # 3. Verify the forensic log was captured before the exception was bubbled
-    assert "DEBUG [Predictor]: Type=Sovereign" in caplog.text
+            print(f"DEBUG [Test]: Successfully caught expected exception: {exc_info.type}")
+            print(f"DEBUG [Test]: Exception message: {exc_info.value}")
+            
+        except Exception as e:
+            print(f"ERROR [Test]: Caught WRONG exception type: {type(e).__name__} - {e}")
+            raise e
+
+    # 4. Forensic Log Audit
+    log_text = caplog.text
+    print(f"DEBUG [Test]: Captured Log Length: {len(log_text)} chars")
+    
+    # Search for the "Sovereign" marker (The 'Black Box' Recording)
+    search_string = "DEBUG [Predictor]: Type=Sovereign"
+    found_marker = search_string in log_text
+    print(f"DEBUG [Test]: Searching for '{search_string}' | Found: {found_marker}")
+    
+    if not found_marker:
+        print("DEBUG [Test]: DUMPING FULL LOG FOR ANALYSIS:")
+        print("------------------------------------------")
+        print(log_text if log_text else "[EMPTY LOG]")
+        print("------------------------------------------")
+    
+    assert found_marker, "Forensic log missing! Code crashed before reaching Sovereign access."
+    print("--- [END] test_predictor_math_failure_traceback ---\n")
