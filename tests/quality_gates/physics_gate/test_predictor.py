@@ -129,11 +129,14 @@ def test_predictor_math_failure_traceback(caplog):
     """Verifies CRITICAL log on mathematical collapse (Rule 7)."""
     block = setup_predictor_block()
     
-    # Force a failure by deleting an attribute needed during calculation
+    # 1. Force a specific contract failure by deleting the viscosity coefficient
     delattr(block, '_mu')
     
     with caplog.at_level(logging.CRITICAL):
-        with pytest.raises(Exception):
+        # 2. Rule 7/B017: Target AttributeError specifically to ensure 
+        # the test doesn't pass for the wrong reasons (like a SyntaxError).
+        with pytest.raises(AttributeError):
             compute_local_predictor_step(block)
             
+    # 3. Verify the forensic log was captured before the exception was bubbled
     assert "MATH FAILURE" in caplog.text
