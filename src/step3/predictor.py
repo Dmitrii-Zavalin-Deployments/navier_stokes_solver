@@ -1,6 +1,7 @@
 # src/step3/predictor.py
 
 import logging
+
 import numpy as np
 
 from src.common.field_schema import FI
