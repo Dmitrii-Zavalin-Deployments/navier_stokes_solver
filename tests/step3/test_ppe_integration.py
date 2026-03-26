@@ -1,4 +1,4 @@
-# tests/step3/test_ppe_solver.py
+# tests/step3/test_ppe_integration.py
 
 import logging
 
