@@ -80,6 +80,7 @@ def test_block_allocation_integrity(stage_name, factory):
     In Step 3, Cell attributes act as pointers/views into the monolithic array.
     """
     import numpy as np
+
     from src.common.field_schema import FI
     
     nx, ny, nz = 5, 5, 5
