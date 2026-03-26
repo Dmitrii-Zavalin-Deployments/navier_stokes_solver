@@ -1,7 +1,6 @@
 # src/step3/ops/divergence.py
 
 import logging
-
 import numpy as np
 
 from src.common.field_schema import FI
@@ -19,20 +18,20 @@ def compute_local_divergence_v_star(block: StencilBlock) -> float:
     
     Compliance:
     - Rule 7: Forensic Traceability & Fail-Fast math audit.
-    - Rule 9: Unified Foundation Access via get_field().item().
+    - Rule 9: Unified Foundation Access via Sovereign Scalars.
     """
     
     # 1. Access intermediate velocity components (FI.VX_STAR, etc.)
-    # Using .item() to collapse (1,1) array views into scalars (Prevents TypeErrors)
+    # The Cell foundation now ensures these are returned as native floats.
     try:
-        u_ip = block.i_plus.get_field(FI.VX_STAR).item()
-        u_im = block.i_minus.get_field(FI.VX_STAR).item()
+        u_ip = block.i_plus.get_field(FI.VX_STAR)
+        u_im = block.i_minus.get_field(FI.VX_STAR)
         
-        v_jp = block.j_plus.get_field(FI.VY_STAR).item()
-        v_jm = block.j_minus.get_field(FI.VY_STAR).item()
+        v_jp = block.j_plus.get_field(FI.VY_STAR)
+        v_jm = block.j_minus.get_field(FI.VY_STAR)
         
-        w_kp = block.k_plus.get_field(FI.VZ_STAR).item()
-        w_km = block.k_minus.get_field(FI.VZ_STAR).item()
+        w_kp = block.k_plus.get_field(FI.VZ_STAR)
+        w_km = block.k_minus.get_field(FI.VZ_STAR)
     except AttributeError as e:
         logger.critical(f"TOPOLOGY CRASH: Block {block.id} missing neighbors for Divergence.")
         raise e
@@ -50,12 +49,12 @@ def compute_local_divergence_v_star(block: StencilBlock) -> float:
     divergence_val = div_x + div_y + div_z
 
     # --- FORENSIC NUMERICAL AUDIT ---
-    # Rule 7: Detect PPE Poisoning before it starts
+    # Rule 7: Detect PPE Poisoning before it starts (Critical for SOR stability)
     if not np.isfinite(divergence_val):
         logger.error(
             f"NUMERICAL INSTABILITY: Non-finite divergence in {block.id} | "
             f"Components: [dx:{div_x:.2e}, dy:{div_y:.2e}, dz:{div_z:.2e}] | "
-            f"Result: {divergence_val}"
+            f"Result: {divergence_val:.4e}"
         )
         raise ArithmeticError(f"Divergence exploded in block {block.id}. PPE source term is poisoned.")
 

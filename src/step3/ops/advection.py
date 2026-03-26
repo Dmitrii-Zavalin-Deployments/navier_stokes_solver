@@ -23,14 +23,14 @@ def compute_local_advection(block: StencilBlock, field_id: FI) -> float:
     """
     
     # 1. Compute spatial derivatives (Central Differencing)
-    # Using .item() to ensure we work with scalars to avoid the 'Array Leak'
+    # Foundational scalars ensured by Cell accessors to avoid the 'Array Leak'
     try:
-        f_ip = block.i_plus.get_field(field_id).item()
-        f_im = block.i_minus.get_field(field_id).item()
-        f_jp = block.j_plus.get_field(field_id).item()
-        f_jm = block.j_minus.get_field(field_id).item()
-        f_kp = block.k_plus.get_field(field_id).item()
-        f_km = block.k_minus.get_field(field_id).item()
+        f_ip = block.i_plus.get_field(field_id)
+        f_im = block.i_minus.get_field(field_id)
+        f_jp = block.j_plus.get_field(field_id)
+        f_jm = block.j_minus.get_field(field_id)
+        f_kp = block.k_plus.get_field(field_id)
+        f_km = block.k_minus.get_field(field_id)
     except AttributeError as e:
         logger.critical(f"TOPOLOGY CRASH: Block {block.id} missing neighbor for field {field_id.name}")
         raise e
@@ -41,9 +41,9 @@ def compute_local_advection(block: StencilBlock, field_id: FI) -> float:
     df_dz = (f_kp - f_km) / (2.0 * block.dz)
 
     # 2. Compute cell-centered velocities
-    u_c = block.center.get_field(FI.VX).item()
-    v_c = block.center.get_field(FI.VY).item()
-    w_c = block.center.get_field(FI.VZ).item()
+    u_c = block.center.get_field(FI.VX)
+    v_c = block.center.get_field(FI.VY)
+    w_c = block.center.get_field(FI.VZ)
     
     # 3. Assemble advection term: (v ⋅ ∇)f
     advection_val = (u_c * df_dx) + (v_c * df_dy) + (w_c * df_dz)

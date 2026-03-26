@@ -1,6 +1,7 @@
 # src/step3/predictor.py
 
 import logging
+import numpy as np
 
 from src.common.field_schema import FI
 from src.common.stencil_block import StencilBlock
@@ -18,9 +19,14 @@ def compute_local_predictor_step(block: StencilBlock) -> None:
     Computes the intermediate star-velocity field v*.
     
     Formula: v* = v^n + (dt/rho) * (mu * lap(v^n) - rho * (v^n ⋅ ∇)v^n + F - grad(p^n))
+    
+    Compliance:
+    - Rule 7: Fail-Fast math audit.
+    - Rule 9: In-place update via Schema-Locked Accessors (Sovereign Scalars).
     """
     
     # 1. Local Operator calls
+    # Returns tuples/lists of scalars enforced by the Cell foundation
     lap_v = compute_local_laplacian_v_n(block)    
     adv_v = compute_local_advection_vector(block) 
     force = get_local_body_force(block)           
@@ -29,53 +35,36 @@ def compute_local_predictor_step(block: StencilBlock) -> None:
     # 2. Scaling factor
     dt_over_rho = get_dt_over_rho(block)
     
-    # 3. Retrieve current velocities
+    # 3. Retrieve current velocities (Sovereign Foundation Access)
     v_n = (
         block.center.get_field(FI.VX),
         block.center.get_field(FI.VY),
         block.center.get_field(FI.VZ)
     )
     
-    # --- [DIAGNOSTIC: OPERATOR OUTPUT AUDIT] ---
-    # We check the first component (index 0) of every operator result.
-    # If any of these show a 'shape' property, they are arrays, not scalars.
-    operators = {
-        "lap_v[0]": lap_v[0],
-        "adv_v[0]": adv_v[0],
-        "force[0]": force[0],
-        "grad_p[0]": grad_p[0],
-        "v_n[0]": v_n[0],
-        "dt_over_rho": dt_over_rho
-    }
-
-    for name, val in operators.items():
-        val_type = type(val)
-        shape = getattr(val, "shape", "N/A (Scalar)")
-        logger.debug(f"AUDIT [{name}]: Type={val_type} | Shape={shape} | Value={val}")
-
-    # 4. Compute and audit v_star components
+    # 4. Compute and apply v_star components
     star_fields = [FI.VX_STAR, FI.VY_STAR, FI.VZ_STAR]
     
     for i, field_id in enumerate(star_fields):
-        # Calculate intermediate value
-        # Note: If this fails, the logger above will have already told us which variable is the array.
-        try:
-            v_star_val = (v_n[i] + dt_over_rho * (
-                block.mu * lap_v[i] - block.rho * adv_v[i] + force[i] - grad_p[i]
-            )).item()
-            
-            # Final check before commitment
-            if hasattr(v_star_val, "__len__"):
-                logger.error(f"CONTAMINATION DETECTED: field {field_id} produced array of shape {v_star_val.shape}")
-                # Emergency cast to allow the log/run to proceed for debugging
-                v_star_val = float(v_star_val.item())
+        # 4. Calculate intermediate value (Pure scalar math)
+        # Physics implementation is now readable and decoupled from buffer logic.
+        v_star_val = v_n[i] + dt_over_rho * (
+            block.mu * lap_v[i] - block.rho * adv_v[i] + force[i] - grad_p[i]
+        )
+        
+        # --- RULE 7: FAIL-FAST MATH CHECK ---
+        # Catch numerical explosions before they propagate to the PPE step.
+        if not np.isfinite(v_star_val):
+            logger.critical(f"PREDICTOR FAILURE: Non-finite v_star in {block.id} | Component {i}")
+            raise ArithmeticError(f"Instability detected in momentum predictor for {field_id}")
 
-            if i == 0:
-                logger.info(f"DEBUG [Predictor]: Block {block.id} | VX_STAR: {v_star_val:.4e}")
+        # --- [STRATEGIC DEBUG LOG] ---
+        # Log the first component (VX_STAR) to monitor simulation health at a glance.
+        if i == 0:
+            logger.debug(f"DEBUG [Predictor]: Block {block.id} | VX_STAR: {v_star_val:.4e}")
 
-            # Commit to the Trial (Star) buffer
-            block.center.set_field(field_id, v_star_val)
-            
-        except Exception as e:
-            logger.critical(f"MATH FAILURE in component {i}: {e}")
-            raise
+    # 5. Commit to the Trial (Star) buffer
+    # Cell.set_field handles final type normalization to float.
+    block.center.set_field(field_id, v_star_val)
+
+    logger.debug(f"PREDICT [Success]: {block.id} updated with v_star.")

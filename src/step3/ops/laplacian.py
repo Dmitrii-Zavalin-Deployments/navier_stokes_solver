@@ -1,7 +1,6 @@
 # src/step3/ops/laplacian.py
 
 import logging
-
 import numpy as np
 
 from src.common.field_schema import FI
@@ -17,22 +16,22 @@ def compute_local_laplacian(block: StencilBlock, field_id: FI) -> float:
     Compliance:
     - Rule 7: Forensic Traceability & Fail-Fast math audit.
     - Rule 8: Centralized logic prevents drift between velocity and pressure ops.
-    - Rule 9: Unified Foundation Access via get_field().item().
+    - Rule 9: Unified Foundation Access via Sovereign Scalars (Native Floats).
     """
     
     # 1. Access center and neighbors via Foundation schema
-    # Using .item() to ensure scalar precision and prevent NumPy array leaks
+    # The Cell foundation now ensures these are returned as native floats.
     try:
-        f_c = block.center.get_field(field_id).item()
+        f_c = block.center.get_field(field_id)
         
-        f_ip = block.i_plus.get_field(field_id).item()
-        f_im = block.i_minus.get_field(field_id).item()
+        f_ip = block.i_plus.get_field(field_id)
+        f_im = block.i_minus.get_field(field_id)
         
-        f_jp = block.j_plus.get_field(field_id).item()
-        f_jm = block.j_minus.get_field(field_id).item()
+        f_jp = block.j_plus.get_field(field_id)
+        f_jm = block.j_minus.get_field(field_id)
         
-        f_kp = block.k_plus.get_field(field_id).item()
-        f_km = block.k_minus.get_field(field_id).item()
+        f_kp = block.k_plus.get_field(field_id)
+        f_km = block.k_minus.get_field(field_id)
     except AttributeError as e:
         logger.critical(f"TOPOLOGY CRASH: Block {block.id} missing neighbors for Laplacian of {field_id.name}.")
         raise e
@@ -45,6 +44,7 @@ def compute_local_laplacian(block: StencilBlock, field_id: FI) -> float:
     dx2, dy2, dz2 = block.dx**2, block.dy**2, block.dz**2
 
     # 3. Discrete Laplacian Calculation (Standard 7-point stencil)
+    # Pure scalar math - no NumPy object creation overhead.
     term_x = (f_ip - 2.0 * f_c + f_im) / dx2
     term_y = (f_jp - 2.0 * f_c + f_jm) / dy2
     term_z = (f_kp - 2.0 * f_c + f_km) / dz2 
@@ -52,6 +52,7 @@ def compute_local_laplacian(block: StencilBlock, field_id: FI) -> float:
     lap_val = term_x + term_y + term_z
 
     # --- FORENSIC NUMERICAL AUDIT ---
+    # Rule 7: Catch instability before it propagates through the SOR step.
     if not np.isfinite(lap_val):
         logger.error(
             f"NUMERICAL INSTABILITY: Non-finite Laplacian in {block.id} | "
