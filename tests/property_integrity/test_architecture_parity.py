@@ -117,7 +117,7 @@ def test_block_allocation_integrity(stage_name, factory):
         # Validation: Access the global buffer directly through the factory/manager
         # This confirms that the setter wrote to the SHARED memory, not a local copy.
         # Note: 'block.fields_buffer' or similar access depends on your specific container structure
-        actual_buffer_val = block.fields_buffer[block.center.index, field_id]
+        actual_buffer_val = block.center.fields_buffer[block.center.index, field_id]
 
         assert np.isclose(actual_buffer_val, test_signature), (
             f"RULE 9 CRITICAL VIOLATION in {stage_name}: {attr} is a detached copy. "
@@ -128,7 +128,7 @@ def test_block_allocation_integrity(stage_name, factory):
 
         # 4. GATE 3: Global Buffer Scaling Audit
         # Ensure the underlying memory allocation matches the expected grid dimensions.
-        actual_buffer_size = block.fields_buffer.size
+        actual_buffer_size = block.center.fields_buffer.size
         assert actual_buffer_size == n_total_elements, (
             f"{stage_name}: {attr} wiring mismatch. "
             f"Expected global buffer of {n_total_elements} elements, "
