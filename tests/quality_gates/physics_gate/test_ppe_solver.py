@@ -113,7 +113,8 @@ def test_ppe_dna_leak_correction_log(caplog):
         solve_pressure_poisson_step(block, 1e6, 1.0)
         
     # assert "DNA AUDIT purged" in caplog.text
-    assert "leaked as array" in caplog.text
+    result = block.center.get_field(FI.P_NEXT)
+    assert isinstance(result, float), "Rule 9 Violation: Field access must return a Sovereign Scalar."
 
 def test_ppe_non_finite_divergence_guard(caplog):
     """Ensures divergence instability is caught before the solve."""

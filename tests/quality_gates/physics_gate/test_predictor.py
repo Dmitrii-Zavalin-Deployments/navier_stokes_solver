@@ -89,8 +89,8 @@ def test_predictor_audit_logging(caplog):
     with caplog.at_level(logging.DEBUG):
         compute_local_predictor_step(block)
         
-    assert "AUDIT [lap_v[0]]" in caplog.text
-    assert "AUDIT [dt_over_rho]" in caplog.text
+    assert "DEBUG [Predictor]" in caplog.text
+    assert "PREDICT [Success]" in caplog.text
     assert "Type=" in caplog.text
 
 def test_predictor_component_info_logging(caplog):
