@@ -2,7 +2,6 @@
 
 import logging
 import math
-
 import numpy as np
 import pytest
 
@@ -17,8 +16,9 @@ logger = logging.getLogger(__name__)
 def create_real_applier_block(block_id="TestBlock_01"):
     """
     Rule 9: Creates a real StencilBlock with a dedicated NumPy buffer.
+    Fixes the 'id' setter error by using object.__setattr__ for slotted properties.
     """
-    # Pre-allocate buffer for all fields
+    # Pre-allocate buffer for all fields (1 row, matching FI.num_fields)
     buffer = np.zeros((1, FI.num_fields()))
     
     center = Cell(
@@ -29,6 +29,7 @@ def create_real_applier_block(block_id="TestBlock_01"):
     )
     
     # Minimal block setup to satisfy Rule 5
+    # Neighbors are None because Applier only mutates 'center'
     nb = [None] * 6
     block = StencilBlock(
         center=center,
@@ -38,7 +39,11 @@ def create_real_applier_block(block_id="TestBlock_01"):
         dx=0.1, dy=0.1, dz=0.1, dt=0.01,
         rho=1.0, mu=0.01, f_vals=(0,0,0)
     )
-    block.id = block_id
+    
+    # FIX: Since 'id' is a read-only property using __slots__, 
+    # we must mutate the underlying private attribute '_id'.
+    object.__setattr__(block, '_id', block_id)
+    
     return block
 
 def test_applier_enforcement_real_memory(caplog):
@@ -46,32 +51,26 @@ def test_applier_enforcement_real_memory(caplog):
     VERIFICATION: Ensure the Applier writes 1e10 to the real VX_STAR buffer
     and generates the Rule 7 forensic audit trail.
     """
-    # 1. Setup real hardware-backed block
     block = create_real_applier_block("ExplosionBlock_99")
     
-    # 2. Define rule: 'u' maps to VX_STAR (Field 3)
+    # u maps to VX_STAR per BC_FIELD_MAP in applier.py
     rule = {
         "location": "x_min",
         "type": "inflow",
         "values": {"u": 1.0e10} 
     }
 
-    # 3. Execute with Debug Logging
     with caplog.at_level(logging.DEBUG):
         apply_boundary_values(block, rule)
 
-    # --- ASSERTIONS ---
-    
     # A. Physical Memory Check (Rule 9)
-    # Access the raw numpy buffer directly to verify the side effect
+    # Extract scalar from numpy buffer for comparison
     actual_val = block.center.fields_buffer[0, FI.VX_STAR]
     assert math.isclose(actual_val, 1e10, rel_tol=1e-12)
     
     # B. Forensic Audit Trail (Rule 7)
     assert "APPLY [Start]: Block ExplosionBlock_99" in caplog.text
     assert f"Mapping u to Field {int(FI.VX_STAR)}" in caplog.text 
-    
-    # C. Final Success Signal
     assert "APPLY [Success]: Verified Field 3 = 1.0000e+10" in caplog.text
 
 def test_applier_unsupported_key_contract_violation(caplog):
@@ -81,7 +80,7 @@ def test_applier_unsupported_key_contract_violation(caplog):
     invalid_rule = {
         "location": "x_max",
         "type": "outlet",
-        "values": {"dark_matter_density": 99.9} # Unsupported key
+        "values": {"dark_matter_density": 99.9}
     }
 
     with caplog.at_level(logging.ERROR):
@@ -94,10 +93,9 @@ def test_applier_missing_metadata_strategic_failure(caplog):
     """Verify Rule 5: Fail fast if rule metadata is incomplete."""
     block = create_real_applier_block("BrokenBlock")
     
-    # Rule is missing 'type' (e.g. 'dirichlet', 'inflow')
     broken_rule = {
         "location": "y_min",
-        "values": {"p": 101325.0}
+        "values": {"p": 101325.0} # Missing 'type'
     }
 
     with caplog.at_level(logging.ERROR):
@@ -108,7 +106,7 @@ def test_applier_missing_metadata_strategic_failure(caplog):
 
 def test_applier_p_mapping_precision(caplog):
     """Verify that 'p' maps correctly to P_NEXT (Field 7) with machine precision."""
-    block = create_real_applier_block()
+    block = create_real_applier_block("PressureBlock")
     rule = {
         "location": "z_max",
         "type": "dirichlet",
@@ -117,6 +115,6 @@ def test_applier_p_mapping_precision(caplog):
 
     apply_boundary_values(block, rule)
     
-    # Check that P_NEXT was updated, NOT the current P foundation
-    assert block.center.get_field(FI.P_NEXT) == 50.5
-    assert block.center.get_field(FI.P) == 0.0 # Should remain untouched
+    # Check that P_NEXT was updated (Field 7), NOT the current P (Field 6)
+    assert float(block.center.get_field(FI.P_NEXT)) == 50.5
+    assert float(block.center.get_field(FI.P)) == 0.0
