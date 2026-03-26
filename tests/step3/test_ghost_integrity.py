@@ -62,7 +62,7 @@ def test_ghost_sync_atomic_precision(identity_block, caplog):
     center = block.center
     
     # Pre-Flight Check: Confirm poison is active
-    assert np.isnan(center.vx_star[0])
+    assert np.isnan(center.vx_star)
     
     # Execute the Operator
     with caplog.at_level(logging.DEBUG):
@@ -73,10 +73,10 @@ def test_ghost_sync_atomic_precision(identity_block, caplog):
     # Foundation VX for index 50 is 50.0
     expected_val = 50.0 
     
-    assert math.isclose(center.vx_star[0], expected_val, rel_tol=1e-12)
-    assert math.isclose(center.vy_star[0], 50.1, rel_tol=1e-12)
-    assert math.isclose(center.vz_star[0], 50.2, rel_tol=1e-12)
-    assert math.isclose(center.p_next[0],  50.6, rel_tol=1e-12) # Foundation P is 50.6
+    assert math.isclose(center.vx_star, expected_val, rel_tol=1e-12)
+    assert math.isclose(center.vy_star, 50.1, rel_tol=1e-12)
+    assert math.isclose(center.vz_star, 50.2, rel_tol=1e-12)
+    assert math.isclose(center.p_next,  50.6, rel_tol=1e-12) # Foundation P is 50.6
 
     # Rule 7: Log Audit
     assert "GHOST SYNC [Success]" in caplog.text
@@ -92,5 +92,5 @@ def test_ghost_sync_memory_isolation(identity_block):
     
     # If the operator accidentally swapped pointers instead of values, 
     # the Foundation P (50.6) would be corrupted.
-    assert block.center.p[0] == 50.6
-    assert block.center.vx[0] == 50.0
+    assert block.center.p == 50.6
+    assert block.center.vx == 50.0

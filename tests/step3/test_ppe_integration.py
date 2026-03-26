@@ -90,7 +90,7 @@ class TestPPESolverScientific:
         
         # 2. Verify Foundation Update
         # The center's P_NEXT in the actual NumPy buffer should no longer be 10.0
-        final_p = block.center.get_field(FI.P_NEXT).item()
+        final_p = block.center.get_field(FI.P_NEXT)
         assert final_p != 10.0
         assert np.isfinite(final_p)
 

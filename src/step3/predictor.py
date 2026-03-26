@@ -64,8 +64,8 @@ def compute_local_predictor_step(block: StencilBlock) -> None:
         if i == 0:
             logger.debug(f"DEBUG [Predictor]: Block {block.id} | VX_STAR: {v_star_val:.4e}")
 
-    # 5. Commit to the Trial (Star) buffer
-    # Cell.set_field handles final type normalization to float.
-    block.center.set_field(field_id, v_star_val)
+        # 5. Commit to the Trial (Star) buffer
+        # Cell.set_field handles final type normalization to float.
+        block.center.set_field(field_id, v_star_val)
 
     logger.debug(f"PREDICT [Success]: {block.id} updated with v_star.")
