@@ -1,6 +1,7 @@
 # src/step3/ops/laplacian.py
 
 import logging
+
 import numpy as np
 
 from src.common.field_schema import FI

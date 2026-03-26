@@ -1,9 +1,9 @@
 # tests/quality_gates/physics_gate/test_advection.py
 
 import logging
-import numpy as np
-import pytest
 import math
+
+import pytest
 
 from src.common.field_schema import FI
 from src.step3.ops.advection import (
