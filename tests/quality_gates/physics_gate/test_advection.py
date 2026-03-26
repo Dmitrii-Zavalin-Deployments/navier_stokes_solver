@@ -2,7 +2,7 @@
 
 import logging
 import math
-
+import numpy as np
 import pytest
 
 from src.common.field_schema import FI
@@ -25,7 +25,6 @@ def setup_analytical_stencil(velocity_vec, scalar_func):
     block = make_step3_output_dummy(nx=4, ny=4, nz=4)
     
     # Rule 5: Deterministic Override for math purity
-    # We use object.__setattr__ because these are slotted/protected
     object.__setattr__(block, '_dx', 1.0)
     object.__setattr__(block, '_dy', 1.0)
     object.__setattr__(block, '_dz', 1.0)
@@ -44,15 +43,15 @@ def setup_analytical_stencil(velocity_vec, scalar_func):
         
         # 2. Setup velocity fields (VX, VY, VZ)
         if cell == block.center:
-            # Driving velocity at the center
             cell.set_field(FI.VX, velocity_vec[0])
             cell.set_field(FI.VY, velocity_vec[1])
             cell.set_field(FI.VZ, velocity_vec[2])
         else:
-            # Neighbors define the gradient of the field (advection vector test)
+            # Neighbors define the gradient of the field
             val = float(scalar_func(i, j, k))
+            # We use VX here to test vector component isolation in Scenario 3
             cell.set_field(FI.VX, val)
-            cell.set_field(FI.VY, 0.0) # Keep others zero for isolation
+            cell.set_field(FI.VY, 0.0) 
             cell.set_field(FI.VZ, 0.0)
             
     return block
@@ -75,8 +74,8 @@ def test_advection_linear_fidelity(caplog):
     with caplog.at_level(logging.DEBUG):
         result = compute_local_advection(block, FI.P)
     
-    # Central Diff: (f_ip - f_im)/2 = (2-0)/2 = 1.0
-    # Advection: 1*1 + 1*1 + 1*1 = 3.0
+    # Central Diff calculation check: (f_ip - f_im)/2 = (2-0)/2 = 1.0
+    # Result: 1.0*1.0 + 1.0*1.0 + 1.0*1.0 = 3.0
     assert math.isclose(result, 3.0, rel_tol=1e-12)
 
 def test_advection_vector_component_isolation(caplog):
@@ -95,7 +94,8 @@ def test_advection_vector_component_isolation(caplog):
 
 def test_advection_numerical_instability_logger(caplog):
     """Verify Rule 7: Non-finite values trigger ERROR logs and ArithmeticError."""
-    block = setup_analytical_stencil((1e30, 0.0, 0.0), lambda i, j, k: i * 1e30)
+    # Force absolute infinity to guarantee fail-fast audit triggers
+    block = setup_analytical_stencil((np.inf, 0.0, 0.0), lambda i, j, k: i)
     
     with caplog.at_level(logging.ERROR):
         with pytest.raises(ArithmeticError, match="Advection term exploded"):
@@ -118,8 +118,15 @@ def test_advection_topology_crash_logger(caplog):
     assert "missing neighbor" in caplog.text
 
 def test_advection_vector_failure_logger(caplog):
-    """Verify ERROR log when the advection wrapper fails."""
-    block = make_step1_output_dummy() # Use a dummy block
+    """
+    Verify ERROR log when the advection wrapper fails.
+    Compliance: Fixed Type-Mismatch (SolverState vs StencilBlock).
+    """
+    # 1. Arrange: Extract the actual StencilBlock from the SolverState
+    state = make_step1_output_dummy()
+    block = state.stencil_matrix[0]
+    
+    # 2. Break the block specifically
     object.__setattr__(block, '_center', None) 
     
     with caplog.at_level(logging.ERROR):
