@@ -53,7 +53,7 @@ def compute_local_divergence_v_star(block: StencilBlock) -> float:
     # Rule 7: Detect PPE Poisoning before it starts (Critical for SOR stability)
     if not np.isfinite(divergence_val):
         logger.error(
-            f"PPE MATH ERROR: Non-finite divergence in {block.id} | "
+            f"MATH FAILURE: Non-finite divergence in {block.id} | "
             f"Components: [dx:{div_x:.2e}, dy:{div_y:.2e}, dz:{div_z:.2e}] | "
             f"Result: {divergence_val:.4e}"
         )

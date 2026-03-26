@@ -76,44 +76,67 @@ def test_lifecycle_grid_dimensions_match_fields(stage_name, factory):
 @pytest.mark.parametrize("stage_name, factory", BLOCK_BASED_STAGES)
 def test_block_allocation_integrity(stage_name, factory):
     """
-    Validation: Verify StencilBlocks are wired to the global Foundation buffer.
-    In Step 3, Cell attributes (vx, vy, etc.) act as views into the monolithic array.
+    Validation: Verify StencilBlocks are wired to the global Foundation buffer (Rule 9).
+    In Step 3, Cell attributes act as pointers/views into the monolithic array.
     """
-    nx, ny, nz = 5, 5, 5
-    # The total volume including the +2 ghost padding: (5+2)^3 = 343
-    n_expected = (nx + 2) * (ny + 2) * (nz + 2)
+    import numpy as np
+    from src.common.field_schema import FI
     
+    nx, ny, nz = 5, 5, 5
+    # Standard ghost-cell padding (+2) results in (5+2)^3 = 343 cells
+    n_expected_cells = (nx + 2) * (ny + 2) * (nz + 2)
+    n_total_elements = n_expected_cells * FI.num_fields()
+    
+    # Initialize the block using the provided factory
     block = factory(nx=nx, ny=ny, nz=nz)
     
     # Audit each physical field for wiring integrity
     for attr in ["vx", "vy", "vz", "p"]:
+        # 1. Verification of existence
         val = getattr(block.center, attr)
-        
         assert val is not None, f"{stage_name}: Component {attr} is None"
-        
-        # GATE 1: The "View" Integrity (Object Layer)
-        # Each Cell attribute must be a single-element view (size 1)
-        assert isinstance(val, float), (
-            f"{stage_name}: {attr} should be a single-element view, "
-            f"but detected size {type(val)}."
+
+        # 2. GATE 1: Type Integrity
+        # We allow float or numpy types, provided they are effectively scalars.
+        assert isinstance(val, (float, np.float64, np.ndarray)), (
+            f"{stage_name}: {attr} returned unexpected type {type(val)}."
         )
 
-        # GATE 2: The "Foundation" Integrity (NumPy Layer)
-        # We check '.base' to ensure it is wired to the global [Cells x Fields] buffer.
-        assert hasattr(val, "base") and val.base is not None, (
-            f"{stage_name}: {attr} is a detached copy (Rule 9 Violation). "
-            "Memory must be a VIEW of the global Foundation buffer."
+        # 3. GATE 2: The "Foundation" Identity Check (Rule 9 - Structural Persistence)
+        # We verify that the 'Wiring' (Object) correctly manipulates the 'Foundation' (Buffer).
+        test_signature = 123.456789
+        field_id = FI[attr.upper()]
+
+        # Action: Set value via the Object's explicit setter
+        # Example: block.center.set_vx(123.456)
+        setter_name = f"set_{attr.lower()}"
+        attr_setter = getattr(block.center, setter_name)
+        attr_setter(test_signature)
+
+        # Validation: Access the global buffer directly through the factory/manager
+        # This confirms that the setter wrote to the SHARED memory, not a local copy.
+        # Note: 'block.fields_buffer' or similar access depends on your specific container structure
+        actual_buffer_val = block.fields_buffer[block.center.index, field_id]
+
+        assert np.isclose(actual_buffer_val, test_signature), (
+            f"RULE 9 CRITICAL VIOLATION in {stage_name}: {attr} is a detached copy. "
+            f"Object wrote {test_signature} to index {block.center.index}, "
+            f"but Foundation Buffer contains {actual_buffer_val}. "
+            "Memory MUST be a view of the global buffer to ensure spatial coupling."
         )
-        
-        # Calculation: 343 cells * 9 fields = 3087
-        n_total_foundation = n_expected * FI.num_fields()
-        actual_buffer_size = val.base.size
-        
-        assert actual_buffer_size == n_total_foundation, (
+
+        # 4. GATE 3: Global Buffer Scaling Audit
+        # Ensure the underlying memory allocation matches the expected grid dimensions.
+        actual_buffer_size = block.fields_buffer.size
+        assert actual_buffer_size == n_total_elements, (
             f"{stage_name}: {attr} wiring mismatch. "
-            f"Expected global buffer of {n_total_foundation}, "
+            f"Expected global buffer of {n_total_elements} elements, "
             f"but detected {actual_buffer_size}."
         )
+
+    # Cleanup: Reset the test signature to zero to maintain a clean state for other tests
+    for attr in ["vx", "vy", "vz", "p"]:
+        getattr(block.center, f"set_{attr.lower()}")(0.0)
 
 # --- PHYSICS & BOUNDARY PERSISTENCE ---
 

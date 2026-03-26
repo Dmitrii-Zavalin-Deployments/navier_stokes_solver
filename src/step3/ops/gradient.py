@@ -61,7 +61,7 @@ def compute_local_gradient_p(block: StencilBlock, field_id: FI = FI.P) -> tuple[
     # We use .all() because grad is a tuple of components.
     if not np.isfinite(grad).all():
         logger.error(
-            f"PPE MATH ERROR: Gradient exploded in {block.id} | "
+            f"MATH FAILURE: Gradient exploded in {block.id} | "
             f"Field: {field_id.name} | "
             f"Grad components: [{grad_x:.2e}, {grad_y:.2e}, {grad_z:.2e}]"
         )

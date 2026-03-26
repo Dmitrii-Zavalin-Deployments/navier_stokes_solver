@@ -43,6 +43,7 @@ def apply_boundary_values(block: StencilBlock, rule: dict) -> None:
             block.center.set_field(field_id, value)
             
             # Rule 7: Clean diagnostic trace without forensic bloat.
+            logger.debug(f'Mapping u to Field {field_id}')
             logger.debug(
                 f"APPLY [Success]: Block {block.id} | Location: {location} | "
                 f"Field {field_id.name} set to {float(value):.4e}"

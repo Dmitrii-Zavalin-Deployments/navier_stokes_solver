@@ -29,7 +29,7 @@ def get_dt_over_rho(block: StencilBlock) -> float:
 
     # Forensic Audit
     if not np.isfinite(scaling):
-        logger.error(f"PPE MATH ERROR: dt/rho exploded in {block.id} (dt={block.dt}, rho={block.rho})")
+        logger.error(f"MATH FAILURE: dt/rho exploded in {block.id} (dt={block.dt}, rho={block.rho})")
         raise ArithmeticError(f"Scaling factor dt/rho is non-finite in block {block.id}")
 
     return scaling
@@ -54,7 +54,7 @@ def get_rho_over_dt(block: StencilBlock) -> float:
 
     # Forensic Audit
     if not np.isfinite(scaling):
-        logger.error(f"PPE MATH ERROR: rho/dt exploded in {block.id} (rho={block.rho}, dt={block.dt})")
+        logger.error(f"MATH FAILURE: rho/dt exploded in {block.id} (rho={block.rho}, dt={block.dt})")
         raise ArithmeticError(f"Scaling factor rho/dt is non-finite in block {block.id}")
 
     return scaling

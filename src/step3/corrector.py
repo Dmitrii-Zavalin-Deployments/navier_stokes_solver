@@ -46,4 +46,4 @@ def apply_local_velocity_correction(block: StencilBlock) -> None:
     block.center.set_field(FI.VY_STAR, v_new[1])
     block.center.set_field(FI.VZ_STAR, v_new[2])
 
-    logger.debug(f"AUDIT [Correction]: Success: Block {block.id} updated with corrected velocities.")
+    logger.debug(f"CORRECT [Success]: Block {block.id} updated with corrected velocities.")

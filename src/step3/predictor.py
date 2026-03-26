@@ -62,7 +62,7 @@ def compute_local_predictor_step(block: StencilBlock) -> None:
         # --- [STRATEGIC DEBUG LOG] ---
         # Log the first component (VX_STAR) to monitor simulation health at a glance.
         if i == 0:
-            logger.debug(f"DEBUG [Predictor]: Block {block.id} | VX_STAR: {v_star_val:.4e}")
+            logger.debug("DEBUG [Predictor]: Type=Sovereign | Block %s | VX_STAR: %s", block.id, v_star_val)
 
         # 5. Commit to the Trial (Star) buffer
         # Cell.set_field handles final type normalization to float.
