@@ -23,6 +23,7 @@ def compute_local_gradient_p(block: StencilBlock, field_id: FI = FI.P) -> tuple[
     # 1. Topology & Field Access Guard (Rule 8)
     try:
         # Central difference requires both neighbors on each axis
+        # .item() ensures we work with scalar floats and avoid NumPy array leaks
         p_im = block.i_minus.get_field(field_id).item()
         p_ip = block.i_plus.get_field(field_id).item()
         
@@ -31,12 +32,15 @@ def compute_local_gradient_p(block: StencilBlock, field_id: FI = FI.P) -> tuple[
         
         p_km = block.k_minus.get_field(field_id).item()
         p_kp = block.k_plus.get_field(field_id).item()
-    except AttributeError:
+        
+    except AttributeError as e:
+        # Rule 7: Log the topology break with CRITICAL severity
         logger.critical(
             f"TOPOLOGY CRASH: Block {block.id} missing neighbors for Gradient of {field_id.name}. "
             "Check boundary condition synchronization."
         )
-        raise AttributeError(f"Incomplete stencil for gradient in block {block.id}")
+        # Compliance (B904): Use 'from e' to preserve the original traceback for forensic audit
+        raise AttributeError(f"Incomplete stencil for gradient in block {block.id}") from e
 
     # 2. Geometry Guard (Rule 7)
     if block.dx <= 0 or block.dy <= 0 or block.dz <= 0:
