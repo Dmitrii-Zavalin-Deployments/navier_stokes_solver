@@ -1,14 +1,15 @@
 # tests/step3/test_dispatcher_priority.py
 
-import pytest
 import logging
-import numpy as np
+
+import pytest
+
+from src.common.stencil_block import StencilBlock
+from src.step2.factory import get_cell
+from src.step3.boundaries.dispatcher import get_applicable_boundary_configs
 
 # Rule 4 & 5: Use the centralized dummy factory for SSoT
 from tests.helpers.solver_step1_output_dummy import make_step1_output_dummy
-from src.step2.factory import get_cell
-from src.step3.boundaries.dispatcher import get_applicable_boundary_configs
-from src.common.stencil_block import StencilBlock
 
 logger = logging.getLogger(__name__)
 
