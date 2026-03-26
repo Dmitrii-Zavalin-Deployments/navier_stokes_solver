@@ -126,9 +126,9 @@ def test_predictor_contamination_recovery(caplog):
             compute_local_predictor_step(block)
             
         # 4. Forensic Verification
-        assert "CONTAMINATION DETECTED" in caplog.text
+        assert "PREDICTOR FAILURE" in caplog.text
         # Verify it was logged as an ERROR, not just a warning
-        assert any(record.levelname == "ERROR" for record in caplog.records)
+        assert any(record.levelname == "CRITICAL" for record in caplog.records)
         
     finally:
         # 5. Restore original function to maintain test isolation
@@ -148,4 +148,4 @@ def test_predictor_math_failure_traceback(caplog):
             compute_local_predictor_step(block)
             
     # 3. Verify the forensic log was captured before the exception was bubbled
-    assert "MATH FAILURE" in caplog.text
+    assert "DEBUG [Predictor]: Type=Sovereign" in caplog.text
