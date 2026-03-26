@@ -1,13 +1,14 @@
 # tests/quality_gates/physics_gate/test_corrector.py
 
 import logging
-import pytest
+
 import numpy as np
+import pytest
 
 from src.common.field_schema import FI
 from src.step3.corrector import apply_local_velocity_correction
-from src.step3.ops.gradient import compute_local_gradient_p
 from tests.helpers.solver_step3_output_dummy import make_step3_output_dummy
+
 
 def setup_integration_block(block, dt=1.0, rho=1.0):
     """
