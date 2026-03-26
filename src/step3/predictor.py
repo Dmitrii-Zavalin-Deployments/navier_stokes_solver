@@ -1,7 +1,6 @@
 # src/step3/predictor.py
 
 import logging
-
 import numpy as np
 
 from src.common.field_schema import FI
@@ -22,12 +21,16 @@ def compute_local_predictor_step(block: StencilBlock) -> None:
     Formula: v* = v^n + (dt/rho) * (mu * lap(v^n) - rho * (v^n ⋅ ∇)v^n + F - grad(p^n))
     
     Compliance:
-    - Rule 7: Fail-Fast math audit.
+    - Rule 7: Fail-Fast Traceability (Forensic Log Entry).
     - Rule 9: In-place update via Schema-Locked Accessors (Sovereign Scalars).
     """
     
+    # --- RULE 7: FORENSIC TRACEABILITY ---
+    # Log entry immediately to record the 'Sovereign' state before operator execution.
+    logger.debug("DEBUG [Predictor]: Type=Sovereign | Target=%s", block.id)
+
     # 1. Local Operator calls
-    # Returns tuples/lists of scalars enforced by the Cell foundation
+    # Note: Operators (like Laplacian) perform their own internal Rule 7 finite audits.
     lap_v = compute_local_laplacian_v_n(block)    
     adv_v = compute_local_advection_vector(block) 
     force = get_local_body_force(block)           
@@ -48,24 +51,18 @@ def compute_local_predictor_step(block: StencilBlock) -> None:
     
     for i, field_id in enumerate(star_fields):
         # 4. Calculate intermediate value (Pure scalar math)
-        # Physics implementation is now readable and decoupled from buffer logic.
+        # Constants mu and rho are validated at Step 1 (Hydration).
         v_star_val = v_n[i] + dt_over_rho * (
             block.mu * lap_v[i] - block.rho * adv_v[i] + force[i] - grad_p[i]
         )
         
         # --- RULE 7: FAIL-FAST MATH CHECK ---
-        # Catch numerical explosions before they propagate to the PPE step.
+        # Final gate to catch numerical explosions before they propagate to the PPE step.
         if not np.isfinite(v_star_val):
-            logger.critical(f"PREDICTOR FAILURE: Non-finite v_star in {block.id} | Component {i}")
+            logger.critical("PREDICTOR FAILURE: Non-finite v_star in %s | Component %d", block.id, i)
             raise ArithmeticError(f"Instability detected in momentum predictor for {field_id}")
 
-        # --- [STRATEGIC DEBUG LOG] ---
-        # Log the first component (VX_STAR) to monitor simulation health at a glance.
-        if i == 0:
-            logger.debug("DEBUG [Predictor]: Type=Sovereign | Block %s | VX_STAR: %s", block.id, v_star_val)
-
         # 5. Commit to the Trial (Star) buffer
-        # Cell.set_field handles final type normalization to float.
         block.center.set_field(field_id, v_star_val)
 
-    logger.debug(f"PREDICT [Success]: {block.id} updated with v_star.")
+    logger.debug("PREDICT [Success]: %s updated with v_star.", block.id)
