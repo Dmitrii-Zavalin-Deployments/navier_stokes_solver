@@ -141,7 +141,7 @@ def test_predictor_math_failure_traceback(caplog):
     # 1. Force a specific contract failure by deleting the viscosity coefficient
     delattr(block, '_mu')
     
-    with caplog.at_level(logging.CRITICAL):
+    with caplog.at_level(logging.DEBUG):
         # 2. Rule 7/B017: Target AttributeError specifically to ensure 
         # the test doesn't pass for the wrong reasons (like a SyntaxError).
         with pytest.raises(AttributeError):

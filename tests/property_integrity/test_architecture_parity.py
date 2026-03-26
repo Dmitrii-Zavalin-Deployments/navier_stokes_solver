@@ -135,10 +135,6 @@ def test_block_allocation_integrity(stage_name, factory):
             f"but detected {actual_buffer_size}."
         )
 
-    # Cleanup: Reset the test signature to zero to maintain a clean state for other tests
-    for attr in ["vx", "vy", "vz", "p"]:
-        getattr(block.center, f"set_{attr.lower()}")(0.0)
-
 # --- PHYSICS & BOUNDARY PERSISTENCE ---
 
 @pytest.mark.parametrize("stage_name, factory", ALL_STAGES)
