@@ -11,6 +11,7 @@ from src.step3.ops.advection import (
     compute_local_advection,
     compute_local_advection_vector,
 )
+
 # Rule 6/9: Using Step 2/3 dummies to ensure stencil_matrix is fully initialized
 from tests.helpers.solver_step2_output_dummy import make_step2_output_dummy
 from tests.helpers.solver_step3_output_dummy import make_step3_output_dummy
