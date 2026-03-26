@@ -127,12 +127,12 @@ def test_laplacian_instability_logger(caplog):
     assert "Field: P" in caplog.text
 
 def test_laplacian_vector_failure_logger(caplog):
-    """Verify ERROR log when the vector wrapper fails."""
+    """Verify ERROR log when the vector wrapper fails due to topology."""
     block = make_step3_output_dummy()
-    object.__setattr__(block, '_center', None) # Force internal failure
+    object.__setattr__(block, '_center', None) # Force AttributeError
     
     with caplog.at_level(logging.ERROR):
-        with pytest.raises(Exception):
+        with pytest.raises(AttributeError):
             compute_local_laplacian_v_n(block)
             
     assert "OPS [Failure]" in caplog.text

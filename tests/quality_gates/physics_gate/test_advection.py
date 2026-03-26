@@ -117,12 +117,12 @@ def test_advection_topology_crash_logger(caplog):
     assert "missing neighbor" in caplog.text
 
 def test_advection_vector_failure_logger(caplog):
-    """Verify that vector-level failures are logged."""
-    block = make_step3_output_dummy()
-    object.__setattr__(block, '_center', None) # Force a hard crash
+    """Verify ERROR log when the advection wrapper fails."""
+    block = make_step1_output_dummy() # Use a dummy block
+    object.__setattr__(block, '_center', None) 
     
     with caplog.at_level(logging.ERROR):
-        with pytest.raises(Exception):
+        with pytest.raises(AttributeError):
             compute_local_advection_vector(block)
             
     assert "OPS [Failure]" in caplog.text

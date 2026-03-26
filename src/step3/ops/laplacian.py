@@ -38,9 +38,8 @@ def compute_local_laplacian(block: StencilBlock, field_id: FI) -> float:
         raise e
 
     # 2. Geometry Setup (Rule 4: SSoT from block)
-    # Check for zero dimensions before squaring to provide a better error message
     if block.dx <= 0 or block.dy <= 0 or block.dz <= 0:
-        logger.critical(f"GEOMETRY CRASH: Block {block.id} has non-positive dimensions: [{block.dx}, {block.dy}, {block.dz}]")
+        logger.critical(f"GEOMETRY CRASH: Block {block.id} has non-positive dimensions.")
         raise ZeroDivisionError(f"Invalid geometry in block {block.id}")
 
     dx2, dy2, dz2 = block.dx**2, block.dy**2, block.dz**2
@@ -48,20 +47,18 @@ def compute_local_laplacian(block: StencilBlock, field_id: FI) -> float:
     # 3. Discrete Laplacian Calculation (Standard 7-point stencil)
     term_x = (f_ip - 2.0 * f_c + f_im) / dx2
     term_y = (f_jp - 2.0 * f_c + f_jm) / dy2
-    term_z = (f_kp - f_km - 2.0 * f_c + f_kp) / dz2 # Logical check on k-neighbors
+    term_z = (f_kp - 2.0 * f_c + f_km) / dz2 
     
-    # Correction of a potential typo in the original logic to ensure symmetry:
-    # (f_kp - 2.0 * f_c + f_km) / dz2
-    lap_val = term_x + term_y + ((f_kp - 2.0 * f_c + f_km) / dz2)
+    lap_val = term_x + term_y + term_z
 
     # --- FORENSIC NUMERICAL AUDIT ---
     if not np.isfinite(lap_val):
         logger.error(
             f"NUMERICAL INSTABILITY: Non-finite Laplacian in {block.id} | "
             f"Field: {field_id.name} | Center Val: {f_c:.2e} | "
-            f"Terms [X:{term_x:.2e}, Y:{term_y:.2e}, Z:{(f_kp-2.0*f_c+f_km)/dz2:.2e}]"
+            f"Terms [X:{term_x:.2e}, Y:{term_y:.2e}, Z:{term_z:.2e}]"
         )
-        raise ArithmeticError(f"Laplacian exploded in block {block.id} for field {field_id.name}")
+        raise ArithmeticError(f"Laplacian exploded in block {block.id}")
 
     return lap_val
 
