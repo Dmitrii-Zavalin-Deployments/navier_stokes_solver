@@ -1,11 +1,12 @@
 # tests/quality_gates/physics_gate/test_scaling.py
 
 import logging
-import numpy as np
+
 import pytest
 
 from src.step3.ops.scaling import get_dt_over_rho, get_rho_over_dt
 from tests.helpers.solver_step3_output_dummy import make_step3_output_dummy
+
 
 def setup_scaling_block(block, dt, rho):
     """
