@@ -104,22 +104,19 @@ def test_predictor_component_info_logging(caplog):
     assert "VX_STAR:" in caplog.text
 
 def test_predictor_contamination_recovery(caplog):
-    """
-    Verifies Rule 7: Contamination Detection.
-    If an operator accidentally returns an array, the predictor logs an ERROR 
-    and recovers using .item().
-    """
+    """Verifies Rule 7: Contamination Detection."""
     block = setup_predictor_block()
     
-    # Monkeypatch the Laplacian component to return a 1-element array instead of a float
-    # to trigger the hasattr(val, "__len__") check.
     from src.step3 import predictor
     original_lap = predictor.compute_local_laplacian_v_n
+    # Inject a 1-element array to trigger the check
     predictor.compute_local_laplacian_v_n = lambda b: (np.array([0.0]), 0.0, 0.0)
     
     try:
-        with caplog.at_level(logging.ERROR):
+        # FIX: Explicitly target the "Solver.Predictor" logger name
+        with caplog.at_level(logging.ERROR, logger="Solver.Predictor"):
             compute_local_predictor_step(block)
+            
         assert "CONTAMINATION DETECTED" in caplog.text
     finally:
         # Restore original function to avoid test bleed
