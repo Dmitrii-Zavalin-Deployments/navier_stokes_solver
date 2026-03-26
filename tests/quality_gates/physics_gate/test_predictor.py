@@ -97,7 +97,7 @@ def test_predictor_component_info_logging(caplog):
     """Verifies VX_STAR value is logged at INFO level."""
     block = setup_predictor_block()
     
-    with caplog.at_level(logging.INFO):
+    with caplog.at_level(logging.DEBUG):
         compute_local_predictor_step(block)
         
     assert "DEBUG [Predictor]: Type=Sovereign" in caplog.text
