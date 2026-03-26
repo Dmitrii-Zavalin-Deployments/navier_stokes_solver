@@ -117,5 +117,5 @@ def test_applier_p_mapping_precision(caplog):
     apply_boundary_values(block, rule)
     
     # Check that P_NEXT was updated (Field 7), NOT the current P (Field 6)
-    assert block.center.get_field(FI.P_NEXT).item() == 50.5
-    assert block.center.get_field(FI.P).item() == 0.0
+    assert block.center.get_field(FI.P_NEXT) == 50.5
+    assert block.center.get_field(FI.P) == 0.0

@@ -107,7 +107,7 @@ def test_predictor_contamination_recovery(caplog):
     """
     Verifies Rule 7: DNA Audit.
     Ensures that if the Laplacian promotes a float to an array, the 
-    predictor logs the contamination and recovers using .item().
+    predictor logs the contamination and recovers using .
     """
     block = setup_predictor_block()
     

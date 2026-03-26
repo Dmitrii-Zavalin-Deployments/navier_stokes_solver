@@ -372,7 +372,7 @@ class FieldManager(ValidatedContainer):
         self._set_safe("data", value, np.ndarray)
 
     def allocate(self, n_cells: int, dtype=np.float64):
-        self._data = np.zeros((n_cells, FI.num_fields()), dtype=dtype)
+        self._data = np.empty((n_cells, FI.num_fields()), dtype=dtype); self._data[:] = 0.0
 
 class ManifestManager(ValidatedContainer):
     __slots__ = ['_saved_snapshots', '_output_directory']

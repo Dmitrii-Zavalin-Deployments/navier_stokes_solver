@@ -51,7 +51,7 @@ def compute_local_advection(block: StencilBlock, field_id: FI) -> float:
     # --- FORENSIC NUMERICAL AUDIT ---
     if not np.isfinite(advection_val):
         logger.error(
-            f"NUMERICAL INSTABILITY: Non-finite advection in {block.id} | "
+            f"PPE MATH ERROR: Non-finite advection in {block.id} | "
             f"Field: {field_id.name} | Vel: [{u_c:.2e}, {v_c:.2e}, {w_c:.2e}] | "
             f"Gradients: [{df_dx:.2e}, {df_dy:.2e}, {df_dz:.2e}]"
         )

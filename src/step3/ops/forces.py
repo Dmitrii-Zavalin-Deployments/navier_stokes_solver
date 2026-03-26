@@ -44,7 +44,7 @@ def get_local_body_force(block: StencilBlock) -> tuple[float, float, float]:
     # We check for finiteness here to prevent 'NaN' from entering the VX_STAR calculation
     if not np.isfinite(forces).all():
         logger.error(
-            f"NUMERICAL INSTABILITY: Non-finite body forces detected in {block.id} | "
+            f"PPE MATH ERROR: Non-finite body forces detected in {block.id} | "
             f"F_vals: [{forces[0]:.2e}, {forces[1]:.2e}, {forces[2]:.2e}]"
         )
         raise ArithmeticError(f"Body force is non-finite in block {block.id}")

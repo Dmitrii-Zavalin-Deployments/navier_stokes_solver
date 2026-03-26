@@ -56,7 +56,7 @@ def compute_local_laplacian(block: StencilBlock, field_id: FI) -> float:
     # Rule 7: Catch instability before it propagates through the SOR step.
     if not np.isfinite(lap_val):
         logger.error(
-            f"NUMERICAL INSTABILITY: Non-finite Laplacian in {block.id} | "
+            f"PPE MATH ERROR: Non-finite Laplacian in {block.id} | "
             f"Field: {field_id.name} | Center Val: {f_c:.2e} | "
             f"Terms [X:{term_x:.2e}, Y:{term_y:.2e}, Z:{term_z:.2e}]"
         )
