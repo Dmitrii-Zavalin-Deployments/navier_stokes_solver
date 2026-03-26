@@ -26,8 +26,8 @@ def apply_boundary_values(block: StencilBlock, rule: dict) -> None:
     boundary_type = rule.get("type")
     
     if values is None or location is None or boundary_type is None:
-        logger.error(f"STRATEGIC FAILURE: Missing fields at {location=}")
-        raise ValueError(f"Boundary rule missing critical fields at {location=}")
+        logger.error(f"STRATEGIC FAILURE: Missing fields at location={location}")
+        raise ValueError(f"Boundary rule missing critical fields at location={location}")
 
     for key, value in values.items():
         field_id = BC_FIELD_MAP.get(key)

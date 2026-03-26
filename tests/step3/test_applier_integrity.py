@@ -95,7 +95,7 @@ def test_applier_missing_fields_failure(caplog):
     }
 
     with caplog.at_level(logging.ERROR):
-        with pytest.raises(ValueError, match="Missing fields at location"):
+        with pytest.raises(ValueError, match="Boundary rule missing critical fields at location="):
             apply_boundary_values(block, broken_rule)
             
     assert "STRATEGIC FAILURE" in caplog.text
