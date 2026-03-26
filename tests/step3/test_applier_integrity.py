@@ -1,101 +1,121 @@
 # tests/step3/test_applier_integrity.py
 
-import logging
-from unittest.mock import MagicMock
-
 import numpy as np
 import pytest
+import logging
+import math
 
 from src.common.field_schema import FI
+from src.common.cell import Cell
+from src.common.stencil_block import StencilBlock
 from src.step3.boundaries.applier import apply_boundary_values
 
+# Rule 7: Granular Traceability
+logger = logging.getLogger(__name__)
 
-def test_applier_enforcement_and_logging(caplog):
+def create_real_applier_block(block_id="TestBlock_01"):
     """
-    VERIFICATION: Ensure the Applier writes the 1e10 value to VX_STAR
-    and generates the Rule 7/Rule 9 required forensic audit trail.
+    Rule 9: Creates a real StencilBlock with a dedicated NumPy buffer.
     """
-    # 1. Setup Mock Block & Cell
-    block = MagicMock()
-    block.id = "ExplosionBlock_99"
+    # Pre-allocate buffer for all fields
+    buffer = np.zeros((1, FI.num_fields()))
     
-    # Simulate the Foundation/NumPy behavior where a value might 
-    # be stored/returned as a single-element array (The 'Array Leak').
-    stored_values = {}
+    center = Cell(
+        index=0, 
+        fields_buffer=buffer, 
+        nx_buf=3, ny_buf=3, 
+        is_ghost=True # Applier usually works on Ghost cells
+    )
     
-    def mock_set(fid, val): 
-        # Store as a numpy array to test the applier's robust .item() extraction
-        stored_values[fid] = np.array([val]) 
-        
-    def mock_get(fid): 
-        return stored_values.get(fid)
-    
-    block.center.set_field.side_effect = mock_set
-    block.center.get_field.side_effect = mock_get
+    # Minimal block setup to satisfy Rule 5
+    nb = [None] * 6
+    block = StencilBlock(
+        center=center,
+        i_minus=nb[0], i_plus=nb[1],
+        j_minus=nb[2], j_plus=nb[3],
+        k_minus=nb[4], k_plus=nb[5],
+        dx=0.1, dy=0.1, dz=0.1, dt=0.01,
+        rho=1.0, mu=0.01, f_vals=(0,0,0)
+    )
+    block.id = block_id
+    return block
 
-    # 2. Define the 'Explosion' Rule (Using 'u' which maps to FI.VX_STAR)
+def test_applier_enforcement_real_memory(caplog):
+    """
+    VERIFICATION: Ensure the Applier writes 1e10 to the real VX_STAR buffer
+    and generates the Rule 7 forensic audit trail.
+    """
+    # 1. Setup real hardware-backed block
+    block = create_real_applier_block("ExplosionBlock_99")
+    
+    # 2. Define rule: 'u' maps to VX_STAR (Field 3)
     rule = {
         "location": "x_min",
         "type": "inflow",
-        "values": {"u": 1e10} 
+        "values": {"u": 1.0e10} 
     }
 
-    # 3. Execute with Debug Logging (Rule 7 requirement)
+    # 3. Execute with Debug Logging
     with caplog.at_level(logging.DEBUG):
         apply_boundary_values(block, rule)
 
     # --- ASSERTIONS ---
     
-    # A. Physical Memory Check
-    # Verify the value was mapped to FI.VX_STAR (3)
-    # We check .item() because our mock simulated the NumPy storage.
-    assert stored_values[FI.VX_STAR].item() == 1e10
+    # A. Physical Memory Check (Rule 9)
+    # Access the raw numpy buffer directly to verify the side effect
+    actual_val = block.center.fields_buffer[0, FI.VX_STAR]
+    assert math.isclose(actual_val, 1e10, rel_tol=1e-12)
     
-    # B. Forensic Audit Trail Check (Rule 7 Compliance)
-    # Match the specific prefixes from applier.py
+    # B. Forensic Audit Trail (Rule 7)
     assert "APPLY [Start]: Block ExplosionBlock_99" in caplog.text
-    assert "Mapping u to Field 3" in caplog.text 
+    assert f"Mapping u to Field {int(FI.VX_STAR)}" in caplog.text 
     
-    # C. Verification & Scalar Extraction Check
-    # Verify the Audit log captures the Type/Shape forensic DNA
-    assert "VERIFY [Audit]: Field 3" in caplog.text
-    assert "Type: <class 'numpy.ndarray'>" in caplog.text
-    
-    # Verify the Final Success signal with float formatting (.4e)
+    # C. Final Success Signal
     assert "APPLY [Success]: Verified Field 3 = 1.0000e+10" in caplog.text
 
-
-def test_applier_contract_violation(caplog):
-    """Verify Rule 8: Invalid keys trigger Contract Violation error and raise KeyError."""
-    block = MagicMock()
-    block.id = "ErrorBlock_01"
+def test_applier_unsupported_key_contract_violation(caplog):
+    """Rule 8: Invalid keys must trigger a Contract Violation and KeyError."""
+    block = create_real_applier_block("ErrorBlock_01")
     
     invalid_rule = {
         "location": "x_max",
         "type": "outlet",
-        "values": {"invalid_key": 99.9}
+        "values": {"dark_matter_density": 99.9} # Unsupported key
     }
 
-    # Must raise KeyError as defined in the source contract
     with caplog.at_level(logging.ERROR):
         with pytest.raises(KeyError, match="Unsupported boundary key"):
             apply_boundary_values(block, invalid_rule)
     
-    # Verify the specific error message string
-    assert "CONTRACT VIOLATION: Unsupported key 'invalid_key'" in caplog.text
+    assert "CONTRACT VIOLATION: Unsupported key 'dark_matter_density'" in caplog.text
 
-
-def test_applier_missing_fields_failure(caplog):
-    """Verify Strategic Failure when critical rule metadata is missing."""
-    block = MagicMock()
-    # Rule missing 'type'
+def test_applier_missing_metadata_strategic_failure(caplog):
+    """Verify Rule 5: Fail fast if rule metadata is incomplete."""
+    block = create_real_applier_block("BrokenBlock")
+    
+    # Rule is missing 'type' (e.g. 'dirichlet', 'inflow')
     broken_rule = {
         "location": "y_min",
-        "values": {"u": 0.0}
+        "values": {"p": 101325.0}
     }
 
     with caplog.at_level(logging.ERROR):
-        with pytest.raises(ValueError, match="Boundary rule missing critical fields at location="):
+        with pytest.raises(ValueError, match="Boundary rule missing critical fields"):
             apply_boundary_values(block, broken_rule)
             
     assert "STRATEGIC FAILURE" in caplog.text
+
+def test_applier_p_mapping_precision(caplog):
+    """Verify that 'p' maps correctly to P_NEXT (Field 7) with machine precision."""
+    block = create_real_applier_block()
+    rule = {
+        "location": "z_max",
+        "type": "dirichlet",
+        "values": {"p": 50.5}
+    }
+
+    apply_boundary_values(block, rule)
+    
+    # Check that P_NEXT was updated, NOT the current P foundation
+    assert block.center.get_field(FI.P_NEXT) == 50.5
+    assert block.center.get_field(FI.P) == 0.0 # Should remain untouched
