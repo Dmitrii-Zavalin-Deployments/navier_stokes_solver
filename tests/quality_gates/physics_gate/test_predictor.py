@@ -94,14 +94,26 @@ def test_predictor_audit_logging(caplog):
     assert "Type=" in caplog.text
 
 def test_predictor_component_info_logging(caplog):
-    """Verifies VX_STAR value is logged at INFO level."""
+    """Verifies VX_STAR value is logged at DEBUG level during computation."""
+    print("\n--- [START] test_predictor_component_info_logging ---")
+    
     block = setup_predictor_block()
     
-    with caplog.at_level(logging.DEBUG):
+    # Silence memory noise to prevent log pollution
+    logging.getLogger("src.common.solver_state").setLevel(logging.ERROR)
+    
+    with caplog.at_level(logging.DEBUG, logger="Solver.Predictor"):
         compute_local_predictor_step(block)
         
-    assert "DEBUG [Predictor]: Type=Sovereign" in caplog.text
-    assert "VX_STAR:" in caplog.text
+    log_text = caplog.text
+    print(f"DEBUG [Test]: Full log output:\n{log_text}")
+    
+    # Assertions
+    assert "DEBUG [Predictor]: Type=Sovereign" in log_text
+    assert "VX_STAR:" in log_text
+    assert "PREDICT [Success]:" in log_text
+    
+    print("--- [END] test_predictor_component_info_logging ---\n")
 
 def test_predictor_contamination_recovery(caplog):
     """
