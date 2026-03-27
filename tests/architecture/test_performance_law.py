@@ -1,10 +1,10 @@
 # tests/architecture/test_performance_law.py
 
-import pytest
 import numpy as np
+
 from src.common.cell import Cell
 from src.common.stencil_block import StencilBlock
-from src.step2.stencil_assembler import orchestrate_step2 # Assuming it returns the list
+
 
 def test_law_of_performance_slots():
     """
@@ -26,7 +26,6 @@ def test_law_of_performance_no_object_arrays():
     Verification: Ensure the topology container is a standard Python list.
     """
     # This is a 'Static Analysis' style test
-    from src.step2 import stencil_assembler
     
     # We inspect the expected return type of the assembler
     # In your terminal, you saw: local_stencil_list = []
