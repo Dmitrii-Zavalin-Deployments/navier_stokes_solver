@@ -17,7 +17,7 @@ def test_gate_4_type_casting_integrity():
     
     # 1. Setup: Explicitly define input to avoid "Hidden Defaults" (Rule 5)
     # create_validated_input should require these to be passed or we set them here.
-    context = create_validated_input(nx=2, density=1.0) 
+    context = create_validated_input(nx=2); context.input_data = context; context.input_data.fluid_properties.density = "1000.0" 
     
     # Simulate raw JSON intake where types are often stringified
     context.input_data.grid.nx = "10"
@@ -42,7 +42,7 @@ def test_gate_4_drift_detection_and_safety():
     Compliance: Rule 0 (__slots__ protection) & Rule 7 (Numerical Truth).
     """
         
-    context = create_validated_input()
+    context = create_validated_input(); context.input_data = context
     state = orchestrate_step1(context)
     
     # 1. Test "Department Safe" Protection (ValidatedContainer logic)
@@ -64,7 +64,7 @@ def test_gate_4_foundation_readiness_lock():
     Compliance: Rule 2 (Zero-Debt / Pre-flight logic).
     """
         
-    context = create_validated_input()
+    context = create_validated_input(); context.input_data = context
     state = orchestrate_step1(context)
     
     # 1. Break the 'readiness' contract (Rule 5: No Structural Fallbacks)
@@ -83,7 +83,7 @@ def test_gate_4_vectorized_audit_grounding():
     Compliance: Rule 1 (Field Precision Audit) & Rule 7 (Numerical Truth).
     """
         
-    context = create_validated_input()
+    context = create_validated_input(); context.input_data = context
     state = orchestrate_step1(context)
     
     # 1. Inject a 'Numerical Storm' (NaN) into the monolithic Foundation (Rule 1)
