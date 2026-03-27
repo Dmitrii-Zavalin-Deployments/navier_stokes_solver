@@ -3,9 +3,9 @@
 import numpy as np
 import pytest
 
-from src.common.solver_input import GridInput
 from src.step1.helpers import generate_3d_masks
 from tests.helpers.solver_input_schema_dummy import create_validated_input
+
 
 def test_gate_1b_overflow_guard_logic():
     """
