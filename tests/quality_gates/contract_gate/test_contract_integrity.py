@@ -25,7 +25,7 @@ def test_gate_4_type_casting_integrity():
     context = wrap_in_context(solver_input)
     
     # Bypass setters to inject 'stringified' JSON data for testing
-    context.input_data.grid._nx = "64"
+    context.input_data.grid._nx = "2"
     context.input_data.fluid_properties._density = "1.225"
     
     # Execute Step 1 mapping
@@ -33,13 +33,13 @@ def test_gate_4_type_casting_integrity():
     
     # Assertions: Verify the 'No-Garbage' Principle via casting
     assert isinstance(state.grid.nx, int), f"Casting Failure: nx is {type(state.grid.nx)}"
-    assert state.grid.nx == 64
+    assert state.grid.nx == 2
     assert isinstance(state.fluid_properties.density, float)
     assert np.isclose(state.fluid_properties.density, 1.225)
 
 def test_gate_4_schema_validation_and_firewall():
     """
-    Verification: Ensure state.validate_against_schema() blocks incomplete states.
+    Verification: Ensure state.validate_against_schema("src/common/solver_input_schema.json") blocks incomplete states.
     Asserts: Validation fails on uninitialized/None fields (Double-Lock Barrier).
     """
     solver_input = create_validated_input()
@@ -52,7 +52,7 @@ def test_gate_4_schema_validation_and_firewall():
     # 2. Assert: The schema validator must catch the drift
     # This aligns with the 'Double-Lock' requirement in Line 74
     with pytest.raises(jsonschema.ValidationError): # Replace with specific jsonschema.ValidationError if imported
-        state.validate_against_schema()
+        state.validate_against_schema("src/common/solver_input_schema.json")
         
     # 3. Assert: ready_for_time_loop remains False (Sentinel Integrity)
     assert state.ready_for_time_loop is False
