@@ -75,7 +75,7 @@ def test_cloud_ingestor_pagination(mock_dbx_class):
     with patch("builtins.open", mock_open()):
         # DI: Injecting the mock_tm into the ingestor
         ingestor = CloudIngestor(mock_tm, "initial_refresh_token", log_path)
-        ingestor.sync("/remote", Path("/local"), [".h5"])
+        ingestor.sync("/remote", Path("./local_test_data"), [".h5"])
     
     # 4. Assertions (Forensic Audit)
     # Check that it started with the correct folder
