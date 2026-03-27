@@ -1,4 +1,4 @@
-# tests/property_integrity/test_vertical_inheritance.py
+# tests/architecture/test_orchestration_alignment.py
 
 import os
 
