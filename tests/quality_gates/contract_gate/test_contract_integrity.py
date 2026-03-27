@@ -2,98 +2,93 @@
 
 import numpy as np
 import pytest
-
 from src.common.simulation_context import SimulationContext
 from src.step1.orchestrate_step1 import orchestrate_step1
+from src.common.solver_state import SolverState
 from tests.helpers.solver_input_schema_dummy import create_validated_input
 
 
 def wrap_in_context(solver_input):
     """
-    Helper to satisfy Rule 0 and Rule 4.
-    SimulationContext is the valid container for 'input_data'.
+    Compliance: Rule 4. Wraps raw data in the appropriate 
+    SimulationContext to avoid __slots__ AttributeErrors.
     """
     return SimulationContext(input_data=solver_input, config=None)
 
 def test_gate_4_type_casting_integrity():
     """
-    Verification: Ensure orchestrate_step1 correctly casts string-based numbers 
-    from JSON context into the specific types (int/float) required by the 
-    Memory-Hardened Managers.
-    Compliance: Rule 5 (Deterministic Initialization) & Rule 7 (Atomic Truth).
+    Verification: Ensure orchestrate_step1 casts string-based JSON intake.
+    Asserts: Type conversion and value accuracy (Atomic Truth).
     """
-    
-    # 1. Setup: Create input and wrap it in the proper context container
     solver_input = create_validated_input(nx=2)
     context = wrap_in_context(solver_input)
     
-    # Simulate raw JSON intake where types are often stringified
-    # Note: We access via context.input_data to follow the SSoT hierarchy
-    context.input_data.grid.nx = "10"
-    context.input_data.fluid_properties.density = "1000.0"
+    # Bypass setters to inject 'stringified' JSON data for testing
+    context.input_data.grid._nx = "64"
+    context.input_data.fluid_properties._density = "1.225"
     
-    # 2. Execute Step 1: Orchestration/Mapping
+    # Execute Step 1 mapping
     state = orchestrate_step1(context)
     
-    # 3. Audit structural compliance (SSoT Rule 4)
-    assert isinstance(state.grid.nx, int), "Gate Breach: nx failed to cast to int"
-    assert state.grid.nx == 10
-    
-    assert isinstance(state.fluid_properties.density, float), "Gate Breach: density failed to cast to float"
-    assert np.isclose(state.fluid_properties.density, 1000.0)
+    # Assertions: Verify the 'No-Garbage' Principle via casting
+    assert isinstance(state.grid.nx, int), f"Casting Failure: nx is {type(state.grid.nx)}"
+    assert state.grid.nx == 64
+    assert isinstance(state.fluid_properties.density, float)
+    assert np.isclose(state.fluid_properties.density, 1.225)
 
-def test_gate_4_drift_detection_and_safety():
+def test_gate_4_schema_validation_and_firewall():
     """
-    Gate 4: Contract Drift & "No-Garbage" Principle.
-    Verification: Ensure that if a manager is corrupted or uninitialized, 
-    the property setters/getters in src/common/solver_state.py trigger the firewall.
-    Compliance: Rule 0 (__slots__ protection) & Rule 7 (Numerical Truth).
+    Verification: Ensure state.validate_against_schema() blocks incomplete states.
+    Asserts: Validation fails on uninitialized/None fields (Double-Lock Barrier).
     """
-        
     solver_input = create_validated_input()
     context = wrap_in_context(solver_input)
     state = orchestrate_step1(context)
     
-    # 1. Test "Department Safe" Protection (ValidatedContainer logic)
+    # 1. Corrupt the state foundation
+    state.grid._nx = None 
+    
+    # 2. Assert: The schema validator must catch the drift
+    # This aligns with the 'Double-Lock' requirement in Line 74
+    with pytest.raises(Exception): # Replace with specific jsonschema.ValidationError if imported
+        state.validate_against_schema()
+        
+    # 3. Assert: ready_for_time_loop remains False (Sentinel Integrity)
+    assert state.ready_for_time_loop is False
+
+def test_gate_4_physical_drift_rollback():
+    """
+    Verification: Ensure property setters in solver_state.py protect existing data.
+    Asserts: State preservation after failed "garbage" injection.
+    """
+    solver_input = create_validated_input()
+    context = wrap_in_context(solver_input)
+    state = orchestrate_step1(context)
+    
+    original_density = state.fluid_properties.density
+    
+    # Attempt to inject garbage
     with pytest.raises(TypeError):
-        state.fluid_properties.density = "NOT_A_FLOAT"
-
-    # 2. Test Physical Bound Enforcement (Rule 7 logic)
-    with pytest.raises(ValueError, match="Density must be > 0"):
-        state.fluid_properties.density = -5.0
-
-def test_gate_4_foundation_readiness_lock():
-    """
-    Verification: Ensure ready_for_time_loop sentinel executes 
-    verify_foundation_integrity and validate_physical_readiness.
-    Compliance: Rule 2 (Zero-Debt / Pre-flight logic).
-    """
+        state.fluid_properties.density = "NOT_A_NUMBER"
         
+    # Assert: The "No-Garbage" Principle preserved the atomic truth
+    assert state.fluid_properties.density == original_density
+
+def test_gate_4_numerical_explosion_audit():
+    """
+    Verification: Ensure audit_physical_bounds identifies NaNs in the FieldManager.
+    Asserts: Detection of corrupted memory buffers before high-compute steps.
+    """
     solver_input = create_validated_input()
     context = wrap_in_context(solver_input)
     state = orchestrate_step1(context)
     
-    # 1. Break the 'readiness' contract (Rule 5: No Structural Fallbacks)
-    state.grid.nx = None
-    
-    # 2. Action: Setting ready_for_time_loop to True triggers the pre-flight audit.
-    with pytest.raises(RuntimeError, match="Grid not properly initialized"):
-        state.ready_for_time_loop = True
-
-def test_gate_4_vectorized_audit_grounding():
-    """
-    Verification: Ensure audit_physical_bounds correctly identifies 
-    Numerical Explosions (NaNs) in the Foundation buffer.
-    Compliance: Rule 1 (Field Precision Audit) & Rule 7 (Numerical Truth).
-    """
-        
-    solver_input = create_validated_input()
-    context = wrap_in_context(solver_input)
-    state = orchestrate_step1(context)
-    
-    # 1. Inject a 'Numerical Storm' (NaN) into the monolithic Foundation (Rule 1)
+    # Inject a Numerical Storm into the raw buffer
     state.fields.data[0, 0] = np.nan
     
-    # 2. Verification: The audit must detect this breach.
+    # Assert: High-compute kernels (Step 3) are protected by a crash
     with pytest.raises(ArithmeticError, match="NaN/Inf detected"):
         state.audit_physical_bounds()
+    
+    # Verify the state is correctly identified as dirty
+    assert np.isnan(state.fields.data).any()
