@@ -1,12 +1,13 @@
 # tests/quality_gates/sensitivity_gate/test_stencil_fidelity.py
 
-import pytest
 import numpy as np
+import pytest
 
 from src.common.field_schema import FI
 from src.step1.orchestrate_step1 import orchestrate_step1
 from src.step2.stencil_assembler import assemble_stencil_matrix
 from tests.helpers.solver_input_schema_dummy import create_validated_input
+
 
 def test_gate_2a_registry_traceability():
     """
