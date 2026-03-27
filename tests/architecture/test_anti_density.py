@@ -1,7 +1,7 @@
 # tests/architecture/test_anti_density.py
 
 import subprocess
-import pytest
+
 
 def test_anti_density_axiom():
     """
