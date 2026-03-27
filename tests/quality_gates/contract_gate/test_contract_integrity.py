@@ -2,9 +2,9 @@
 
 import numpy as np
 import pytest
+
 from src.common.simulation_context import SimulationContext
 from src.step1.orchestrate_step1 import orchestrate_step1
-from src.common.solver_state import SolverState
 from tests.helpers.solver_input_schema_dummy import create_validated_input
 
 
