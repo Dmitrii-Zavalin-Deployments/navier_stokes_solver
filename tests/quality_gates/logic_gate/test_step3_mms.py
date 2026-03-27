@@ -1,5 +1,6 @@
 # tests/quality_gates/logic_gate/test_step3_mms.py
 
+import pytest
 from src.common.field_schema import FI
 from src.step3.orchestrate_step3 import orchestrate_step3
 from tests.helpers.solver_input_schema_dummy import create_validated_input
@@ -17,10 +18,17 @@ def test_logic_gate_3_physics_boundary_sync():
     """
     
     # 1. Setup: Explicit Input to avoid "Silent Failure" (Rule 5)
+    # FIX: Use the base constructor and set attributes via the SSoT path.
     nx, ny, nz = 4, 4, 4
-    context = create_validated_input(nx=nx, ny=ny, nz=nz)
+    context = create_validated_input()
+    
+    # Pathing Fix: Ensure we traverse through .input_data to satisfy Rule 4
+    context.input_data.grid.nx = nx
+    context.input_data.grid.ny = ny
+    context.input_data.grid.nz = nz
     
     # Setup Step 2 output state (The "Foundation" and "Wiring")
+    # Using the same dimension lock for the dummy state generator
     state = make_step2_output_dummy(nx=nx, ny=ny, nz=nz)
     
     # 2. Logic-Layer Traversal (Rule 1: Pointer Density Check)

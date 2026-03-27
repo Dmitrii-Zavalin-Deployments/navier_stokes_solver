@@ -1,6 +1,7 @@
 # tests/quality_gates/sensitivity_gate/test_input_completeness.py
 
 import pytest
+import numpy as np
 
 from src.step1.helpers import generate_3d_masks
 from tests.helpers.solver_input_schema_dummy import create_validated_input
@@ -16,9 +17,14 @@ def test_gate_1a_mask_size_mandate():
     """
 
     # 1. Setup a controlled 3x3x3 grid (Core Volume = 27)
-    # We define the Geometric Context explicitly to avoid hidden defaults.
     nx, ny, nz = 3, 3, 3
-    context = create_validated_input(nx=nx, ny=ny, nz=nz)
+    context = create_validated_input()
+    
+    # Pathing Fix: Manual hydration of the SSoT Grid object
+    context.input_data.grid.nx = nx
+    context.input_data.grid.ny = ny
+    context.input_data.grid.nz = nz
+    
     grid = context.input_data.grid
     
     # 2. Create "Bad Data" (20 cells instead of 27)
@@ -40,7 +46,12 @@ def test_gate_1a_perfect_match_pass():
 
     # 1. Setup: Define a 2x2x2 core (Volume = 8)
     nx, ny, nz = 2, 2, 2
-    context = create_validated_input(nx=nx, ny=ny, nz=nz)
+    context = create_validated_input()
+    
+    context.input_data.grid.nx = nx
+    context.input_data.grid.ny = ny
+    context.input_data.grid.nz = nz
+    
     grid = context.input_data.grid
     
     # Define valid input: 8 cells exactly.
@@ -51,7 +62,7 @@ def test_gate_1a_perfect_match_pass():
     mask_3d, is_fluid, is_boundary = generate_3d_masks(valid_mask_data, grid)
     
     # 3. Verification: Structural Parity
-    # Verify the reshape logic aligns with the core dimensions.
+    # Verify the reshape logic aligns with the core dimensions (nz, ny, nx).
     assert mask_3d.shape == (nz, ny, nx), (
         f"MMS FAILURE: Mask shape {mask_3d.shape} does not match (nz, ny, nx)."
     )
@@ -67,8 +78,14 @@ def test_gate_1a_empty_input_firewall():
     Compliance: Rule 5 (Zero-Default Policy).
     """
     nx, ny, nz = 2, 2, 2
-    context = create_validated_input(nx=nx, ny=ny, nz=nz)
+    context = create_validated_input()
+    
+    context.input_data.grid.nx = nx
+    context.input_data.grid.ny = ny
+    context.input_data.grid.nz = nz
+    
     grid = context.input_data.grid
     
+    # The volume check (2*2*2=8) must fail against an empty list.
     with pytest.raises(ValueError, match="Expected 8 cells, got 0"):
         generate_3d_masks([], grid)

@@ -18,10 +18,16 @@ def test_gate_1b_overflow_guard_logic():
 
     # 1. Setup a valid 2x2x2 grid structure (Rule 5: Explicit Init)
     nx, ny, nz = 2, 2, 2
-    context = create_validated_input(nx=nx, ny=ny, nz=nz)
+    context = create_validated_input()
+    
+    # Pathing Fix: Ensure we traverse through .input_data to satisfy Rule 4
+    context.input_data.grid.nx = nx
+    context.input_data.grid.ny = ny
+    context.input_data.grid.nz = nz
+    
     grid = context.input_data.grid
     
-    # Valid input: 8 cells
+    # Valid input: 8 cells (2*2*2)
     valid_mask = [1] * 8
     
     # 2. Action: Test successful 1D-to-3D mapping integrity
@@ -41,9 +47,13 @@ def test_gate_1b_mapping_overflow_trigger(monkeypatch):
     Compliance: Physical Logic Firewall - Out-of-bounds protection.
     """
 
-    # 1. Setup: Explicit dimensions
+    # 1. Setup: Explicit dimensions via SSoT path
     nx, ny, nz = 2, 2, 2
-    context = create_validated_input(nx=nx, ny=ny, nz=nz)
+    context = create_validated_input()
+    context.input_data.grid.nx = nx
+    context.input_data.grid.ny = ny
+    context.input_data.grid.nz = nz
+    
     grid = context.input_data.grid
     valid_mask = [1] * 8
     
@@ -53,6 +63,7 @@ def test_gate_1b_mapping_overflow_trigger(monkeypatch):
     def mock_coords(idx, current_nx, current_ny):
         return (5, 0, 0) # i=5 is > nx=2
     
+    # Ensure the path to the helper is accurate to your project structure
     monkeypatch.setattr("src.step1.helpers.get_coords_from_index", mock_coords)
     
     # 3. Verification: The Firewall must raise a ValueError before the reshape fails.
@@ -70,7 +81,11 @@ def test_gate_1b_padding_integrity():
 
     # 1. Setup: 2x2x2 core
     nx, ny, nz = 2, 2, 2
-    context = create_validated_input(nx=nx, ny=ny, nz=nz)
+    context = create_validated_input()
+    context.input_data.grid.nx = nx
+    context.input_data.grid.ny = ny
+    context.input_data.grid.nz = nz
+    
     grid = context.input_data.grid
     valid_mask = [1] * 8
     

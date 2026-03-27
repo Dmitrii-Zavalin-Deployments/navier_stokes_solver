@@ -1,11 +1,11 @@
 # tests/quality_gates/logic_gate/test_step1_mms.py
 
 import numpy as np
+import pytest
 
 from src.common.field_schema import FI
 from src.step1.orchestrate_step1 import orchestrate_step1
 from tests.helpers.solver_input_schema_dummy import create_validated_input
-
 
 def test_logic_gate_1_padded_ingestion():
     """
@@ -18,8 +18,14 @@ def test_logic_gate_1_padded_ingestion():
     """
 
     # 1. Setup Input: Explicitly define grid to avoid Hidden Defaults (Rule 5)
+    # FIX: We use the base constructor and set attributes via the SSoT path.
     nx, ny, nz = 2, 2, 2
-    context = create_validated_input(nx=nx, ny=ny, nz=nz) 
+    context = create_validated_input() 
+    
+    # Pathing Fix: Ensure we traverse through .input_data to satisfy Rule 4
+    context.input_data.grid.nx = nx
+    context.input_data.grid.ny = ny
+    context.input_data.grid.nz = nz
     
     # Success Metric Calculation: (2+2)*(2+2)*(2+2) = 64 cells
     # This reflects the Ghost Cell Padding requirement for the Foundation.
@@ -71,6 +77,5 @@ def test_logic_gate_1_padded_ingestion():
     # ARCHITECTURAL CHECK: If 'mask' is a logic manager, it should be a sub-component 
     # of the FieldManager or its own Registry, but NEVER a flat alias if it duplicates data.
     # Based on Rule 4: "Adding facade properties... is strictly prohibited."
-    # We verify the state object isn't "polluted" with convenience aliases.
     assert not hasattr(state, 'nx'), "Rule 4 Violation: Found 'nx' alias on SolverState. Use state.grid.nx."
     assert not hasattr(state, 'density'), "Rule 4 Violation: Found 'density' alias on SolverState."

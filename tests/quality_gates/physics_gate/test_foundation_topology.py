@@ -13,9 +13,14 @@ def test_gate_1a_foundation_volume_parity():
     Compliance: Rule 9 (Hybrid Memory Foundation allocation)
     """
 
-    # 1. Setup: Explicit dimensions to prevent "Hidden Defaults" (Rule 5)
+    # 1. Setup: Explicit dimensions via SSoT path (Rule 5)
     nx, ny, nz = 4, 4, 4
-    context = create_validated_input(nx=nx, ny=ny, nz=nz)
+    context = create_validated_input()
+    
+    # Pathing Fix: Align with Rule 4 Hierarchy
+    context.input_data.grid.nx = nx
+    context.input_data.grid.ny = ny
+    context.input_data.grid.nz = nz
     
     # The Foundation must allocate space for the core + 2 ghost layers per dimension
     expected_volume = (nx + 2) * (ny + 2) * (nz + 2)
@@ -40,17 +45,21 @@ def test_gate_2a_7_point_connectivity_stride():
 
     # 1. Setup: Initialize full topology (Step 1 -> Step 2)
     nx, ny, nz = 4, 4, 4
-    context = create_validated_input(nx=nx, ny=ny, nz=nz)
+    context = create_validated_input()
+    context.input_data.grid.nx = nx
+    context.input_data.grid.ny = ny
+    context.input_data.grid.nz = nz
+    
     state = orchestrate_step1(context)
-    state.stencil_matrix = assemble_stencil_matrix(state)
+    # Step 2: Assemble the Registry
+    stencils = assemble_stencil_matrix(state)
     
     # 2. Define Atomic Truth Stride (Rule 7)
     # In a C-ordered (z, y, x) array, x is the contiguous axis.
     stride_x = 1 
     
     # 3. Grab a block from the logical core (First physical cell)
-    # The assembler maps logical (0,0,0) to index 0 in the stencil list
-    block = state.stencil_matrix[0]
+    block = stencils[0]
     
     # 4. Verification: Check connectivity pointers in the Logic Layer
     center_idx = block.center.index
@@ -75,16 +84,20 @@ def test_gate_2a_y_stride_integrity():
     """
 
     nx, ny, nz = 4, 4, 4
-    context = create_validated_input(nx=nx, ny=ny, nz=nz)
+    context = create_validated_input()
+    context.input_data.grid.nx = nx
+    context.input_data.grid.ny = ny
+    context.input_data.grid.nz = nz
+    
     state = orchestrate_step1(context)
-    state.stencil_matrix = assemble_stencil_matrix(state)
+    stencils = assemble_stencil_matrix(state)
     
     # 1. Calculate the Y-stride based on the padded width (Rule 9)
     nx_total = state.grid.nx + 2
     stride_y = nx_total
     
     # 2. Grab an interior block from the Stencil Matrix
-    block = state.stencil_matrix[0]
+    block = stencils[0]
     
     center_idx = block.center.index
     jp_idx = block.j_plus.index
@@ -106,16 +119,20 @@ def test_gate_2a_z_stride_integrity():
     Identity: id(k+1) = id(c) + (nx+2)*(ny+2)
     """
     nx, ny, nz = 4, 4, 4
-    context = create_validated_input(nx=nx, ny=ny, nz=nz)
+    context = create_validated_input()
+    context.input_data.grid.nx = nx
+    context.input_data.grid.ny = ny
+    context.input_data.grid.nz = nz
+    
     state = orchestrate_step1(context)
-    state.stencil_matrix = assemble_stencil_matrix(state)
+    stencils = assemble_stencil_matrix(state)
     
     # Calculate Z-stride: Jump a full 2D padded slice
     nx_total = state.grid.nx + 2
     ny_total = state.grid.ny + 2
     stride_z = nx_total * ny_total
     
-    block = state.stencil_matrix[0]
+    block = stencils[0]
     
     center_idx = block.center.index
     kp_idx = block.k_plus.index
