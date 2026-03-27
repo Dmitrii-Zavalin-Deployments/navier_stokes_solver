@@ -8,7 +8,7 @@ from src.common.base_container import ValidatedContainer
 # 1. SUB-DEPARTMENT CONTAINERS
 # =========================================================
 
-@dataclass(slots=True)
+@dataclass
 class PhysicalConstraintsInput(ValidatedContainer):
     __slots__ = ['_min_velocity', '_max_velocity', '_min_pressure', '_max_pressure']
     
@@ -35,7 +35,7 @@ class PhysicalConstraintsInput(ValidatedContainer):
     @max_pressure.setter
     def max_pressure(self, v: float): self._set_safe("max_pressure", v, float)
 
-@dataclass(slots=True)
+@dataclass
 class DomainConfigInput(ValidatedContainer):
     __slots__ = ['_type', '_reference_velocity']
     
@@ -59,7 +59,7 @@ class DomainConfigInput(ValidatedContainer):
             raise ValueError("reference_velocity must have 3 items [u, v, w]")
         self._set_safe("reference_velocity", v, list)
 
-@dataclass(slots=True)
+@dataclass
 class GridInput(ValidatedContainer):
     __slots__ = ['_x_min', '_x_max', '_y_min', '_y_max', '_z_min', '_z_max', '_nx', '_ny', '_nz']
     
@@ -109,7 +109,7 @@ class GridInput(ValidatedContainer):
         if v < 1: raise ValueError(f"nz must be >= 1, got {v}")
         self._set_safe("nz", v, int)
 
-@dataclass(slots=True)
+@dataclass
 class FluidInput(ValidatedContainer):
     __slots__ = ['_density', '_viscosity']
     
@@ -130,7 +130,7 @@ class FluidInput(ValidatedContainer):
         if v < 0: raise ValueError(f"Viscosity must be >= 0, got {v}")
         self._set_safe("viscosity", v, float)
 
-@dataclass(slots=True)
+@dataclass
 class InitialConditionsInput(ValidatedContainer):
     __slots__ = ['_velocity', '_pressure']
     
@@ -149,7 +149,7 @@ class InitialConditionsInput(ValidatedContainer):
     @pressure.setter
     def pressure(self, v: float): self._set_safe("pressure", v, float)
 
-@dataclass(slots=True)
+@dataclass
 class SimParamsInput(ValidatedContainer):
     __slots__ = ['_time_step', '_total_time', '_output_interval']
     
@@ -177,7 +177,7 @@ class SimParamsInput(ValidatedContainer):
         if v < 1: raise ValueError("output_interval must be >= 1")
         self._set_safe("output_interval", v, int)
 
-@dataclass(slots=True)
+@dataclass
 class BoundaryConditionItem(ValidatedContainer):
     __slots__ = ['_location', '_type', '_values']
     
@@ -207,7 +207,7 @@ class BoundaryConditionItem(ValidatedContainer):
     @values.setter
     def values(self, v: dict): self._set_safe("values", v, dict)
 
-@dataclass(slots=True)
+@dataclass
 class BoundaryConditionsInput(ValidatedContainer):
     __slots__ = ['_items']
     
@@ -220,7 +220,7 @@ class BoundaryConditionsInput(ValidatedContainer):
         processed = [bc if isinstance(bc, BoundaryConditionItem) else BoundaryConditionItem(**bc) for bc in v]
         self._set_safe("items", processed, list)
 
-@dataclass(slots=True)
+@dataclass
 class MaskInput(ValidatedContainer):
     __slots__ = ['_data']
     
@@ -234,7 +234,7 @@ class MaskInput(ValidatedContainer):
             raise ValueError("Mask contains invalid values. Only -1, 0, 1 allowed.")
         self._set_safe("data", v, list)
 
-@dataclass(slots=True)
+@dataclass
 class ExternalForcesInput(ValidatedContainer):
     __slots__ = ['_force_vector']
     
@@ -251,7 +251,7 @@ class ExternalForcesInput(ValidatedContainer):
 # 2. THE UNIVERSAL INPUT CONTAINER
 # =========================================================
 
-@dataclass(slots=True)
+@dataclass
 class SolverInput(ValidatedContainer):
     __slots__ = [
         'domain_configuration', 'grid', 'fluid_properties', 'initial_conditions', 
