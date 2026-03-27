@@ -1,11 +1,14 @@
 # tests/io/test_download_from_dropbox.py
 
-import pytest
-from unittest.mock import MagicMock, patch, mock_open
 from pathlib import Path
+from unittest.mock import MagicMock, mock_open, patch
+
 import dropbox
-from src.io.dropbox_utils import TokenManager
+import pytest
+
 from src.io.download_from_dropbox import CloudIngestor
+from src.io.dropbox_utils import TokenManager
+
 
 def test_token_manager_refresh_success():
     """Rule 5: Verify deterministic token refreshing via requests."""

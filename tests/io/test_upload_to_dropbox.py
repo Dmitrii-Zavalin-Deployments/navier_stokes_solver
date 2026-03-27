@@ -1,11 +1,14 @@
 # tests/io/test_upload_to_dropbox.py
 
-import pytest
-from unittest.mock import MagicMock, patch, mock_open
 from pathlib import Path
+from unittest.mock import MagicMock, mock_open, patch
+
 import dropbox
+import pytest
+
 from src.io.dropbox_utils import TokenManager
 from src.io.upload_to_dropbox import CloudUploader
+
 
 @patch("dropbox.Dropbox")
 def test_cloud_uploader_success(mock_dbx_class):
