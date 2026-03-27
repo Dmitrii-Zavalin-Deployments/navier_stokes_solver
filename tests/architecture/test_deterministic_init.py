@@ -1,8 +1,8 @@
 # tests/architecture/test_deterministic_init.py
 
-import subprocess
-import pytest
 import os
+import subprocess
+
 
 def test_no_lazy_defaults_in_src():
     """

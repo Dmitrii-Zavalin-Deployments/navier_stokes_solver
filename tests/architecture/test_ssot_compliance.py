@@ -1,7 +1,7 @@
 # tests/architecture/test_ssot_compliance.py
 
-import pytest
 from src.common.solver_state import SolverState
+
 
 def test_solver_state_attribute_purity():
     """
