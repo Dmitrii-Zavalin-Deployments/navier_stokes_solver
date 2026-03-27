@@ -1,10 +1,9 @@
 # tests/quality_gates/logic_gate/test_step3_mms.py
 
-import pytest
-import numpy as np
-from src.step3.orchestrate_step3 import orchestrate_step3
 from src.common.field_schema import FI
+from src.step3.orchestrate_step3 import orchestrate_step3
 from tests.helpers.solver_step2_output_dummy import make_step2_output_dummy
+
 
 def test_logic_gate_3_physics_boundary_sync(solver_input_schema_dummy):
     """
