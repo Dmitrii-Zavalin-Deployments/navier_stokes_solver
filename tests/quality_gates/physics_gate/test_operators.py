@@ -1,11 +1,13 @@
 # tests/quality_gates/physics_gate/test_operators.py
 
-import pytest
 import numpy as np
+import pytest
+
 from src.common.field_schema import FI
 from src.step3.ops.gradient import compute_local_gradient_p
 from src.step3.ops.laplacian import compute_local_laplacian
 from tests.helpers.solver_step2_output_dummy import make_step2_output_dummy
+
 
 def test_gate_3a_central_difference_lock():
     """

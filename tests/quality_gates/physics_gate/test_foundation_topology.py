@@ -1,9 +1,8 @@
 # tests/quality_gates/physics_gate/test_foundation_topology.py
 
-import pytest
-import numpy as np
 from src.step1.orchestrate_step1 import orchestrate_step1
 from src.step2.stencil_assembler import assemble_stencil_matrix
+
 
 def test_gate_1a_foundation_volume_parity(solver_input_schema_dummy):
     """

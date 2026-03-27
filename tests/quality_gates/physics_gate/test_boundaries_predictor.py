@@ -1,10 +1,11 @@
 # tests/quality_gates/physics_gate/test_boundaries_predictor.py
 
-import pytest
 import numpy as np
+
 from src.common.field_schema import FI
-from src.step3.boundaries.applier import apply_boundary_values, BC_FIELD_MAP
+from src.step3.boundaries.applier import BC_FIELD_MAP, apply_boundary_values
 from tests.helpers.solver_step2_output_dummy import make_step2_output_dummy
+
 
 def test_gate_3d_no_slip_integrity():
     """
@@ -36,7 +37,7 @@ def test_gate_3d_no_slip_integrity():
     # 5. Verification: Trial Field Redirection (Rule 9)
     # Check that VX_STAR was updated, but the base VX remains untouched.
     u_star_val = block.center.get_field(FI.VX_STAR)
-    u_base_val = block.center.get_field(FI.VX)
+    block.center.get_field(FI.VX)
     
     assert np.isclose(u_star_val, 0.0), (
         f"MMS FAILURE [No-Slip]: VX_STAR at {rule['location']} should be 0.0, got {u_star_val}"
