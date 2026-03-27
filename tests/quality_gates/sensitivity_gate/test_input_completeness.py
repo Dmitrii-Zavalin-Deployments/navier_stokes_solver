@@ -1,26 +1,31 @@
 # tests/quality_gates/sensitivity_gate/test_input_completeness.py
 
 import pytest
-
+import numpy as np
 from src.step1.helpers import generate_3d_masks
 from tests.helpers.solver_input_schema_dummy import create_validated_input
-
 
 def test_gate_1a_mask_size_mandate():
     """
     Gate 1.A: Domain Audit (Mask Size Mandate)
+    
     Verification: Catch ValueError in src/step1/helpers.py when volume != nx*ny*nz.
-    Compliance: Physical Logic Firewall - Topology Protection.
+    Compliance: Rule 7 (Atomic Truth) - Topology Protection.
+    Compliance: Rule 5 (No Logical Defaults) - Explicit Volume check.
     """
-    # 1. Setup a controlled 3x3x3 grid (Volume = 27)
-    grid = create_validated_input(nx=2, ny=2, nz=2).grid
-    grid.nx, grid.ny, grid.nz = 3, 3, 3
+
+    # 1. Setup a controlled 3x3x3 grid (Core Volume = 27)
+    # We define the Geometric Context explicitly to avoid hidden defaults.
+    nx, ny, nz = 3, 3, 3
+    context = create_validated_input(nx=nx, ny=ny, nz=nz)
+    grid = context.input_data.grid
     
     # 2. Create "Bad Data" (20 cells instead of 27)
-    # This simulates a malformed user JSON intake.
+    # This simulates a malformed raw JSON intake (e.g., truncated data).
     bad_mask_data = [1] * 20 
     
-    # 3. Verification: Ensure the helper raises the exact SSoT error message
+    # 3. Verification: Ensure the Firewall triggers the exact SSoT error message.
+    # The helper must identify that 20 != 3*3*3 before any memory allocation.
     expected_error = "Mask data size mismatch: Expected 27 cells, got 20"
     
     with pytest.raises(ValueError, match=expected_error):
@@ -29,14 +34,40 @@ def test_gate_1a_mask_size_mandate():
 def test_gate_1a_perfect_match_pass():
     """
     Verification: Ensure valid mask data passes the size mandate without error.
+    Compliance: Rule 4 (SSoT Hierarchy) - Consistent shape mapping.
     """
-    grid = create_validated_input(nx=2, ny=2, nz=2).grid # Volume = 8
-    grid.nx, grid.ny, grid.nz = 3, 3, 3
-    grid.nx, grid.ny, grid.nz = 2, 2, 2
-    valid_mask_data = [1, 1, 0, 0, -1, -1, 1, 1] # Exact length 8
+
+    # 1. Setup: Define a 2x2x2 core (Volume = 8)
+    nx, ny, nz = 2, 2, 2
+    context = create_validated_input(nx=nx, ny=ny, nz=nz)
+    grid = context.input_data.grid
     
-    # This should execute without raising ValueError
+    # Define valid input: 8 cells exactly.
+    valid_mask_data = [1, 1, 0, 0, -1, -1, 1, 1] 
+    
+    # 2. Action: This should execute without raising a ValueError.
+    # It must return the 3D reshaped mask and the derived boolean arrays.
     mask_3d, is_fluid, is_boundary = generate_3d_masks(valid_mask_data, grid)
     
-    assert mask_3d.shape == (2, 2, 2)
-    assert mask_3d.size == 8
+    # 3. Verification: Structural Parity
+    # Verify the reshape logic aligns with the core dimensions.
+    assert mask_3d.shape == (nz, ny, nx), (
+        f"MMS FAILURE: Mask shape {mask_3d.shape} does not match (nz, ny, nx)."
+    )
+    assert mask_3d.size == 8, "MMS FAILURE: Mask size drift detected."
+    
+    # Ensure boolean arrays were hydrated correctly (Logic Layer readiness)
+    assert is_fluid.dtype == bool
+    assert is_boundary.dtype == bool
+
+def test_gate_1a_empty_input_firewall():
+    """
+    Verification: Ensure the firewall catches empty or null input arrays.
+    Compliance: Rule 5 (Zero-Default Policy).
+    """
+    nx, ny, nz = 2, 2, 2
+    context = create_validated_input(nx=nx, ny=ny, nz=nz)
+    grid = context.input_data.grid
+    
+    with pytest.raises(ValueError, match="Expected 8 cells, got 0"):
+        generate_3d_masks([], grid)

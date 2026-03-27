@@ -6,57 +6,89 @@ import pytest
 from src.step1.helpers import generate_3d_masks
 from tests.helpers.solver_input_schema_dummy import create_validated_input
 
-
 def test_gate_1b_overflow_guard_logic():
     """
     Gate 1.B: Topology Audit (Overflow Guard)
+    
     Verification: Catch 'Mask mapping overflow' in src/step1/helpers.py.
-    Compliance: Physical Logic Firewall - Topology Protection.
+    Compliance: Rule 7 (Atomic Truth) - Topology Protection.
+    Compliance: Rule 4 (SSoT Hierarchy) - Mapping Consistency.
     """
-    # 1. Setup a valid grid structure
-    grid = create_validated_input(nx=2, ny=2, nz=2).grid # Expected volume = 8
-    grid.nx, grid.ny, grid.nz = 3, 3, 3
+
+    # 1. Setup a valid 2x2x2 grid structure (Rule 5: Explicit Init)
+    nx, ny, nz = 2, 2, 2
+    context = create_validated_input(nx=nx, ny=ny, nz=nz)
+    grid = context.input_data.grid
+    
+    # Valid input: 8 cells
     valid_mask = [1] * 8
     
-    # 2. Test successful 1D-to-3D mapping integrity
+    # 2. Action: Test successful 1D-to-3D mapping integrity
     mask_3d, is_fluid, _ = generate_3d_masks(valid_mask, grid)
     
-    assert mask_3d.shape == (2, 2, 2), "Topology Breach: 3D Shape mismatch."
-    assert np.all(is_fluid), "Topology Breach: Fluid mask vectorization failed."
+    # 3. Verification: Structural Parity
+    # Reshape must follow (nz, ny, nx) to align with stride-based logic (Rule 7)
+    assert mask_3d.shape == (nz, ny, nx), (
+        f"Topology Breach: 3D Shape {mask_3d.shape} mismatch with core ({nz}, {ny}, {nx})."
+    )
+    assert np.all(is_fluid), "Topology Breach: Fluid mask vectorization failed (Rule 1)."
 
 def test_gate_1b_mapping_overflow_trigger(monkeypatch):
     """
     Verification: Force a mapping overflow to ensure the deterministic 
     validation in Step 1 catches index drift.
+    Compliance: Physical Logic Firewall - Out-of-bounds protection.
     """
-    grid = create_validated_input(nx=2, ny=2, nz=2).grid
-    grid.nx, grid.ny, grid.nz = 3, 3, 3
+
+    # 1. Setup: Explicit dimensions
+    nx, ny, nz = 2, 2, 2
+    context = create_validated_input(nx=nx, ny=ny, nz=nz)
+    grid = context.input_data.grid
     valid_mask = [1] * 8
     
-    # Monkeypatch the coordinate getter to return an out-of-bounds index (e.g., i=5)
-    # This simulates a 'Mapping Overflow' scenario mentioned in the documentation.
-    def mock_coords(idx, nx, ny):
-        return (5, 0, 0) 
+    # 2. Action: Monkeypatch the coordinate getter to return an out-of-bounds index (i=5)
+    # This simulates a 'Mapping Overflow' scenario where a logic error 
+    # attempts to write outside the (2,2,2) allocated core.
+    def mock_coords(idx, current_nx, current_ny):
+        return (5, 0, 0) # i=5 is > nx=2
     
     monkeypatch.setattr("src.step1.helpers.get_coords_from_index", mock_coords)
     
-    with pytest.raises(ValueError, match="Mask mapping overflow at index 0 -> \(5, 0, 0\)"):
+    # 3. Verification: The Firewall must raise a ValueError before the reshape fails.
+    # Success Metric: Exact identification of the offending index and coordinate.
+    expected_msg = r"Mask mapping overflow at index 0 -> \(5, 0, 0\)"
+    with pytest.raises(ValueError, match=expected_msg):
         generate_3d_masks(valid_mask, grid)
 
 def test_gate_1b_padding_integrity():
     """
     Verification: Ensure that topological padding (Ghost Data guard) 
     aligns with expected buffer bounds.
+    Compliance: Rule 9 (Hybrid Memory Foundation - Ghost padding parity).
     """
-    grid = create_validated_input(nx=2, ny=2, nz=2).grid
-    grid.nx, grid.ny, grid.nz = 3, 3, 3
+
+    # 1. Setup: 2x2x2 core
+    nx, ny, nz = 2, 2, 2
+    context = create_validated_input(nx=nx, ny=ny, nz=nz)
+    grid = context.input_data.grid
     valid_mask = [1] * 8
+    
+    # 2. Action: Hydrate the 3D core
     mask_3d, _, _ = generate_3d_masks(valid_mask, grid)
     
-    # Apply a standard 1-cell pad for ghost boundaries
+    # Apply a standard 1-cell pad for ghost boundaries (Rule 9)
+    # This simulates the internal padding logic used by orchestrate_step1.
     padded = np.pad(mask_3d, pad_width=1, mode="constant", constant_values=-1)
     
-    # Grid (2,2,2) with pad 1 becomes (4,4,4)
-    assert padded.shape == (4, 4, 4), f"Topology Breach: Expected (4,4,4), got {padded.shape}"
-    # Verify the padding values (the "Ghost" layer) are set correctly
-    assert padded[0, 0, 0] == -1
+    # 3. Verification: Ghost-Cell Lock
+    # Core (2,2,2) with pad 1 becomes (4,4,4) total volume.
+    expected_padded_shape = (nz + 2, ny + 2, nx + 2)
+    assert padded.shape == expected_padded_shape, (
+        f"Topology Breach: Expected {expected_padded_shape}, got {padded.shape}"
+    )
+    
+    # Verify the padding values (the "Ghost" layer) are set correctly at the boundary.
+    # index [0,0,0] is a ghost cell.
+    assert padded[0, 0, 0] == -1, "Ghost Data Guard: Padding value mismatch at boundary."
+    # index [1,1,1] is the first physical cell.
+    assert padded[1, 1, 1] == 1, "Ghost Data Guard: Core value corrupted by padding."
