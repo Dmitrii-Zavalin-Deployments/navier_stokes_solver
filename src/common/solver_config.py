@@ -1,14 +1,11 @@
 # src/common/solver_config.py
 
-from dataclasses import dataclass
-
 from src.common.base_container import ValidatedContainer
 
-
-@dataclass
 class SolverConfig(ValidatedContainer):
     """
     Static numerical configuration. No dynamic state allowed.
+    Compliance: Rule 0 (Memory Hardening), Rule 5 (Deterministic), Rule 8 (Minimalism).
     """
     __slots__ = [
         '_dt_min_limit', '_ppe_tolerance', '_ppe_atol', 
@@ -17,7 +14,11 @@ class SolverConfig(ValidatedContainer):
     ]
 
     def __init__(self, **kwargs):
-        # Map JSON keys to slots via setters for validation
+        """
+        Direct mapping from JSON context to validated slots.
+        No defaults allowed here to satisfy Rule 5.
+        """
+        # Explicit assignment triggers the property setters immediately
         self.dt_min_limit = kwargs.get('dt_min_limit')
         self.ppe_tolerance = kwargs.get('ppe_tolerance')
         self.ppe_atol = kwargs.get('ppe_atol')
@@ -25,6 +26,20 @@ class SolverConfig(ValidatedContainer):
         self.ppe_omega = kwargs.get('ppe_omega')
         self.divergence_threshold = kwargs.get('divergence_threshold')
         self.ppe_max_retries = kwargs.get('ppe_max_retries')
+
+    def __repr__(self) -> str:
+        """
+        Rule 8: Minimalist string representation for remote forensic audits.
+        Excludes sensitive or redundant state.
+        """
+        return (
+            f"SolverConfig("
+            f"ppe_tol={self.ppe_tolerance:.1e}, "
+            f"ppe_max_iter={self.ppe_max_iter}, "
+            f"ppe_omega={self.ppe_omega}, "
+            f"div_thresh={self.divergence_threshold}"
+            f")"
+        )
 
     @property
     def dt_min_limit(self) -> float: return self._get_safe("dt_min_limit")
