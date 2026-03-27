@@ -1,8 +1,10 @@
 # src/common/simulation_context.py
 
 from dataclasses import dataclass
+
 from src.common.solver_config import SolverConfig
 from src.common.solver_input import SolverInput
+
 
 @dataclass(slots=True)  # Rule 0: Mandatory __slots__ for memory efficiency
 class SimulationContext:

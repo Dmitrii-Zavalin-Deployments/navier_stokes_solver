@@ -2,6 +2,7 @@
 
 from src.common.base_container import ValidatedContainer
 
+
 class SolverConfig(ValidatedContainer):
     """
     Static numerical configuration. No dynamic state allowed.
