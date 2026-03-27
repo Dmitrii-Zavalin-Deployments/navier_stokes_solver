@@ -2,7 +2,7 @@
 
 import numpy as np
 import pytest
-
+import jsonschema
 from src.common.simulation_context import SimulationContext
 from src.step1.orchestrate_step1 import orchestrate_step1
 from tests.helpers.solver_input_schema_dummy import create_validated_input
@@ -50,7 +50,7 @@ def test_gate_4_schema_validation_and_firewall():
     
     # 2. Assert: The schema validator must catch the drift
     # This aligns with the 'Double-Lock' requirement in Line 74
-    with pytest.raises(Exception): # Replace with specific jsonschema.ValidationError if imported
+    with pytest.raises(jsonschema.ValidationError): # Replace with specific jsonschema.ValidationError if imported
         state.validate_against_schema()
         
     # 3. Assert: ready_for_time_loop remains False (Sentinel Integrity)
