@@ -1,9 +1,10 @@
 # tests/quality_gates/contract_gate/test_contract_integrity.py
 
-import pytest
 import numpy as np
+import pytest
+
 from src.step1.orchestrate_step1 import orchestrate_step1
-from src.common.solver_state import SolverState
+
 
 def test_gate_4_type_casting_integrity(solver_input_schema_dummy):
     """
