@@ -1,4 +1,4 @@
-# tests/quality_gates/physics_gate/test_advection.py
+# tests/scientific/test_advection.py
 
 import logging
 import math

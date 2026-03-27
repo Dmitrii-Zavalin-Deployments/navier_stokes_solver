@@ -1,4 +1,4 @@
-# tests/quality_gates/physics_gate/test_laplacian.py
+# tests/scientific/test_laplacian.py
 
 import logging
 import math

@@ -1,4 +1,4 @@
-# tests/quality_gates/logic_gate/test_pressure_configuration.py
+# tests/scientific/test_pressure_configuration.py
 
 import pytest
 

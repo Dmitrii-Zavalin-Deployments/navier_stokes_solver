@@ -1,4 +1,4 @@
-# tests/quality_gates/physics_gate/test_forces.py
+# tests/scientific/test_forces.py
 
 import logging
 

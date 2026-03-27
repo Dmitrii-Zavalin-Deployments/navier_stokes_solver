@@ -1,4 +1,4 @@
-# tests/quality_gates/physics_gate/test_ppe_solver.py
+# tests/scientific/test_ppe_solver.py
 
 import logging
 

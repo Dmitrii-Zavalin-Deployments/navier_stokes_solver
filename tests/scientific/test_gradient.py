@@ -1,4 +1,4 @@
-# tests/quality_gates/physics_gate/test_gradient.py
+# tests/scientific/test_gradient.py
 
 import logging
 

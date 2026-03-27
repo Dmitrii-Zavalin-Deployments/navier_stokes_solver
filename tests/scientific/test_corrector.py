@@ -1,4 +1,4 @@
-# tests/quality_gates/physics_gate/test_corrector.py
+# tests/scientific/test_corrector.py
 
 import logging
 

@@ -1,4 +1,4 @@
-# tests/quality_gates/physics_gate/test_divergence.py
+# tests/scientific/test_divergence.py
 
 import logging
 import math
