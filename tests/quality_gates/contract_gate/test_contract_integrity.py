@@ -1,8 +1,9 @@
 # tests/quality_gates/contract_gate/test_contract_integrity.py
 
+import jsonschema
 import numpy as np
 import pytest
-import jsonschema
+
 from src.common.simulation_context import SimulationContext
 from src.step1.orchestrate_step1 import orchestrate_step1
 from tests.helpers.solver_input_schema_dummy import create_validated_input
