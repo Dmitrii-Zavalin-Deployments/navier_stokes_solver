@@ -1,9 +1,10 @@
 # tests/quality_gates/sensitivity_gate/test_input_completeness.py
 
 import pytest
-import numpy as np
-from src.step1.helpers import generate_3d_masks
+
 from src.common.solver_input import GridInput
+from src.step1.helpers import generate_3d_masks
+
 
 def test_gate_1a_mask_size_mandate():
     """

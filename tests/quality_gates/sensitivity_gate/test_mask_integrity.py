@@ -1,9 +1,11 @@
 # tests/quality_gates/sensitivity_gate/test_mask_integrity.py
 
-import pytest
 import numpy as np
-from src.step1.helpers import generate_3d_masks
+import pytest
+
 from src.common.solver_input import GridInput
+from src.step1.helpers import generate_3d_masks
+
 
 def test_gate_1b_overflow_guard_logic():
     """

@@ -1,8 +1,7 @@
 # tests/quality_gates/sensitivity_gate/test_io_sensitivity.py
 
 import pytest
-from pathlib import Path
-from src.step4.io_archivist import orchestrate_step4  # Assuming directory logic lives here
+
 
 def test_gate_4a_persistence_audit(tmp_path):
     """

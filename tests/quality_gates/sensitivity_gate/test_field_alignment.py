@@ -1,7 +1,7 @@
 # tests/quality_gates/sensitivity_gate/test_field_alignment.py
 
-import pytest
 from src.common.field_schema import FI
+
 
 def test_gate_3c_fi_alignment_lock():
     """

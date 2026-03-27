@@ -1,8 +1,11 @@
 # tests/quality_gates/sensitivity_gate/test_bc_collisions.py
 
-import pytest
 import logging
+
+import pytest
+
 from src.step3.boundaries.dispatcher import get_applicable_boundary_configs
+
 
 def test_gate_3a_3b_dispatcher_mask_symmetry(caplog):
     """

@@ -1,7 +1,9 @@
 # tests/quality_gates/sensitivity_gate/test_stencil_fidelity.py
 
 import pytest
+
 from src.step2.stencil_assembler import assemble_stencil_matrix
+
 
 def test_gate_2a_registry_traceability(solver_state_dummy):
     """
@@ -42,6 +44,7 @@ def test_gate_2a_foundation_mismatch_catch(solver_state_dummy, monkeypatch):
     when the fields buffer width does not align with the FI Schema.
     """
     import numpy as np
+
     from src.common.field_schema import FI
     
     # Force a mismatch in the buffer width (e.g., 5 fields instead of Schema requirement)
