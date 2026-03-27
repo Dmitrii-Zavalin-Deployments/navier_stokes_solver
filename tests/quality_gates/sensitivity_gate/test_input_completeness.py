@@ -13,7 +13,7 @@ def test_gate_1a_mask_size_mandate():
     Compliance: Physical Logic Firewall - Topology Protection.
     """
     # 1. Setup a controlled 3x3x3 grid (Volume = 27)
-    grid = GridInput(nx=3, ny=3, nz=3)
+    grid = GridInput()
     
     # 2. Create "Bad Data" (20 cells instead of 27)
     # This simulates a malformed user JSON intake.
@@ -29,7 +29,7 @@ def test_gate_1a_perfect_match_pass():
     """
     Verification: Ensure valid mask data passes the size mandate without error.
     """
-    grid = GridInput(nx=2, ny=2, nz=2) # Volume = 8
+    grid = GridInput() # Volume = 8
     valid_mask_data = [1, 1, 0, 0, -1, -1, 1, 1] # Exact length 8
     
     # This should execute without raising ValueError

@@ -14,7 +14,7 @@ def test_gate_1b_overflow_guard_logic():
     Compliance: Physical Logic Firewall - Topology Protection.
     """
     # 1. Setup a valid grid structure
-    grid = GridInput(nx=2, ny=2, nz=2) # Expected volume = 8
+    grid = GridInput() # Expected volume = 8
     valid_mask = [1] * 8
     
     # 2. Test successful 1D-to-3D mapping integrity
@@ -28,7 +28,7 @@ def test_gate_1b_mapping_overflow_trigger(monkeypatch):
     Verification: Force a mapping overflow to ensure the deterministic 
     validation in Step 1 catches index drift.
     """
-    grid = GridInput(nx=2, ny=2, nz=2)
+    grid = GridInput()
     valid_mask = [1] * 8
     
     # Monkeypatch the coordinate getter to return an out-of-bounds index (e.g., i=5)
@@ -46,7 +46,7 @@ def test_gate_1b_padding_integrity():
     Verification: Ensure that topological padding (Ghost Data guard) 
     aligns with expected buffer bounds.
     """
-    grid = GridInput(nx=2, ny=2, nz=2)
+    grid = GridInput()
     valid_mask = [1] * 8
     mask_3d, _, _ = generate_3d_masks(valid_mask, grid)
     
