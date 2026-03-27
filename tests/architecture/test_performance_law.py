@@ -1,10 +1,11 @@
 # tests/architecture/test_performance_law.py
 
-import pytest
 import numpy as np
+
 from src.common.cell import Cell
 from src.common.stencil_block import StencilBlock
 from src.step2.stencil_assembler import assemble_stencil_matrix
+
 
 def test_law_of_performance_slots():
     """
