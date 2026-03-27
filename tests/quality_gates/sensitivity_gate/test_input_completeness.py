@@ -4,7 +4,7 @@ import pytest
 
 from src.common.solver_input import GridInput
 from src.step1.helpers import generate_3d_masks
-
+from tests.helpers.solver_input_schema_dummy import create_validated_input
 
 def test_gate_1a_mask_size_mandate():
     """
@@ -13,7 +13,8 @@ def test_gate_1a_mask_size_mandate():
     Compliance: Physical Logic Firewall - Topology Protection.
     """
     # 1. Setup a controlled 3x3x3 grid (Volume = 27)
-    grid = GridInput()
+    grid = create_validated_input(nx=2, ny=2, nz=2).grid
+    grid.nx, grid.ny, grid.nz = 3, 3, 3
     
     # 2. Create "Bad Data" (20 cells instead of 27)
     # This simulates a malformed user JSON intake.
@@ -29,7 +30,9 @@ def test_gate_1a_perfect_match_pass():
     """
     Verification: Ensure valid mask data passes the size mandate without error.
     """
-    grid = GridInput() # Volume = 8
+    grid = create_validated_input(nx=2, ny=2, nz=2).grid # Volume = 8
+    grid.nx, grid.ny, grid.nz = 3, 3, 3
+    grid.nx, grid.ny, grid.nz = 2, 2, 2
     valid_mask_data = [1, 1, 0, 0, -1, -1, 1, 1] # Exact length 8
     
     # This should execute without raising ValueError

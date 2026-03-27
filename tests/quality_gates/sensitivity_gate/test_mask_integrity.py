@@ -5,7 +5,7 @@ import pytest
 
 from src.common.solver_input import GridInput
 from src.step1.helpers import generate_3d_masks
-
+from tests.helpers.solver_input_schema_dummy import create_validated_input
 
 def test_gate_1b_overflow_guard_logic():
     """
@@ -14,7 +14,8 @@ def test_gate_1b_overflow_guard_logic():
     Compliance: Physical Logic Firewall - Topology Protection.
     """
     # 1. Setup a valid grid structure
-    grid = GridInput() # Expected volume = 8
+    grid = create_validated_input(nx=2, ny=2, nz=2).grid # Expected volume = 8
+    grid.nx, grid.ny, grid.nz = 3, 3, 3
     valid_mask = [1] * 8
     
     # 2. Test successful 1D-to-3D mapping integrity
@@ -28,7 +29,8 @@ def test_gate_1b_mapping_overflow_trigger(monkeypatch):
     Verification: Force a mapping overflow to ensure the deterministic 
     validation in Step 1 catches index drift.
     """
-    grid = GridInput()
+    grid = create_validated_input(nx=2, ny=2, nz=2).grid
+    grid.nx, grid.ny, grid.nz = 3, 3, 3
     valid_mask = [1] * 8
     
     # Monkeypatch the coordinate getter to return an out-of-bounds index (e.g., i=5)
@@ -46,7 +48,8 @@ def test_gate_1b_padding_integrity():
     Verification: Ensure that topological padding (Ghost Data guard) 
     aligns with expected buffer bounds.
     """
-    grid = GridInput()
+    grid = create_validated_input(nx=2, ny=2, nz=2).grid
+    grid.nx, grid.ny, grid.nz = 3, 3, 3
     valid_mask = [1] * 8
     mask_3d, _, _ = generate_3d_masks(valid_mask, grid)
     

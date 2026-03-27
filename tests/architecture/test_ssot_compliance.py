@@ -18,7 +18,15 @@ def test_solver_state_attribute_purity():
         'manifest', 
         'ready_for_time_loop',
         'stencil_matrix', # For Step 2/3 transitions
-        'boundary_conditions'
+        'boundary_conditions',
+        'external_forces',
+        'simulation_parameters',
+        'physical_constraints',
+        'fluid_properties',
+        'initial_conditions',
+        'time',
+        'mask',
+        'domain_configuration'
     }
     
     # Get all public attributes (those not starting with _)
