@@ -1,6 +1,5 @@
 # tests/quality_gates/logic_gate/test_step3_mms.py
 
-import pytest
 from src.common.field_schema import FI
 from src.step3.orchestrate_step3 import orchestrate_step3
 from tests.helpers.solver_input_schema_dummy import create_validated_input

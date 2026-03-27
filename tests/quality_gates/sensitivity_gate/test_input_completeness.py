@@ -1,7 +1,6 @@
 # tests/quality_gates/sensitivity_gate/test_input_completeness.py
 
 import pytest
-import numpy as np
 
 from src.step1.helpers import generate_3d_masks
 from tests.helpers.solver_input_schema_dummy import create_validated_input
