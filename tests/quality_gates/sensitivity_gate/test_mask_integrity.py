@@ -6,6 +6,7 @@ import pytest
 from src.step1.helpers import generate_3d_masks
 from tests.helpers.solver_input_schema_dummy import create_validated_input
 
+
 def test_gate_1b_overflow_guard_logic():
     """
     Gate 1.B: Topology Audit (Overflow Guard)

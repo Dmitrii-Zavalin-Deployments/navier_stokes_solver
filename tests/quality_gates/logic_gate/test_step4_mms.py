@@ -1,11 +1,11 @@
 # tests/quality_gates/logic_gate/test_step4_mms.py
 
 from unittest.mock import patch
-import pytest
 
 from src.step4.orchestrate_step4 import orchestrate_step4
-from tests.helpers.solver_step2_output_dummy import make_step2_output_dummy
 from tests.helpers.solver_input_schema_dummy import create_validated_input
+from tests.helpers.solver_step2_output_dummy import make_step2_output_dummy
+
 
 def test_logic_gate_4_archival_trigger_logic():
     """

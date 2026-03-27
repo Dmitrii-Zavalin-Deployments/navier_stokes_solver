@@ -1,11 +1,10 @@
 # tests/quality_gates/physics_gate/test_archivist.py
 
-import numpy as np
-import pytest
 from src.common.field_schema import FI
 from src.step4.io_archivist import save_snapshot
-from tests.helpers.solver_step2_output_dummy import make_step2_output_dummy
 from tests.helpers.solver_input_schema_dummy import create_validated_input
+from tests.helpers.solver_step2_output_dummy import make_step2_output_dummy
+
 
 def test_gate_4a_ghost_stripping_parity():
     """
