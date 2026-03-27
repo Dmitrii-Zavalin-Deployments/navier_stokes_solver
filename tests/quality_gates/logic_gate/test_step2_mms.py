@@ -1,8 +1,8 @@
 # tests/quality_gates/logic_gate/test_step2_mms.py
 
-import pytest
 from src.step2.orchestrate_step2 import orchestrate_step2
 from tests.helpers.solver_step1_output_dummy import solver_step1_output_dummy
+
 
 def test_logic_gate_2_stencil_graph_assembly():
     """

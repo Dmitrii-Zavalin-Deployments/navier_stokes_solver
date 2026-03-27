@@ -1,9 +1,10 @@
 # tests/quality_gates/logic_gate/test_step1_mms.py
 
-import pytest
 import numpy as np
-from src.step1.orchestrate_step1 import orchestrate_step1
+
 from src.common.field_schema import FI
+from src.step1.orchestrate_step1 import orchestrate_step1
+
 
 def test_logic_gate_1_padded_ingestion(solver_input_schema_dummy):
     """
