@@ -50,36 +50,43 @@ def test_logic_gate_3_physics_boundary_sync():
 
 def test_logic_gate_3_center_mutation_audit():
     """
-    Verification: Ensure the block correctly mutates its OWN center cell.
-    This proves the Boundary Applier is active for the primary ownership cell.
+    Verification: Ensure the Boundary Applier mutates the cell it OWNS.
+    Success Metric: A masked Core Block center is sanitized by the Applier.
     """
     # 1. Setup
     nx, ny, nz = 4, 4, 4
     state = make_step2_output_dummy(nx=nx, ny=ny, nz=nz)
+    from tests.helpers.input_helper import create_validated_input
     context = SimulationContext(input_data=create_validated_input(nx=nx, ny=ny, nz=nz), config=None)
 
-    # 2. Target a block that IS a Ghost Block (to trigger Boundary Applier)
-    # In Step 3, core blocks run 'predictor', ghost blocks run 'applier'.
-    ghost_block = next(b for b in state.stencil_matrix if b.center.is_ghost)
-    
-    # 3. Poison the OWNED center cell
-    ghost_block.center.set_field(FI.VX_STAR, 1.0)
+    # 2. Target: Find a CORE block that represents a Boundary (Mask <= 0)
+    # This block is an 'actor' in the matrix but requires boundary enforcement.
+    try:
+        target_block = next(b for b in state.stencil_matrix if b.center.mask <= 0)
+    except StopIteration:
+        # Fallback: If dummy has no walls, manually mask the first block for the test
+        target_block = state.stencil_matrix[0]
+        target_block.center.mask = -1 # Force Wall status
 
-    # 4. Action: Execute Orchestration on the owner
+    # 3. Poison: Inject drift into the center cell
+    target_block.center.set_field(FI.VX_STAR, 1.0)
+
+    # 4. Action: Execute Orchestration
+    # The dispatcher should see the mask and call the Boundary Applier.
     orchestrate_step3(
-        block=ghost_block,
+        block=target_block,
         context=context,
         state_grid=state.grid,
         state_bc_manager=state.boundary_conditions,
         is_first_pass=True
     )
 
-    # 5. VERIFICATION: Center Mutation Audit
-    # The center MUST be sanitized because the block owns this memory.
-    final_center_vx = ghost_block.center.get_field(FI.VX_STAR)
+    # 5. Verification: Ownership Audit
+    # The owner MUST have sanitized its own VX_STAR to 0.0 (No-Slip).
+    final_val = target_block.center.get_field(FI.VX_STAR)
     
-    assert final_center_vx != 1.0, (
-        "MMS FAILURE: Boundary Applier failed to mutate its own center VX_STAR. "
-        "The block center should have been sanitized via No-Slip."
+    assert final_val != 1.0, (
+        "MMS FAILURE: Boundary Applier ignored its own center cell. "
+        f"Block {target_block.id} (Mask={target_block.center.mask}) remained poisoned."
     )
-    assert final_center_vx == 0.0, f"Expected 0.0, got {final_center_vx}"
+    assert final_val == 0.0, f"Expected 0.0 (No-Slip), got {final_val}"
