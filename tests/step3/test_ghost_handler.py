@@ -1,8 +1,11 @@
 # tests/step3/test_ghost_handler.py
 
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
+
 from src.step3.ops.ghost_handler import sync_ghost_trial_buffers
+
 
 def test_sync_ghost_trial_buffers_success():
     """
