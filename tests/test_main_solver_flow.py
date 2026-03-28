@@ -38,7 +38,6 @@ def test_run_solver_state_schema_violation():
                 with pytest.raises(jsonschema.exceptions.ValidationError, match="State Mismatch"):
                     run_solver("dummy.json")
 
-# 3. Test PPE Convergence & Debug Print (Lines 117, 126)
 def test_run_solver_convergence_and_debug():
     valid_input_obj = create_validated_input()
     with patch("src.main_solver._load_simulation_context") as mock_load:
@@ -48,12 +47,16 @@ def test_run_solver_convergence_and_debug():
         mock_context.config.ppe_max_iter = 5
         mock_context.config.ppe_tolerance = 1e-1
         
+        # GROUNDING: Define numeric limits for Line 128
+        mock_context.input_data.simulation_parameters.total_time = 1.0
+        
         mock_state = MagicMock()
         mock_state.ready_for_time_loop = True
         mock_state.stencil_matrix = [MagicMock()]
-        mock_state.iteration = 10 # Trigger Line 126 debug print
+        mock_state.iteration = 10 
+        # GROUNDING: Define current time for Line 128 comparison
+        mock_state.time = 0.1 
         
-        # Force the loop to exit after one iteration
         def side_effect_exit(*args, **kwargs):
             mock_state.ready_for_time_loop = False
             return mock_state
@@ -65,9 +68,8 @@ def test_run_solver_convergence_and_debug():
              patch("src.main_solver.DEBUG", True):
             
             run_solver("dummy.json")
-            # Line 117 is hit because 0.001 < 1e-1 (tolerance)
 
-# 4. Test FloatingPointError Trap (Lines 146-147)
+
 def test_run_solver_floating_point_trap():
     valid_input_obj = create_validated_input()
     with patch("src.main_solver._load_simulation_context") as mock_load:
@@ -75,9 +77,16 @@ def test_run_solver_floating_point_trap():
         mock_load.return_value = mock_context
         mock_context.input_data = valid_input_obj
         
+        # GROUNDING: ElasticManager needs these for Line 79 in elasticity.py
+        mock_context.config.ppe_max_retries = 3
+        mock_context.config.dt_min_limit = 1e-6
+        
         mock_state = MagicMock()
         mock_state.ready_for_time_loop = True
         mock_state.stencil_matrix = [MagicMock()]
+        mock_state.iteration = 0
+        # GROUNDING: ElasticManager pulls initial dt from here
+        mock_state.simulation_parameters.time_step = 0.01
         
         with patch("src.main_solver.orchestrate_step1", return_value=mock_state), \
              patch("src.main_solver.orchestrate_step2", return_value=mock_state), \
