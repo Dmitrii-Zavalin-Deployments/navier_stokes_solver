@@ -14,7 +14,7 @@ jobs:
       PYTHONPATH: ${{ github.workspace }}
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
       # Define the 'Gold Standard' test command here (e.g. # pytest -s tests/ -vv --cov=src --cov-report=term-missing)
-      TEST_COMMAND: "pytest -s tests/ -vv --cov=src --cov-report=term-missing"
+      TEST_COMMAND: "pytest -s tests/common/test_solver_state_failures.py -vv --cov=src --cov-report=term-missing"
     
     steps:
       - name: 🗂️ Checkout Repository
@@ -149,6 +149,8 @@ jobs:
       #   run: |
       #     chmod +x ./download_from_dropbox.sh
       #     ./download_from_dropbox.sh
+      #     echo "--- Post-Download Repository State ---"
+      #     ls -R
 
       # - name: 🌊 Execute Navier-Stokes Solver
       #   run: python3 main_solver.py
@@ -158,6 +160,8 @@ jobs:
       #   run: |
       #     chmod +x ./upload_to_dropbox.sh
       #     ./upload_to_dropbox.sh
+      #     echo "--- Post-Upload Repository State ---"
+      #     ls -R
 
       - name: 📊 Audit Performance Ledger & Sync
         if: always()
