@@ -42,7 +42,6 @@ def test_run_solver_convergence_and_debug():
     real_state = make_step4_output_dummy(nx=2, ny=2, nz=2)
     real_input = create_validated_input()
     
-    # GROUNDING: Create a real config object instead of a MagicMock
     real_config = SolverConfig(
         ppe_tolerance=1e-1,
         ppe_max_iter=5,
@@ -53,8 +52,6 @@ def test_run_solver_convergence_and_debug():
     with patch("src.main_solver._load_simulation_context") as mock_load:
         mock_context = MagicMock()
         mock_load.return_value = mock_context
-        
-        # Inject the real objects into the mock context
         mock_context.input_data = real_input
         mock_context.config = real_config
         
@@ -64,13 +61,16 @@ def test_run_solver_convergence_and_debug():
             state_in.ready_for_time_loop = False
             return state_in
 
+        # ADDED: patch("src.main_solver.archive_simulation_artifacts")
         with patch("src.main_solver.orchestrate_step1", return_value=real_state), \
              patch("src.main_solver.orchestrate_step2", return_value=real_state), \
              patch("src.main_solver.orchestrate_step3", return_value=(None, 0.001)), \
              patch("src.main_solver.orchestrate_step4", side_effect=side_effect_exit), \
+             patch("src.main_solver.archive_simulation_artifacts", return_value="mock_path.zip"), \
              patch("src.main_solver.DEBUG", True):
             
-            run_solver("dummy.json")
+            result = run_solver("dummy.json")
+            assert result == "mock_path.zip"
 
 # 4. Test Floating Point Trap
 def test_run_solver_floating_point_trap():
