@@ -1,8 +1,11 @@
 # tests/step3/test_boundary_dispatcher.py
 
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
+
 from src.step3.boundaries.dispatcher import get_applicable_boundary_configs
+
 
 def test_get_applicable_configs_external_interior():
     """
