@@ -36,27 +36,37 @@ def test_set_safe_type_error():
         # Expected float, providing string
         container._set_safe("density", "heavy", float)
 
-def test_numpy_schema_validation_error(tmp_path):
-    """Coverage for Line 50: Specialized NumPy diagnostic in schema failure."""
-    # 1. Create a dummy schema that expects an integer
+def test_numpy_schema_validation_error(tmp_path, mocker):
+    """
+    Coverage for Line 50: Explicitly trigger the NumPy diagnostic 
+    by forcing jsonschema to see a raw array.
+    """
     schema = {
         "type": "object",
         "properties": {"velocity": {"type": "integer"}},
         "required": ["velocity"]
     }
     schema_file = tmp_path / "schema.json"
+    import json
     schema_file.write_text(json.dumps(schema))
 
-    # 2. Populate container with a NumPy array (which will fail the 'integer' check)
     container = MockContainer()
-    container._velocity = np.array([1.1, 2.2]) 
-    
-    # 3. Verify the diagnostic print/exception identifies NumPy shape/dtype
+    # We use a non-integer array to trigger the failure
+    raw_array = np.array([1.1, 2.2])
+    container._velocity = raw_array
+
+    # MOCKING to_dict: We force to_dict to return the RAW array 
+    # instead of a list, so line 48 'hasattr(failed_instance, "shape")' returns True.
+    mocker.patch.object(container, 'to_dict', return_value={"velocity": raw_array})
+
     with pytest.raises(ValueError) as exc_info:
         container.validate_against_schema(str(schema_file))
     
-    assert "numpy.ndarray" in str(exc_info.value)
-    assert "shape: (2,)" in str(exc_info.value)
+    # Now this will pass because line 50 was executed
+    error_msg = str(exc_info.value)
+    assert "numpy.ndarray" in error_msg
+    assert "shape: (2,)" in error_msg
+    assert "float64" in error_msg  # Check dtype detection too
 
 def test_to_dict_with_sparse_toarray():
     """Coverage for Line 106: Serialization of objects with .toarray()."""
