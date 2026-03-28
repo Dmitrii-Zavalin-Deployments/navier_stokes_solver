@@ -1,14 +1,14 @@
 # tests/test_main_solver_flow.py
 
+import sys
 from unittest.mock import MagicMock, patch
-
 import jsonschema
 import pytest
 
 from src.main_solver import _load_simulation_context, run_solver
+from src.common.solver_config import SolverConfig # Grounding the config
 from tests.helpers.solver_input_schema_dummy import create_validated_input
 from tests.helpers.solver_step4_output_dummy import make_step4_output_dummy
-
 
 # 1. Test File System Guards
 def test_load_context_missing_config():
@@ -41,13 +41,21 @@ def test_run_solver_convergence_and_debug():
     real_state = make_step4_output_dummy(nx=2, ny=2, nz=2)
     real_input = create_validated_input()
     
+    # GROUNDING: Create a real config object instead of a MagicMock
+    real_config = SolverConfig(
+        ppe_tolerance=1e-1,
+        ppe_max_iter=5,
+        dt_min_limit=1e-6,
+        ppe_max_retries=5
+    )
+    
     with patch("src.main_solver._load_simulation_context") as mock_load:
         mock_context = MagicMock()
         mock_load.return_value = mock_context
         
-        # FIX: real_input is a real object; its to_dict() just works. 
-        # We only need to ensure the mock_context uses our real_input.
+        # Inject the real objects into the mock context
         mock_context.input_data = real_input
+        mock_context.config = real_config
         
         real_state.ready_for_time_loop = True 
         
@@ -68,13 +76,17 @@ def test_run_solver_floating_point_trap():
     real_state = make_step4_output_dummy()
     real_input = create_validated_input()
     
+    # GROUNDING: Same for the trap test
+    real_config = SolverConfig(
+        ppe_max_retries=2,
+        dt_min_limit=1e-6
+    )
+    
     with patch("src.main_solver._load_simulation_context") as mock_load:
         mock_context = MagicMock()
         mock_load.return_value = mock_context
         mock_context.input_data = real_input
-        
-        mock_context.config.ppe_max_retries = 2
-        mock_context.config.dt_min_limit = 1e-6
+        mock_context.config = real_config
         
         with patch("src.main_solver.orchestrate_step1", return_value=real_state), \
              patch("src.main_solver.orchestrate_step2", return_value=real_state), \
