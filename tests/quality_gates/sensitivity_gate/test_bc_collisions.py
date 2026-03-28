@@ -16,13 +16,13 @@ def test_gate_3a_3b_dispatcher_mask_symmetry(caplog):
     """
     # 1. Setup: Set caplog to capture DEBUG for the dispatcher specifically
     caplog.set_level(logging.DEBUG, logger=DISPATCH_LOGGER)
-    state = make_step2_output_dummy(nx=4, ny=4, nz=4)
+    state = make_step2_output_dummy(nx=10, ny=10, nz=10)
     
     boundary_cfg = [
         {"location": "wall", "type": "no-slip", "values": {"u": 0.1}} # Distinctive value
     ]
     domain_cfg = {"type": "INTERNAL"}
-    block = state.stencil_matrix[10] # Guaranteed interior core block
+    block = state.stencil_matrix[500]
 
     # --- Audit Step 3.A: User-Defined Wall Logic (-1) ---
     block.center.mask = -1
