@@ -56,7 +56,6 @@ def test_logic_gate_3_center_mutation_audit():
     # 1. Setup
     nx, ny, nz = 4, 4, 4
     state = make_step2_output_dummy(nx=nx, ny=ny, nz=nz)
-    from tests.helpers.input_helper import create_validated_input
     context = SimulationContext(input_data=create_validated_input(nx=nx, ny=ny, nz=nz), config=None)
 
     # 2. Target: Find a CORE block that represents a Boundary (Mask <= 0)
