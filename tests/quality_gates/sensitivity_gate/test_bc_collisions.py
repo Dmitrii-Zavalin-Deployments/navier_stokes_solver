@@ -1,4 +1,5 @@
 import logging
+
 import pytest
 
 from src.step3.boundaries.dispatcher import get_applicable_boundary_configs
