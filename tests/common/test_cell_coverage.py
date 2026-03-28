@@ -1,9 +1,9 @@
 # tests/common/test_cell_coverage.py
 
-import pytest
 import numpy as np
+
 from src.common.cell import Cell
-from src.common.field_schema import FI
+
 
 def test_cell_comprehensive_coverage():
     # Setup: 10x10x10 buffer (nx=10, ny=10, nz=10)
