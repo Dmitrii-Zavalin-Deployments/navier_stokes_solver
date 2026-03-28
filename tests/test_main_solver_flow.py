@@ -29,9 +29,11 @@ def test_run_solver_schema_violation():
 
 # 3. Test Numerical Traps (Lines 145-151)
 def test_run_solver_numerical_exceptions():
-    with patch("src.main_solver._load_simulation_context") as mock_load:
+    # Remove 'as mock_load' to fix Ruff F841
+    with patch("src.main_solver._load_simulation_context"): 
         mock_state = MagicMock()
         mock_state.ready_for_time_loop = True
+        
         # Force a FloatingPointError during execution
         with patch("src.main_solver.orchestrate_step3", side_effect=FloatingPointError("Underflow")):
             with pytest.raises(FloatingPointError):
