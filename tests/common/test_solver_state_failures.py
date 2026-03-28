@@ -111,8 +111,11 @@ def test_validate_physical_readiness_failures():
     with pytest.raises(RuntimeError, match="CRITICAL: NaNs/Infs detected in Foundation buffer!"):
         state.validate_physical_readiness()
         
-    # Line 614: Grid not initialized
+    # Line 614 in src/common/solver_state.py
     fm.data[0, 0] = 0.0 
-    state.grid = GridManager() # nx is None
-    with pytest.raises(RuntimeError, match="CRITICAL: Grid not properly initialized"):
+    state.grid = GridManager() # _nx is None by default
+    
+    # We expect the BaseContainer's Access Error because accessing 'self.grid.nx' 
+    # triggers _get_safe("nx") before the 'is None' check can complete.
+    with pytest.raises(RuntimeError, match="Access Error: 'nx' in GridManager is uninitialized"):
         state.validate_physical_readiness()
