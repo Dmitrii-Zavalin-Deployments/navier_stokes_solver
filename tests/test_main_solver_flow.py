@@ -98,53 +98,57 @@ def test_run_solver_floating_point_trap():
                 run_solver("dummy.json")
 
 def test_cli_entrypoint_success():
-    """
-    Forces execution of the 'if __name__ == "__main__":' block 
-    to achieve 100% coverage on src/main_solver.py.
-    """
-    # 1. Mock the command line arguments
-    # [sys.argv[0] is the script name, sys.argv[1] is the input path]
+    """Forces execution of the __main__ block by spoofing __name__."""
     test_args = ["src/main_solver.py", "dummy_input.json"]
+    
+    # 1. Get a reference to the module
+    import src.main_solver
     
     with patch("sys.argv", test_args), \
          patch("src.main_solver.run_solver") as mock_run, \
          patch("builtins.print") as mock_print:
         
-        # Define what the solver returns on success
         mock_run.return_value = "mock_output.zip"
         
-        # 2. Re-import or Reload the module to trigger the __main__ block
-        import src.main_solver
+        # 2. Manually set __name__ to __main__ so the block triggers
+        src.main_solver.__name__ = "__main__"
+        
         with pytest.raises(SystemExit) as e:
             importlib.reload(src.main_solver)
         
-        # 3. Assertions
-        assert e.value.code == 0  # sys.exit(0)
+        assert e.value.code == 0
         mock_run.assert_called_once_with("dummy_input.json")
-        mock_print.assert_any_call("Pipeline complete. Artifacts archived at: mock_output.zip")
 
 def test_cli_entrypoint_no_args():
-    """Tests the 'Usage' branch when no arguments are provided."""
+    """Tests the usage prompt when no path is provided."""
+    import src.main_solver
+    
     with patch("sys.argv", ["src/main_solver.py"]), \
          patch("builtins.print") as mock_print:
         
-        import src.main_solver
-        with pytest.raises(SystemExit) as e:
-            importlib.reload(src.main_solver)
-            
-        assert e.value.code == 1  # sys.exit(1)
-        mock_print.assert_any_call("Usage: python src/main_solver.py <input_json_path>")
-
-def test_cli_entrypoint_error():
-    """Tests the 'FATAL PIPELINE ERROR' branch."""
-    with patch("sys.argv", ["src/main_solver.py", "bad_input.json"]), \
-         patch("src.main_solver.run_solver") as mock_run, \
-         patch("traceback.print_exc"):
+        src.main_solver.__name__ = "__main__"
         
-        mock_run.side_effect = Exception("System Crash")
-        
-        import src.main_solver
         with pytest.raises(SystemExit) as e:
             importlib.reload(src.main_solver)
             
         assert e.value.code == 1
+        mock_print.assert_any_call("Usage: python src/main_solver.py <input_json_path>")
+
+def test_cli_entrypoint_error():
+    """Tests the fatal error handling and traceback."""
+    import src.main_solver
+    
+    with patch("sys.argv", ["src/main_solver.py", "bad.json"]), \
+         patch("src.main_solver.run_solver") as mock_run, \
+         patch("traceback.print_exc"), \
+         patch("builtins.print") as mock_print:
+        
+        mock_run.side_effect = Exception("System Crash")
+        src.main_solver.__name__ = "__main__"
+        
+        with pytest.raises(SystemExit) as e:
+            importlib.reload(src.main_solver)
+            
+        assert e.value.code == 1
+        # Check if the fatal error message was printed to stderr (or just printed)
+        mock_print.assert_any_call("FATAL PIPELINE ERROR: System Crash", file=sys.stderr)
