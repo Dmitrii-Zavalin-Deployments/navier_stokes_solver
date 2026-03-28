@@ -39,7 +39,7 @@ def test_gate_4_type_casting_integrity():
 
 def test_gate_4_schema_validation_and_firewall():
     """
-    Verification: Ensure state.validate_against_schema("src/common/solver_input_schema.json") blocks incomplete states.
+    Verification: Ensure state.validate_against_schema("schema/solver_input_schema.json") blocks incomplete states.
     Asserts: Validation fails on uninitialized/None fields (Double-Lock Barrier).
     """
     solver_input = create_validated_input()
@@ -52,7 +52,7 @@ def test_gate_4_schema_validation_and_firewall():
     # 2. Assert: The schema validator must catch the drift
     # This aligns with the 'Double-Lock' requirement in Line 74
     with pytest.raises(jsonschema.ValidationError): # Replace with specific jsonschema.ValidationError if imported
-        state.validate_against_schema("src/common/solver_input_schema.json")
+        state.validate_against_schema("schema/solver_input_schema.json")
         
     # 3. Assert: ready_for_time_loop remains False (Sentinel Integrity)
     assert state.ready_for_time_loop is False
