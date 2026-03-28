@@ -7,32 +7,54 @@ from src.common.stencil_block import StencilBlock
 logger = logging.getLogger(__name__)
 
 def get_applicable_boundary_configs(block: StencilBlock, boundary_cfg: list, grid, domain_cfg: dict) -> list:
-    # 1. DOMAIN BOUNDARY (Spatial) must be Priority #1
+    domain_type = None
+    if domain_cfg:
+        domain_type = domain_cfg.get("type")
+
+    # INTERNAL domains: mask axioms are the primary authority
+    if domain_type == "INTERNAL" or domain_type is None:
+        mask = block.center.mask
+        if mask == -1:
+            logger.debug("DISPATCH [Mask]: wall")
+            return _find_config(boundary_cfg, "wall")
+        if mask == 0:
+            logger.debug("DISPATCH [Mask]: solid")
+            return [{
+                'location': 'solid',
+                'type': 'no-slip',
+                'values': {'u': 0.0, 'v': 0.0, 'w': 0.0},
+            }]
+        # Fluid / interior
+        return [{
+            'location': 'interior',
+            'type': 'fluid_gas',
+            'values': {},
+        }]
+
+    # EXTERNAL domains: keep existing ghost-based spatial priority
     b_type = _get_domain_location_type(block, grid)
-    
+
     if b_type != "none":
         try:
             if domain_cfg and domain_cfg.get("type") == "EXTERNAL":
                 ref_v = domain_cfg["reference_velocity"]
                 return [{
-                    'location': b_type, 'type': 'free-stream', 
-                    'values': {'u': ref_v[0], 'v': ref_v[1], 'w': ref_v[2]}
+                    'location': b_type,
+                    'type': 'free-stream',
+                    'values': {'u': ref_v[0], 'v': ref_v[1], 'w': ref_v[2]},
                 }]
             return _find_config(boundary_cfg, b_type)
         except KeyError:
             # If spatial lookup fails, ONLY THEN do we allow mask fallback or raise
             raise KeyError(f"Missing boundary definition for {b_type}") from None
 
-    # 2. INTERNAL MASK (Axioms) only if it's NOT a domain boundary
-    mask = block.center.mask
-    if mask == -1:
-        logger.debug(f"DISPATCH [Mask]: wall")
-        return _find_config(boundary_cfg, "wall")
-    if mask == 0:
-        logger.debug(f"DISPATCH [Mask]: solid")
-        return [{'location': 'solid', 'type': 'no-slip', 'values': {'u': 0.0, 'v': 0.0, 'w': 0.0}}]
+    # For EXTERNAL with no ghost neighbors, fall back to interior axiom
+    return [{
+        'location': 'interior',
+        'type': 'fluid_gas',
+        'values': {},
+    }]
 
-    return [{'location': 'interior', 'type': 'fluid_gas', 'values': {}}]
 
 def _find_config(boundary_cfg: list, location: str) -> list:
     """
