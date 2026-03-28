@@ -83,12 +83,31 @@ def test_gate_3a_missing_wall_config_collision():
     Step 3.A: Catch KeyError when mask -1 is present but 'wall' config is missing.
     Ensures that for walls (unlike solids), the user MUST provide config.
     """
-    state = make_step2_output_dummy(nx=4, ny=4, nz=4)
-    block = state.stencil_matrix[10]
+    # 1. Setup: Use a larger grid to ensure index 500 is not near any ghost neighbors.
+    # This prevents 'z_min' or 'x_min' KeyErrors from preempting the 'wall' check.
+    state = make_step2_output_dummy(nx=10, ny=10, nz=10)
+    block = state.stencil_matrix[500] 
+    
+    # 2. Trigger: Set to Wall status
     block.center.mask = -1
     
-    # Empty boundary config list
-    incomplete_cfg = []
+    # 3. Context: Provide configs for faces, but EXCLUDE 'wall'
+    incomplete_cfg = [
+        {"location": "x_min", "type": "no-slip", "values": {"u": 0}},
+        {"location": "x_max", "type": "no-slip", "values": {"u": 0}},
+        {"location": "y_min", "type": "no-slip", "values": {"v": 0}},
+        {"location": "y_max", "type": "no-slip", "values": {"v": 0}},
+        {"location": "z_min", "type": "no-slip", "values": {"w": 0}},
+        {"location": "z_max", "type": "no-slip", "values": {"w": 0}}
+    ]
     
-    with pytest.raises(KeyError, match="No boundary configuration found for location: 'wall'"):
-        get_applicable_boundary_configs(block, incomplete_cfg, state.grid, {"type": "INTERNAL"})
+    # 4. Verification: The Dispatcher MUST fail-fast specifically on the missing 'wall' key.
+    # This validates Rule 5: Explicit classification for all internal obstructions.
+    expected_error = "No boundary configuration found for location: 'wall'"
+    with pytest.raises(KeyError, match=expected_error):
+        get_applicable_boundary_configs(
+            block, 
+            incomplete_cfg, 
+            state.grid, 
+            {"type": "INTERNAL"}
+        )
