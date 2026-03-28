@@ -72,11 +72,18 @@ def test_manager_validation_errors():
         bcm.conditions = "not_a_list"
 
 # --- 3. Testing Mask and Force Failures (Lines 513, 558, 576) ---
-import pytest
 import numpy as np
+import pytest
+
 from src.common.solver_state import (
-    SolverState, MaskManager, ExternalForceManager, FieldManager, GridManager, PhysicalConstraintsManager
+    ExternalForceManager,
+    FieldManager,
+    GridManager,
+    MaskManager,
+    PhysicalConstraintsManager,
+    SolverState,
 )
+
 
 def test_mask_and_force_failures():
     # 1. Line 513: Uninitialized Mask Serialization
