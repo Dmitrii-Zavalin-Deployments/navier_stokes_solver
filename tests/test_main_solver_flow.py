@@ -1,13 +1,14 @@
 # tests/test_main_solver_flow.py
 
-import sys
 from unittest.mock import MagicMock, patch
+
 import jsonschema
 import pytest
 
 from src.main_solver import _load_simulation_context, run_solver
 from tests.helpers.solver_input_schema_dummy import create_validated_input
 from tests.helpers.solver_step4_output_dummy import make_step4_output_dummy
+
 
 # 1. Test File System Guards
 def test_load_context_missing_config():
