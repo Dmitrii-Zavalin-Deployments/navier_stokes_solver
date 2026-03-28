@@ -1,9 +1,10 @@
 # tests/common/test_archive_service.py
 
+import pytest
 import logging
 import zipfile
 from pathlib import Path
-
+from unittest.mock import MagicMock, patch
 from src.common.archive_service import archive_simulation_artifacts
 from src.main_solver import BASE_DIR
 
@@ -69,3 +70,50 @@ class TestArchiveServiceIntegrity:
         # --- 6. VERIFICATION: INSTANCE PERSISTENCE (Rule 8) ---
         # We assert that the staging folder remains, confirming the ephemeral-only design.
         assert staging_dir.exists(), "Archiver logic error: Staging folder should persist."
+
+    def test_archive_simulation_artifacts_source_missing_error():
+        """
+        Coverage for lines 36-37: Ensure CRITICAL log and FileNotFoundError 
+        when the source_dir does not exist.
+        """
+        # 1. Setup Mock SolverState
+        mock_state = MagicMock()
+        # Point to a path we know won't exist
+        mock_state.manifest.output_directory = "/tmp/non_existent_solver_results_9999"
+        
+        # 2. Setup Mock for main_solver.BASE_DIR (Rule 19 compliance)
+        # We mock this to avoid the archive service trying to find a real 'data' folder
+        with patch("src.main_solver.BASE_DIR", "/tmp/mock_base"):
+            
+            # 3. Execution & Verification (Rule 5: Explicit Error)
+            with pytest.raises(FileNotFoundError) as exc_info:
+                archive_simulation_artifacts(mock_state)
+            
+            # Verify the error message matches the logic on line 37
+            assert "Source directory" in str(exc_info.value)
+            assert "/tmp/non_existent_solver_results_9999" in str(exc_info.value)
+
+    def test_archive_simulation_artifacts_full_path_success(tmp_path, mocker):
+        """
+        Optional: High-fidelity success path test to ensure lines 58-63 
+        (final placement and overwrite) are also covered.
+        """
+        # Create a real dummy source directory in pytest's temp folder
+        source = tmp_path / "raw_results"
+        source.mkdir()
+        (source / "data.txt").write_text("simulation results")
+        
+        # Mock SolverState
+        mock_state = MagicMock()
+        mock_state.manifest.output_directory = str(source)
+        
+        # Mock main_solver.BASE_DIR to point to our temp test area
+        mocker.patch("src.main_solver.BASE_DIR", str(tmp_path))
+        
+        # Execute
+        final_zip = archive_simulation_artifacts(mock_state)
+        
+        # Verify
+        assert Path(final_zip).exists()
+        assert final_zip.endswith(".zip")
+        assert "navier_stokes_output.zip" in final_zip
