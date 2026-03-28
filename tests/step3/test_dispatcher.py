@@ -1,4 +1,4 @@
-# tests/step3/test_dispatcher_topology.py
+# tests/step3/test_dispatcher.py
 
 from unittest.mock import MagicMock
 
@@ -95,3 +95,36 @@ def test_external_missing_ref_velocity(mock_block):
     
     with pytest.raises(KeyError):
         get_applicable_boundary_configs(mock_block, [], None, domain_cfg)
+
+def test_spatial_priority_over_mask(mock_block, mock_boundary_cfg):
+    """
+    Rule 4: Spatial Boundary must take priority over Mask.
+    Scenario: i=0 (ghost neighbor) AND mask=0 (Solid).
+    Expectation: Should return 'x_min' config, NOT 'solid'.
+    """
+    # 1. Setup conflict
+    mock_block.i_minus.is_ghost = True
+    mock_block.center.mask = 0  # Solid mask
+    
+    # 2. Execute
+    result = get_applicable_boundary_configs(mock_block, mock_boundary_cfg, None, {"type": "INTERNAL"})
+
+    # 3. Assert Spatial wins
+    assert result[0]['location'] == 'x_min'
+    assert result[0]['type'] == 'inflow'
+    assert result[0]['values']['u'] == 1.0
+
+def test_mask_wall_priority_over_solid(mock_block, mock_boundary_cfg):
+    """
+    Rule 5: User-defined 'wall' (-1) takes priority over hardcoded 'solid' (0).
+    Scenario: No ghosts, mask=-1.
+    """
+    # 1. Setup internal wall
+    mock_block.center.mask = -1
+    
+    # 2. Execute
+    result = get_applicable_boundary_configs(mock_block, mock_boundary_cfg, None, {"type": "INTERNAL"})
+
+    # 3. Assert User 'wall' wins
+    assert result[0]['location'] == 'wall'
+    assert result[0]['type'] == 'no-slip'
