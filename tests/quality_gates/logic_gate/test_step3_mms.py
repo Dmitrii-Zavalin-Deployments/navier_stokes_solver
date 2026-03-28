@@ -3,8 +3,9 @@
 from src.common.field_schema import FI
 from src.common.simulation_context import SimulationContext
 from src.step3.orchestrate_step3 import orchestrate_step3
-from tests.helpers.solver_step2_output_dummy import make_step2_output_dummy
 from tests.helpers.solver_input_schema_dummy import create_validated_input
+from tests.helpers.solver_step2_output_dummy import make_step2_output_dummy
+
 
 def test_logic_gate_3_physics_boundary_sync():
     """
