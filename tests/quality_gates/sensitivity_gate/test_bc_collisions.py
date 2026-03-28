@@ -1,66 +1,55 @@
-# tests/quality_gates/sensitivity_gate/test_bc_collisions.py
-
 import logging
-
 import pytest
-
 from src.step3.boundaries.dispatcher import get_applicable_boundary_configs
+from tests.helpers.solver_step2_output_dummy import make_step2_output_dummy
 
+logger = logging.getLogger(__name__)
 
 def test_gate_3a_3b_dispatcher_mask_symmetry(caplog):
     """
     Gate 3.A & 3.B: Dispatcher-Mask Symmetry Audit
     Verification: Ensure mask values (-1, 0) trigger explicit log dispatching.
-    Compliance: Physical Logic Firewall Mandate.
+    Compliance: Physical Logic Firewall (Rule 4).
+    
+    Mandate: The solver must log 'DISPATCH [Mask]' for material transitions.
     """
-    # Set caplog to capture DEBUG level from the specific dispatcher logger
+    # Set caplog to capture the specific dispatcher logger at DEBUG level
     caplog.set_level(logging.DEBUG, logger="src.step3.boundaries.dispatcher")
     
-    # 1. Setup Mock Objects
-    class MockCell: 
-        def __init__(self, mask): 
-            self.mask = mask
-            # Set indices to 1 to bypass the _get_domain_location_type (Step 1 spatial check)
-            self.i, self.j, self.k = 1, 1, 1
-
-    class MockBlock: 
-        def __init__(self, mask): 
-            self.center = MockCell(mask)
-            self.id = "block_test_0"
-
-    class MockGrid: 
-        nx, ny, nz = 10, 10, 10
-
-    # Minimum config required for mask -1 (Wall)
+    # 1. Setup: Use Step 2 Dummy for a hydrated 4x4x4 core (6x6x6 memory)
+    # This ensures we have a real StencilBlock with neighbor topology.
+    state = make_step2_output_dummy(nx=4, ny=4, nz=4)
     boundary_cfg = [{"location": "wall", "type": "no-slip", "values": {}}]
-    grid = MockGrid()
     domain_cfg = {"type": "INTERNAL"}
 
+    # Select an interior core block to isolate Mask logic from Spatial (Ghost) logic
+    block = state.stencil_matrix[0] 
+
     # 2. Audit Step 3.A: Wall Logic (-1)
-    get_applicable_boundary_configs(MockBlock(-1), boundary_cfg, grid, domain_cfg)
-    assert "DISPATCH [Mask]" in caplog.text
-    assert "treated as Wall (mask -1)" in caplog.text
+    block.center.mask = -1
+    get_applicable_boundary_configs(block, boundary_cfg, state.grid, domain_cfg)
+    
+    assert "DISPATCH [Mask]" in caplog.text, "Symmetry Breach: Missing DISPATCH [Mask] log for wall."
+    assert "treated as Wall (mask -1)" in caplog.text, "Logic Breach: Mask -1 did not identify as Wall."
     
     caplog.clear()
 
     # 3. Audit Step 3.B: Solid Logic (0)
-    get_applicable_boundary_configs(MockBlock(0), boundary_cfg, grid, domain_cfg)
-    assert "DISPATCH [Mask]" in caplog.text
-    assert "treated as Solid (mask 0)" in caplog.text
+    block.center.mask = 0
+    get_applicable_boundary_configs(block, boundary_cfg, state.grid, domain_cfg)
+    
+    assert "DISPATCH [Mask]" in caplog.text, "Symmetry Breach: Missing DISPATCH [Mask] log for solid."
+    assert "treated as Solid (mask 0)" in caplog.text, "Logic Breach: Mask 0 did not identify as Solid."
 
 def test_gate_3a_missing_wall_config_collision():
     """
-    Verification Strategy: Catch KeyError when mask -1 is present but 
-    no 'wall' configuration exists in JSON.
+    Step 3.A Verification Strategy: Catch KeyError when mask -1 is present 
+    but no 'wall' configuration exists in the user-provided JSON.
     """
-    class MockCell: 
-        def __init__(self, mask): self.mask, self.i, self.j, self.k = mask, 1, 1, 1
-    class MockBlock: 
-        def __init__(self, mask): self.center = MockCell(mask); self.id = "block_err"
+    state = make_step2_output_dummy(nx=4, ny=4, nz=4)
+    block = state.stencil_matrix[0]
+    block.center.mask = -1
     
-    # Provide an empty boundary list to trigger the KeyError in _find_config
+    # Compliance: Rule 5 (Strict Registry). Fail-fast if the key is missing.
     with pytest.raises(KeyError, match="No boundary configuration found for location: 'wall'"):
-        get_applicable_boundary_configs(MockBlock(-1), [], MockGrid(), {"type": "INTERNAL"})
-
-class MockGrid:
-    nx, ny, nz = 10, 10, 10
+        get_applicable_boundary_configs(block, [], state.grid, {"type": "INTERNAL"})
