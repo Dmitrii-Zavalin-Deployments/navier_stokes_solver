@@ -33,16 +33,18 @@ def get_applicable_boundary_configs(block: StencilBlock, boundary_cfg: list, gri
             
         except KeyError:
             logger.error(f"FATAL: Boundary configuration missing for face {b_type}.")
-            raise KeyError(f"Missing boundary definition for face: {b_type}") from None
+            raise KeyError(f"Missing boundary definition for {b_type}") from None
 
     # 2. Material Mask Logic (Internal Obstructions)
     mask = block.center.mask
     
     if mask == -1:
         # User must provide a "wall" entry in boundary_cfg for masked cells
+        logger.debug(f"DISPATCH [Mask]: Block {block.id} treated as Wall (mask -1)")
         return _find_config(boundary_cfg, "wall")
         
     if mask == 0:
+        logger.debug(f"DISPATCH [Mask]: Block {block.id} treated as Solid (mask 0)")
         return [{
             'location': 'solid', 
             'type': 'no-slip', 
