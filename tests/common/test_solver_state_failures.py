@@ -1,12 +1,21 @@
 # tests/common/test_solver_state_failures.py
 
-import pytest
-import numpy as np
 from unittest.mock import MagicMock
+
+import numpy as np
+import pytest
+
 from src.common.solver_state import (
-    SolverState, DomainManager, GridManager, FluidPropertiesManager, 
-    BoundaryCondition, MaskManager, ExternalForceManager, verify_foundation_integrity
+    BoundaryCondition,
+    DomainManager,
+    ExternalForceManager,
+    FluidPropertiesManager,
+    GridManager,
+    MaskManager,
+    SolverState,
+    verify_foundation_integrity,
 )
+
 
 # --- 1. Testing Foundation Integrity Failures (Lines 24-25, 56) ---
 def test_verify_foundation_integrity_failures():
