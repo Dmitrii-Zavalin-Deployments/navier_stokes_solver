@@ -1,7 +1,9 @@
 # tests/common/test_solver_input_coverage.py
 
 import pytest
+
 from src.common.solver_input import DomainConfigInput, MaskInput
+
 
 def test_solver_input_error_branches():
     # 1. Hit Line 51: Invalid Domain Type
