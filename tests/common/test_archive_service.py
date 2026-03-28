@@ -1,12 +1,10 @@
 # tests/common/test_archive_service.py
 
+import pytest
 import logging
 import zipfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-
-import pytest
-
 from src.common.archive_service import archive_simulation_artifacts
 from src.main_solver import BASE_DIR
 
@@ -50,23 +48,26 @@ class TestArchiveServiceIntegrity:
         result_path = Path(result_path_str)
 
         # --- 3. VERIFICATION: ARCHIVE INTEGRITY ---
-        assert result_path.exists()
-        assert result_path.resolve() == expected_zip_path.resolve()
+        assert result_path.exists(), "Final ZIP was not created."
+        assert result_path.resolve() == expected_zip_path.resolve(), "Target path mismatch."
         
         with zipfile.ZipFile(result_path, 'r') as zip_ref:
             file_list = zip_ref.namelist()
-            assert any("step_0.csv" in f for f in file_list)
-            assert any("mesh.vtk" in f for f in file_list)
+            assert any("step_0.csv" in f for f in file_list), "CSV missing from ZIP."
+            assert any("mesh.vtk" in f for f in file_list), "VTK missing from ZIP."
 
         # --- 4. VERIFICATION: SOURCE CLEANUP ---
-        assert not mock_output_dir.exists()
+        # The raw output should be gone because it was moved to staging
+        assert not mock_output_dir.exists(), "Raw source directory was not moved."
 
         # --- 5. VERIFICATION: FORENSIC LOGS ---
         assert "Initiating artifact packaging" in caplog.text
         assert "Source moved to staging" in caplog.text
+        assert "ARCHIVE COMPLETE" in caplog.text
 
-        # --- 6. VERIFICATION: INSTANCE PERSISTENCE ---
-        assert staging_dir.exists()
+        # --- 6. VERIFICATION: INSTANCE PERSISTENCE (Rule 8) ---
+        # We assert that the staging folder remains, confirming the ephemeral-only design.
+        assert staging_dir.exists(), "Archiver logic error: Staging folder should persist."
 
     def test_archive_simulation_artifacts_source_missing_error(self):
         """
@@ -110,3 +111,41 @@ class TestArchiveServiceIntegrity:
         assert Path(final_zip).exists()
         assert final_zip.endswith(".zip")
         assert "navier_stokes_output.zip" in final_zip
+    
+    def test_archive_simulation_artifacts_overwrite_logic(self, tmp_path, mocker, caplog):
+        """
+        Coverage for lines 60-61: Verify that an existing archive is detected,
+        logged as a debug message, and unlinked before the new move.
+        """
+        caplog.set_level(logging.DEBUG) # Must be DEBUG to see line 60
+        
+        # 1. SETUP: Create a fake project structure
+        mock_base = tmp_path / "project_root"
+        mock_base.mkdir()
+        mocker.patch("src.main_solver.BASE_DIR", str(mock_base))
+        
+        # 2. SETUP: Create the "Target" and a pre-existing ZIP
+        target_dir = mock_base / "data" / "testing-input-output"
+        target_dir.mkdir(parents=True)
+        old_archive = target_dir / "navier_stokes_output.zip"
+        old_archive.write_text("old content") # This file must exist to trigger line 60
+        
+        # 3. SETUP: Create the "Source"
+        source_dir = tmp_path / "new_results"
+        source_dir.mkdir()
+        (source_dir / "new_data.txt").write_text("new results")
+        
+        mock_state = MagicMock()
+        mock_state.manifest.output_directory = str(source_dir)
+        
+        # 4. EXECUTION
+        final_zip_str = archive_simulation_artifacts(mock_state)
+        
+        # 5. VERIFICATION
+        assert Path(final_zip_str).exists()
+        # Verify line 60 log message
+        assert "Overwriting existing archive" in caplog.text
+        # Verify the file was replaced (content check)
+        import zipfile
+        with zipfile.ZipFile(final_zip_str, 'r') as z:
+            assert "new_data.txt" in z.namelist()
