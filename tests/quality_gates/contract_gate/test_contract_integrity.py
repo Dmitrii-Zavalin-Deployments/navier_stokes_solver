@@ -24,8 +24,8 @@ def test_gate_4_type_casting_integrity():
     context = wrap_in_context(solver_input)
     
     # Bypass setters to inject 'stringified' JSON data for testing
-    context.grid._nx = "2"
-    context.fluid_properties._density = "1.225"
+    context.input_data.grid._nx = "2"
+    context.input_data.fluid_properties._density = "1.225"
     
     # Execute Step 1 mapping
     state = orchestrate_step1(context)
