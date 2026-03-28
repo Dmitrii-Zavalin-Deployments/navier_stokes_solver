@@ -110,12 +110,14 @@ def test_solver_state_defensive_logic(caplog):
     with pytest.raises(RuntimeError, match="CRITICAL: Grid not properly initialized"):
         state.validate_physical_readiness()
 
-    # 4. Hit line 615 by restoring a valid grid and setting ready_for_time_loop
+    # 4. Hit line 615 by restoring a valid grid and sanitizing metadata
     state.grid._nx = 2
-    state.ready_for_time_loop = True
-    assert state.ready_for_time_loop is True
-
-    # 7. Final Stencil Branching
-    # Trigger the 7-point 3D topology logic checks if not already hit
+    
+    # CRITICAL: Clear the "poisoned" stencil matrix from Step 2
+    # to prevent verify_foundation_integrity from failing on the setter.
+    state.stencil_matrix = [] 
+    
+    # Now this will pass through verify_foundation_integrity 
+    # and validate_physical_readiness successfully.
     state.ready_for_time_loop = True
     assert state.ready_for_time_loop is True
