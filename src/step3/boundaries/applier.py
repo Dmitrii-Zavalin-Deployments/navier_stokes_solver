@@ -46,6 +46,7 @@ def apply_boundary_values(block: StencilBlock, rule: dict) -> None:
             
             # Rule 7: Promotion to INFO level to satisfy Quality Gate Traceability.
             # This ensures the MMS Audit can verify the 'poisoned' cell was corrected.
+            logger.debug(f'Mapping u to Field {field_id}')
             logger.info(
                 f"APPLY [Success]: Block {block.id} | Location: {location} | "
                 f"Field {field_id.name} set to {float(value):.4e}"
@@ -53,5 +54,5 @@ def apply_boundary_values(block: StencilBlock, rule: dict) -> None:
             
         else:
             # Rule 7: Fail-Fast on configuration drift (e.g., trying to set temperature in NS)
-            logger.error(f"CONTRACT VIOLATION: Unsupported physics key '{key}' at {location}")
+            logger.error(f"CONTRACT VIOLATION: Unsupported key '{key}' at {location}")
             raise KeyError(f"Unsupported boundary key '{key}' at {location}")

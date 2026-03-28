@@ -7,56 +7,31 @@ from src.common.stencil_block import StencilBlock
 logger = logging.getLogger(__name__)
 
 def get_applicable_boundary_configs(block: StencilBlock, boundary_cfg: list, grid, domain_cfg: dict) -> list:
-    """
-    Unified boundary dispatcher with Axiomatic Material Priority.
-    
-    Rule 4: Topology Defines Logic (Neighbor-State detection).
-    Rule 5: Explicit Classification (No silent failures for Walls).
-    """
-    # 1. MATERIAL MASK LOGIC (INTERNAL AXIOMS)
-    # Checked first to ensure internal obstructions (tube/stem) are protected
-    # even when positioned near domain boundaries.
-    mask = block.center.mask
-    
-    if mask == -1:
-        # AXIOM: Wall requiring user-defined physics
-        logger.debug(f"DISPATCH [Mask]: Block {block.id} treated as Wall (mask -1)")
-        return _find_config(boundary_cfg, "wall")
-        
-    if mask == 0:
-        # AXIOM: Static Solid (Hardcoded No-Slip)
-        logger.debug(f"DISPATCH [Mask]: Block {block.id} treated as Solid (mask 0)")
-        return [{
-            'location': 'solid', 
-            'type': 'no-slip', 
-            'values': {'u': 0.0, 'v': 0.0, 'w': 0.0}
-        }]
-
-    # 2. DOMAIN BOUNDARY CHECK (SPATIAL & NEIGHBOR-AWARE)
-    # Only triggered if the cell is fluid (mask != -1 or 0)
+    # 1. DOMAIN BOUNDARY (Spatial) must be Priority #1
     b_type = _get_domain_location_type(block, grid)
     
     if b_type != "none":
         try:
-            # Handle EXTERNAL flow configurations (Wind Axiom)
             if domain_cfg and domain_cfg.get("type") == "EXTERNAL":
                 ref_v = domain_cfg["reference_velocity"]
                 return [{
-                    'location': b_type, 
-                    'type': 'free-stream', 
+                    'location': b_type, 'type': 'free-stream', 
                     'values': {'u': ref_v[0], 'v': ref_v[1], 'w': ref_v[2]}
                 }]
-            
-            # Map spatial face to user-provided config (Inlet/Outlet)
             return _find_config(boundary_cfg, b_type)
-            
         except KeyError:
-            # Explicitly state which face failed to ensure test regex matches
-            logger.error(f"FATAL: Boundary configuration missing for face {b_type}.")
-            raise KeyError(f"Missing boundary definition for {b_type}") from None
-        
-    # 3. FINAL FALLBACK: Interior Fluid
-    # The default state for the Navier-Stokes physics kernel.
+            # If spatial lookup fails, ONLY THEN do we allow mask fallback or raise
+            raise KeyError(f"Missing boundary definition for {b_type}")
+
+    # 2. INTERNAL MASK (Axioms) only if it's NOT a domain boundary
+    mask = block.center.mask
+    if mask == -1:
+        logger.debug(f"DISPATCH [Mask]: wall")
+        return _find_config(boundary_cfg, "wall")
+    if mask == 0:
+        logger.debug(f"DISPATCH [Mask]: solid")
+        return [{'location': 'solid', 'type': 'no-slip', 'values': {'u': 0.0, 'v': 0.0, 'w': 0.0}}]
+
     return [{'location': 'interior', 'type': 'fluid_gas', 'values': {}}]
 
 def _find_config(boundary_cfg: list, location: str) -> list:
