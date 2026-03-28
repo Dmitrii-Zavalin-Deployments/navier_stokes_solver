@@ -64,7 +64,7 @@ def test_run_solver_numerical_exceptions():
                 with patch("src.main_solver.orchestrate_step3", side_effect=FloatingPointError("Underflow")):
                     # We expect the FloatingPointError to eventually be raised 
                     # after the ElasticManager exhausts its retries.
-                    with pytest.raises(FloatingPointError):
+                    with pytest.raises(RuntimeError, match="CRITICAL INSTABILITY"):
                         run_solver("dummy.json")
 
                 # B: Test ValueError branch
