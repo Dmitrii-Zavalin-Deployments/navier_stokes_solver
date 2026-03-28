@@ -1,5 +1,6 @@
 # tests/test_main_solver_flow.py
 
+import sys
 import importlib
 from unittest.mock import MagicMock, patch
 
@@ -100,17 +101,14 @@ def test_run_solver_floating_point_trap():
 def test_cli_entrypoint_success():
     """Forces execution of the __main__ block by spoofing __name__."""
     test_args = ["src/main_solver.py", "dummy_input.json"]
-    
-    # 1. Get a reference to the module
     import src.main_solver
     
+    # Cleaned: Removed 'as mock_print' since we don't assert against it here
     with patch("sys.argv", test_args), \
          patch("src.main_solver.run_solver") as mock_run, \
-         patch("builtins.print") as mock_print:
+         patch("builtins.print"):
         
         mock_run.return_value = "mock_output.zip"
-        
-        # 2. Manually set __name__ to __main__ so the block triggers
         src.main_solver.__name__ = "__main__"
         
         with pytest.raises(SystemExit) as e:
@@ -150,5 +148,5 @@ def test_cli_entrypoint_error():
             importlib.reload(src.main_solver)
             
         assert e.value.code == 1
-        # Check if the fatal error message was printed to stderr (or just printed)
+        # sys.stderr is now defined because of the top-level import
         mock_print.assert_any_call("FATAL PIPELINE ERROR: System Crash", file=sys.stderr)
