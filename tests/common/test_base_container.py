@@ -37,9 +37,10 @@ def test_set_safe_type_error():
 
 def test_numpy_schema_validation_error(tmp_path, mocker):
     """
-    Coverage for Line 50: Explicitly trigger the NumPy diagnostic 
-    by forcing jsonschema to see a raw array.
+    Coverage for Line 50: Explicitly trigger the NumPy diagnostic.
+    We patch the CLASS method to bypass instance-level __setattr__ security.
     """
+    # 1. Setup Schema
     schema = {
         "type": "object",
         "properties": {"velocity": {"type": "integer"}},
@@ -49,23 +50,28 @@ def test_numpy_schema_validation_error(tmp_path, mocker):
     import json
     schema_file.write_text(json.dumps(schema))
 
+    # 2. Setup Data
     container = MockContainer()
-    # We use a non-integer array to trigger the failure
     raw_array = np.array([1.1, 2.2])
     container._velocity = raw_array
 
-    # MOCKING to_dict: We force to_dict to return the RAW array 
-    # instead of a list, so line 48 'hasattr(failed_instance, "shape")' returns True.
-    mocker.patch.object(container, 'to_dict', return_value={"velocity": raw_array})
+    # 3. CLASS-LEVEL PATCH
+    # This replaces the method for all MockContainer instances during this test,
+    # bypassing the __setattr__ 'Memory Leak Prevention' check.
+    mocker.patch(
+        'tests.common.test_base_container.MockContainer.to_dict', 
+        return_value={"velocity": raw_array}
+    )
 
+    # 4. EXECUTION
     with pytest.raises(ValueError) as exc_info:
         container.validate_against_schema(str(schema_file))
     
-    # Now this will pass because line 50 was executed
+    # 5. VERIFICATION
     error_msg = str(exc_info.value)
     assert "numpy.ndarray" in error_msg
     assert "shape: (2,)" in error_msg
-    assert "float64" in error_msg  # Check dtype detection too
+    assert "float64" in error_msg
 
 def test_to_dict_with_sparse_toarray():
     """Coverage for Line 106: Serialization of objects with .toarray()."""
