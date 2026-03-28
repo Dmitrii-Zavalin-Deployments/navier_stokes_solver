@@ -2,7 +2,7 @@
 
 import numpy as np
 import pytest
-
+from unittest.mock import patch
 from src.common.solver_input import GridInput
 from src.step1.helpers import generate_3d_masks
 
@@ -87,3 +87,37 @@ def test_different_dimensions():
     # j = 7 // 4 = 1
     # i = 7 % 4 = 3
     assert mask_3d[3, 1, 0] == 8
+
+def test_generate_3d_masks_debug_path():
+    """
+    Targets lines 47-49 in src/step1/helpers.py.
+    Uses patch to force the DEBUG global to True.
+    """
+    grid = create_test_grid(2, 2, 2)
+    mask_data = [1] * 8
+    
+    # We patch 'DEBUG' in the namespace where it is USED
+    with patch("src.step1.helpers.DEBUG", True):
+        mask_3d, is_fluid, is_boundary = generate_3d_masks(mask_data, grid)
+        
+        # Verify result integrity while DEBUG is active
+        assert mask_3d.shape == (2, 2, 2)
+        assert np.all(is_fluid)
+        assert not np.any(is_boundary)
+
+def test_generate_3d_masks_mapping_overflow_protection():
+    """
+    Targets line 40 in src/step1/helpers.py.
+    Tests the logic guard against index drift/SSoT mapping errors.
+    """
+    grid = create_test_grid(2, 2, 2)
+    mask_data = [1] * 8
+    
+    # We mock get_coords_from_index to return coordinates OUTSIDE the grid
+    # This simulates a failure in the coordinate mapping logic.
+    with patch("src.step1.helpers.get_coords_from_index") as mock_mapping:
+        # Force an out-of-bounds coordinate (e.g., i=5 on a 2x2x2 grid)
+        mock_mapping.return_value = (5, 0, 0)
+        
+        with pytest.raises(ValueError, match="Mask mapping overflow"):
+            generate_3d_masks(mask_data, grid)
