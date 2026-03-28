@@ -44,18 +44,20 @@ def test_run_solver_convergence_and_debug():
         mock_context = MagicMock()
         mock_load.return_value = mock_context
         mock_context.input_data = valid_input_obj
+        # GROUNDING: jsonschema needs a real dict to validate against
+        mock_context.input_data.to_dict.return_value = valid_input_obj.to_dict()
+        
         mock_context.config.ppe_max_iter = 5
         mock_context.config.ppe_tolerance = 1e-1
-        
-        # GROUNDING: Define numeric limits for Line 128
         mock_context.input_data.simulation_parameters.total_time = 1.0
         
         mock_state = MagicMock()
         mock_state.ready_for_time_loop = True
         mock_state.stencil_matrix = [MagicMock()]
         mock_state.iteration = 10 
-        # GROUNDING: Define current time for Line 128 comparison
         mock_state.time = 0.1 
+        # GROUNDING: Prevent the state validator from choking on a mock
+        mock_state.validate_against_schema.return_value = None
         
         def side_effect_exit(*args, **kwargs):
             mock_state.ready_for_time_loop = False
@@ -76,8 +78,9 @@ def test_run_solver_floating_point_trap():
         mock_context = MagicMock()
         mock_load.return_value = mock_context
         mock_context.input_data = valid_input_obj
+        mock_context.input_data.to_dict.return_value = valid_input_obj.to_dict()
         
-        # GROUNDING: ElasticManager needs these for Line 79 in elasticity.py
+        # GROUNDING: Match the audit's stability ladder parameters
         mock_context.config.ppe_max_retries = 3
         mock_context.config.dt_min_limit = 1e-6
         
@@ -85,14 +88,16 @@ def test_run_solver_floating_point_trap():
         mock_state.ready_for_time_loop = True
         mock_state.stencil_matrix = [MagicMock()]
         mock_state.iteration = 0
-        # GROUNDING: ElasticManager pulls initial dt from here
         mock_state.simulation_parameters.time_step = 0.01
+        mock_state.validate_against_schema.return_value = None
         
         with patch("src.main_solver.orchestrate_step1", return_value=mock_state), \
              patch("src.main_solver.orchestrate_step2", return_value=mock_state), \
              patch("src.main_solver.orchestrate_step3", side_effect=FloatingPointError("NaN detected")):
             
-            with pytest.raises(FloatingPointError, match="NaN detected"):
+            # UPDATED EXPECTATION: The solver catches FloatingPointError and 
+            # escalates to RuntimeError after retries are exhausted.
+            with pytest.raises(RuntimeError, match="CRITICAL INSTABILITY"):
                 run_solver("dummy.json")
 
 # 5. Test CLI Main Entry Point (Lines 156-166)
