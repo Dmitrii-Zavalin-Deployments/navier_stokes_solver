@@ -1,15 +1,15 @@
 # tests/test_main_solver_flow.py
 
 import sys
-import json
-import pytest
-from unittest.mock import MagicMock, patch, mock_open
-from pathlib import Path
-import jsonschema
+from unittest.mock import MagicMock, patch
 
-from src.main_solver import _load_simulation_context, run_solver
+import jsonschema
+import pytest
+
 import src.main_solver as main_mod
+from src.main_solver import _load_simulation_context, run_solver
 from tests.helpers.solver_input_schema_dummy import create_validated_input
+
 
 # 1. Test File System Guards (Line 44)
 def test_load_context_missing_config():
