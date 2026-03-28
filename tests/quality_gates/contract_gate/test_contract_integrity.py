@@ -51,7 +51,7 @@ def test_gate_4_schema_validation_and_firewall():
     
     # 2. Assert: The schema validator must catch the drift
     # This aligns with the 'Double-Lock' requirement in Line 74
-    with pytest.raises(jsonschema.ValidationError): # Replace with specific jsonschema.ValidationError if imported
+    with pytest.raises(ValueError, match='Validation Failure'): # Replace with specific jsonschema.ValidationError if imported
         state.validate_against_schema("schema/solver_input_schema.json")
         
     # 3. Assert: ready_for_time_loop remains False (Sentinel Integrity)
