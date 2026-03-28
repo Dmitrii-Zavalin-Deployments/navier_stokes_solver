@@ -31,6 +31,8 @@ def test_run_solver_schema_violation():
 
 
 # 3. Test Numerical Traps (Final Elastic Grounding)
+# tests/test_main_solver_flow.py
+
 def test_run_solver_numerical_exceptions():
     valid_input_obj = create_validated_input()
     
@@ -39,17 +41,19 @@ def test_run_solver_numerical_exceptions():
         mock_load.return_value = mock_context
         mock_context.input_data = valid_input_obj
         
-        # Grounding the Elasticity Engine parameters
-        # These must be real values to pass the 'safety ladder' logic
-        mock_context.config.ppe_tolerance = 1e-6
-        mock_context.config.ppe_max_iter = 1
-        mock_context.config.elasticity_runs = 3
-        # Ensure time_step exists for ElasticManager init
-        mock_context.config.simulation_parameters.time_step = 0.01 
+        # GROUNDING BASED ON FORENSIC AUDIT:
+        # 1. ElasticManager looks for 'ppe_max_retries' and 'dt_min_limit' in config
+        mock_context.config.ppe_max_retries = 3
+        mock_context.config.dt_min_limit = 1e-6
         
-        # Rule 9: Prime the state mock
+        # 2. Rule 9: Prime the state mock
         mock_state = MagicMock()
         mock_state.ready_for_time_loop = True
+        
+        # 3. ElasticManager pulls initial dt from state.simulation_parameters.time_step
+        mock_state.simulation_parameters.time_step = 0.01
+        
+        # Standard boilerplate for state-driven loops
         mock_state.fields.data.shape = (10, 10, 10, 9)
         mock_state.stencil_matrix = [MagicMock()]
         
@@ -58,6 +62,8 @@ def test_run_solver_numerical_exceptions():
                 
                 # A: Test FloatingPointError recovery trigger
                 with patch("src.main_solver.orchestrate_step3", side_effect=FloatingPointError("Underflow")):
+                    # We expect the FloatingPointError to eventually be raised 
+                    # after the ElasticManager exhausts its retries.
                     with pytest.raises(FloatingPointError):
                         run_solver("dummy.json")
 
