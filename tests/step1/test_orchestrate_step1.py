@@ -1,11 +1,10 @@
 # tests/step1/test_orchestrate_step1.py
 
+import pytest
 from unittest.mock import MagicMock, patch
-
 import numpy as np
-
 from src.step1.orchestrate_step1 import orchestrate_step1
-
+from src.common.field_schema import FI
 
 def test_orchestrate_step1_debug_path():
     """
@@ -18,24 +17,24 @@ def test_orchestrate_step1_debug_path():
     
     # Grid Setup
     input_data.grid.nx, input_data.grid.ny, input_data.grid.nz = 2, 2, 2
-    input_data.grid.x_min, input_data.grid.x_max = 0, 1
-    input_data.grid.y_min, input_data.grid.y_max = 0, 1
-    input_data.grid.z_min, input_data.grid.z_max = 0, 1
+    input_data.grid.x_min, input_data.grid.x_max = 0.0, 1.0
+    input_data.grid.y_min, input_data.grid.y_max = 0.0, 1.0
+    input_data.grid.z_min, input_data.grid.z_max = 0.0, 1.0
     
-    # Domain & Properties
-    input_data.domain_configuration.type = "box"
+    # Domain & Properties - MUST BE INTERNAL OR EXTERNAL
+    input_data.domain_configuration.type = "INTERNAL"
     input_data.fluid_properties.density = 1.0
     input_data.fluid_properties.viscosity = 0.01
     
     # Forces & Constraints
-    input_data.external_forces.force_vector = [0, -9.81, 0]
+    input_data.external_forces.force_vector = [0.0, -9.81, 0.0]
     input_data.physical_constraints.min_velocity = -10.0
     input_data.physical_constraints.max_velocity = 10.0
     input_data.physical_constraints.min_pressure = 0.0
     input_data.physical_constraints.max_pressure = 100.0
     
     # Initial Conditions & Parameters
-    input_data.initial_conditions.velocity = [0, 0, 0]
+    input_data.initial_conditions.velocity = [0.0, 0.0, 0.0]
     input_data.initial_conditions.pressure = 101325.0
     input_data.simulation_parameters.time_step = 0.01
     input_data.simulation_parameters.total_time = 1.0
@@ -48,7 +47,7 @@ def test_orchestrate_step1_debug_path():
     bc_item = MagicMock()
     bc_item.location = "left"
     bc_item.type = "noslip"
-    bc_item.values = [0, 0, 0]
+    bc_item.values = [0.0, 0.0, 0.0]
     input_data.boundary_conditions.items = [bc_item]
 
     # 2. Patch DEBUG and run orchestration
@@ -57,47 +56,48 @@ def test_orchestrate_step1_debug_path():
         
         # 3. Basic Integrity Checks
         assert state is not None
-        # Verify cell allocation (nx+2)*(ny+2)*(nz+2) -> 4*4*4 = 64
+        # nx+2 = 4. 4*4*4 = 64 cells
         assert state.fields.data.shape[0] == 64
         assert state.grid.nx == 2
+        assert state.domain_configuration.type == "INTERNAL"
 
 def test_orchestrate_step1_reference_velocity_branch():
     """
     Targets lines 51-52: Ensure reference_velocity is assigned if explicitly present.
-    Also ensures the rest of the function runs to completion.
     """
     mock_context = MagicMock()
     input_data = mock_context.input_data
     
     # Trigger the branch at Line 51
     ref_vel = [5.0, 0.0, 0.0]
+    # Set both the private-style flag and the actual value to satisfy the hasattr check
     input_data.domain_configuration._reference_velocity = ref_vel
     input_data.domain_configuration.reference_velocity = ref_vel
-    input_data.domain_configuration.type = "wind_tunnel"
+    input_data.domain_configuration.type = "EXTERNAL"
 
-    # Minimal hydration to avoid AttributeError in the rest of the function
+    # Minimal hydration to avoid AttributeError/ValueError in the rest of the function
     input_data.grid.nx, input_data.grid.ny, input_data.grid.nz = 1, 1, 1
-    input_data.grid.x_min = input_data.grid.x_max = 0
-    input_data.grid.y_min = input_data.grid.y_max = 0
-    input_data.grid.z_min = input_data.grid.z_max = 0
+    input_data.grid.x_min = input_data.grid.x_max = 0.0
+    input_data.grid.y_min = input_data.grid.y_max = 0.0
+    input_data.grid.z_min = input_data.grid.z_max = 0.0
     
     input_data.fluid_properties.density = 1.225
     input_data.fluid_properties.viscosity = 1.8e-5
-    input_data.external_forces.force_vector = [0, 0, 0]
+    input_data.external_forces.force_vector = [0.0, 0.0, 0.0]
     
-    input_data.physical_constraints.min_velocity = -100
-    input_data.physical_constraints.max_velocity = 100
-    input_data.physical_constraints.min_pressure = 0
+    input_data.physical_constraints.min_velocity = -100.0
+    input_data.physical_constraints.max_velocity = 100.0
+    input_data.physical_constraints.min_pressure = 0.0
     input_data.physical_constraints.max_pressure = 1e6
     
-    input_data.initial_conditions.velocity = [0, 0, 0]
+    input_data.initial_conditions.velocity = [0.0, 0.0, 0.0]
     input_data.initial_conditions.pressure = 101325.0
     
     input_data.simulation_parameters.time_step = 0.1
     input_data.simulation_parameters.total_time = 1.0
     input_data.simulation_parameters.output_interval = 1
     
-    input_data.mask.data = [1]  # 1x1x1 grid
+    input_data.mask.data = [1]
     input_data.boundary_conditions.items = []
 
     # Run orchestration
@@ -106,4 +106,3 @@ def test_orchestrate_step1_reference_velocity_branch():
     # Verify the branch logic was successful
     assert isinstance(state.domain_configuration.reference_velocity, np.ndarray)
     assert np.array_equal(state.domain_configuration.reference_velocity, np.array(ref_vel))
-    assert state.domain_configuration.type == "wind_tunnel"
