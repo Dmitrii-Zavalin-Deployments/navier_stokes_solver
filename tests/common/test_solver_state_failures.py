@@ -9,14 +9,15 @@ from src.common.solver_state import (
     BoundaryCondition,
     DomainManager,
     ExternalForceManager,
+    FieldManager,
     FluidPropertiesManager,
     GridManager,
     MaskManager,
+    PhysicalConstraintsManager,
     SolverState,
     verify_foundation_integrity,
-    FieldManager,
-    PhysicalConstraintsManager
 )
+
 
 # --- 1. Testing Foundation Integrity Failures (Lines 24-25, 56) ---
 def test_verify_foundation_integrity_failures():
