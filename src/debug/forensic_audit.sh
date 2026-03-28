@@ -1,127 +1,168 @@
-#!/usr/bin/env bash
-# File: src/debug/forensic_audit.sh
-# Purpose: Post-test forensic audit for boundary / MMS / BC-collision failures.
+# =========================
+# 0. Context: failing tests
+# =========================
+echo "=== Failing tests (reconfirm) ==="
+pytest -q tests/quality_gates/logic_gate/test_step3_mms.py::test_logic_gate_3_center_mutation_audit \
+          tests/quality_gates/sensitivity_gate/test_bc_collisions.py::test_gate_3a_3b_dispatcher_mask_symmetry \
+          tests/quality_gates/sensitivity_gate/test_bc_collisions.py::test_gate_3c_interior_fluid_axiom \
+          tests/quality_gates/sensitivity_gate/test_bc_collisions.py::test_gate_3a_missing_wall_config_collision -q
 
-set -euo pipefail
+# ==========================================
+# 1. See how the dummy state & masks are built
+# ==========================================
+echo
+echo "=== make_step2_output_dummy wiring ==="
+grep -RIn "make_step2_output_dummy" -n tests src || true
+cat -n tests/helpers/solver_step2_output_dummy.py
 
-echo "=== Forensic audit: starting ==="
+echo
+echo "=== Step 1 mask + padded mask wiring ==="
+cat -n src/step1/helpers.py
+cat -n src/step1/orchestrate_step1.py | sed -n '70,110p'
 
-# --------------------------------------------------------------------
-# 1. Basic context: show failing tests (if pytest log is available)
-# --------------------------------------------------------------------
-if [ -f ".pytest_cache/v/cache/lastfailed" ]; then
-  echo "=== Pytest lastfailed cache ==="
-  cat .pytest_cache/v/cache/lastfailed || true
-fi
+echo
+echo "=== Step 2 stencil assembly (where ghosts & centers are wired) ==="
+cat -n src/step2/stencil_assembler.py
 
-# If GitHub Actions stored a test log, dump the tail for quick context
-if [ -f "pytest.log" ]; then
-  echo "=== Tail of pytest.log ==="
-  tail -n 200 pytest.log || true
-fi
+# =========================================================
+# 2. Inspect the exact blocks used in the failing test cases
+#    - Are they near ghosts? What does dispatcher see?
+# =========================================================
 
-# --------------------------------------------------------------------
-# 2. MMS FAILURE: Boundary Applier ignored its own center cell
-#    Message: "MMS FAILURE: Boundary Applier ignored its own center cell. Block Block_808 (Mask=0) remained poisoned."
-#    Assertion: assert 1.0 != 1.0
-# --------------------------------------------------------------------
-echo "=== Searching for MMS / Boundary Applier messages ==="
-grep -RIn --color=always "Boundary Applier ignored its own center cell" . || true
-grep -RIn --color=always "Block_808" . || true
-grep -RIn --color=always "MMS FAILURE" tests src || true
+echo
+echo "=== Probe: MMS center-mutation block (mask <= 0) ==="
+python3 - << 'EOF'
+from tests.helpers.solver_step2_output_dummy import make_step2_output_dummy
+from tests.helpers.solver_input_schema_dummy import create_validated_input
+from src.common.simulation_context import SimulationContext
+from src.step3.orchestrate_step3 import orchestrate_step3
+from src.step3.boundaries.dispatcher import get_applicable_boundary_configs
+from src.common.field_schema import FI
 
-# Likely MMS / boundary applier implementation
-echo "=== Candidate MMS / boundary applier sources (numbered) ==="
-for f in \
-  src/*mms*py \
-  src/*boundary*py \
-  src/**/mms*.py \
-  src/**/boundary*.py \
-  2>/dev/null; do
-  echo "--- cat -n $f ---"
-  cat -n "$f" | sed -n '1,260p'
-done || true
+nx = ny = nz = 4
+state = make_step2_output_dummy(nx=nx, ny=ny, nz=nz)
+context = SimulationContext(input_data=create_validated_input(nx=nx, ny=ny, nz=nz), config=None)
 
-# Smoking-gun search for "center" / "mask" logic
-echo "=== Grep for center/mask logic in src ==="
-grep -RIn --color=always "center" src || true
-grep -RIn --color=always "mask" src || true
-grep -RIn --color=always "poison" src || true
+try:
+    target_block = next(b for b in state.stencil_matrix if b.center.mask <= 0)
+except StopIteration:
+    target_block = state.stencil_matrix[0]
+    target_block.center.mask = -1
 
-# Suggested automated repair hooks (commented out; for manual review)
-# - Example: ensure center cell is included in boundary application loop
-# - Example: clear poison flag for center when mask == 0
-# sed -i 's/for cell in neighbors:/for cell in neighbors + [center_cell]:/' src/path/to/boundary_applier.py
-# sed -i 's/if cell.is_boundary:/if cell.is_boundary or cell.is_center:/' src/path/to/boundary_applier.py
-# sed -i 's/if mask == 0:/if mask == 0: center_cell.poisoned = False/' src/path/to/boundary_applier.py
+print("Block id:", target_block.id, "mask:", target_block.center.mask)
+print("Ghost neighbors (i-/i+/j-/j+/k-/k+):",
+      target_block.i_minus.is_ghost, target_block.i_plus.is_ghost,
+      target_block.j_minus.is_ghost, target_block.j_plus.is_ghost,
+      target_block.k_minus.is_ghost, target_block.k_plus.is_ghost)
 
-# --------------------------------------------------------------------
-# 3. KeyError: 'Missing boundary definition for x_min' / 'z_min'
-# --------------------------------------------------------------------
-echo "=== Searching for missing boundary definition KeyErrors ==="
-grep -RIn --color=always "Missing boundary definition for x_min" . || true
-grep -RIn --color=always "Missing boundary definition for z_min" . || true
-grep -RIn --color=always "Missing boundary definition" src tests || true
+rules = get_applicable_boundary_configs(
+    target_block,
+    state.boundary_conditions.to_dict(),
+    state.grid,
+    context.input_data.domain_configuration.to_dict()
+)
+print("DISPATCH RULES:", rules)
 
-# Likely boundary-condition dispatcher / registry
-echo "=== Candidate boundary-condition dispatcher sources (numbered) ==="
-for f in \
-  src/**/boundary*.py \
-  src/**/bc*.py \
-  src/**/dispatcher*.py \
-  2>/dev/null; do
-  echo "--- cat -n $f ---"
-  cat -n "$f" | sed -n '1,260p'
-done || true
+target_block.center.set_field(FI.VX_STAR, 1.0)
+print("VX_STAR before:", target_block.center.get_field(FI.VX_STAR))
+orchestrate_step3(
+    block=target_block,
+    context=context,
+    state_grid=state.grid,
+    state_bc_manager=state.boundary_conditions,
+    is_first_pass=True,
+)
+print("VX_STAR after:", target_block.center.get_field(FI.VX_STAR))
+EOF
 
-# Also inspect any boundary configuration / schema files
-echo "=== Candidate boundary configuration files (numbered) ==="
-for f in \
-  config/**/boundary*.* \
-  config/**/bc*.* \
-  2>/dev/null; do
-  echo "--- cat -n $f ---"
-  cat -n "$f" | sed -n '1,260p'
-done || true
+echo
+echo "=== Probe: test_gate_3a_3b block (index 500) ==="
+python3 - << 'EOF'
+from tests.helpers.solver_step2_output_dummy import make_step2_output_dummy
+from src.step3.boundaries.dispatcher import get_applicable_boundary_configs
 
-# Suggested automated repair hooks (commented out; for manual review)
-# - Example: ensure x_min / z_min keys exist in boundary registry
-# sed -i "s/BOUNDARY_MAP = {/BOUNDARY_MAP = { 'x_min': DEFAULT_WALL_BC,/" src/path/to/bc_dispatcher.py
-# sed -i "s/BOUNDARY_MAP = {/BOUNDARY_MAP = { 'z_min': DEFAULT_WALL_BC,/" src/path/to/bc_dispatcher.py
-# - Example: provide symmetric defaults for missing faces
-# sed -i "s/def get_bc(face)/def get_bc(face):\n    if face not in BOUNDARY_MAP: return DEFAULT_WALL_BC/" src/path/to/bc_dispatcher.py
+state = make_step2_output_dummy(nx=10, ny=10, nz=10)
+block = state.stencil_matrix[500]
+block.center.mask = -1
 
-# --------------------------------------------------------------------
-# 4. Sensitivity gate: missing wall config collision
-#    Failed: DID NOT RAISE <class 'KeyError'>
-# --------------------------------------------------------------------
-echo "=== Searching for missing wall config collision tests ==="
-grep -RIn --color=always "missing_wall_config_collision" tests || true
-grep -RIn --color=always "test_gate_3a_missing_wall_config_collision" tests || true
+boundary_cfg = [{"location": "wall", "type": "no-slip", "values": {"u": 0.1}}]
+domain_cfg = {"type": "INTERNAL"}
 
-# Inspect the specific test file
-if [ -f "tests/quality_gates/sensitivity_gate/test_bc_collisions.py" ]; then
-  echo "--- cat -n tests/quality_gates/sensitivity_gate/test_bc_collisions.py ---"
-  cat -n tests/quality_gates/sensitivity_gate/test_bc_collisions.py
-fi
+print("Block id:", block.id, "mask:", block.center.mask)
+print("Ghost neighbors (i-/i+/j-/j+/k-/k+):",
+      block.i_minus.is_ghost, block.i_plus.is_ghost,
+      block.j_minus.is_ghost, block.j_plus.is_ghost,
+      block.k_minus.is_ghost, block.k_plus.is_ghost)
 
-# Search for collision / wall config handling in src
-echo "=== Grep for collision / wall config handling in src ==="
-grep -RIn --color=always "collision" src || true
-grep -RIn --color=always "wall_config" src || true
-grep -RIn --color=always "missing wall" src || true
+try:
+    rules = get_applicable_boundary_configs(block, boundary_cfg, state.grid, domain_cfg)
+    print("DISPATCH RULES:", rules)
+except Exception as e:
+    print("RAISED:", repr(e))
+EOF
 
-# Suggested automated repair hooks (commented out; for manual review)
-# - Example: enforce KeyError when wall config is missing
-# sed -i "s/config.get('wall')/config['wall']  # enforce KeyError on missing wall/" src/path/to/collision_handler.py
-# - Example: add explicit guard raising KeyError
-# sed -i "/def resolve_collision/a\    if 'wall' not in config: raise KeyError('Missing wall config')" src/path/to/collision_handler.py
+echo
+echo "=== Probe: test_gate_3c block (index 10, mask=1, INTERNAL, no cfg) ==="
+python3 - << 'EOF'
+from tests.helpers.solver_step2_output_dummy import make_step2_output_dummy
+from src.step3.boundaries.dispatcher import get_applicable_boundary_configs
 
-# --------------------------------------------------------------------
-# 5. Summary markers for GitHub Actions logs
-# --------------------------------------------------------------------
-echo "=== Forensic audit: completed ==="
-echo "Check above for:"
-echo " - MMS center-cell / mask handling"
-echo " - Boundary dispatcher x_min / z_min definitions"
-echo " - Missing wall config collision behavior vs tests"
+state = make_step2_output_dummy(nx=4, ny=4, nz=4)
+block = state.stencil_matrix[10]
+block.center.mask = 1
+
+print("Block id:", block.id, "mask:", block.center.mask)
+print("Ghost neighbors (i-/i+/j-/j+/k-/k+):",
+      block.i_minus.is_ghost, block.i_plus.is_ghost,
+      block.j_minus.is_ghost, block.j_plus.is_ghost,
+      block.k_minus.is_ghost, block.k_plus.is_ghost)
+
+try:
+    rules = get_applicable_boundary_configs(block, [], state.grid, {"type": "INTERNAL"})
+    print("DISPATCH RULES:", rules)
+except Exception as e:
+    print("RAISED:", repr(e))
+EOF
+
+echo
+echo "=== Probe: test_gate_3a_missing_wall_config_collision block (index 500) ==="
+python3 - << 'EOF'
+from tests.helpers.solver_step2_output_dummy import make_step2_output_dummy
+from src.step3.boundaries.dispatcher import get_applicable_boundary_configs
+
+state = make_step2_output_dummy(nx=10, ny=10, nz=10)
+block = state.stencil_matrix[500]
+block.center.mask = -1
+
+incomplete_cfg = [
+    {"location": "x_min", "type": "no-slip", "values": {"u": 0}},
+    {"location": "x_max", "type": "no-slip", "values": {"u": 0}},
+    {"location": "y_min", "type": "no-slip", "values": {"v": 0}},
+    {"location": "y_max", "type": "no-slip", "values": {"v": 0}},
+    {"location": "z_min", "type": "no-slip", "values": {"w": 0}},
+    {"location": "z_max", "type": "no-slip", "values": {"w": 0}},
+]
+
+print("Block id:", block.id, "mask:", block.center.mask)
+print("Ghost neighbors (i-/i+/j-/j+/k-/k+):",
+      block.i_minus.is_ghost, block.i_plus.is_ghost,
+      block.j_minus.is_ghost, block.j_plus.is_ghost,
+      block.k_minus.is_ghost, block.k_plus.is_ghost)
+
+try:
+    rules = get_applicable_boundary_configs(block, incomplete_cfg, state.grid, {"type": "INTERNAL"})
+    print("DISPATCH RULES:", rules)
+except Exception as e:
+    print("RAISED:", repr(e))
+EOF
+
+# ==========================================
+# 3. Sanity: show dispatcher + applier again
+# ==========================================
+echo
+echo "=== dispatcher.py (for reference) ==="
+cat -n src/step3/boundaries/dispatcher.py
+
+echo
+echo "=== applier.py (for reference) ==="
+cat -n src/step3/boundaries/applier.py
