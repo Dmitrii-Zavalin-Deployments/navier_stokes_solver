@@ -30,35 +30,37 @@ def test_run_solver_schema_violation():
                 run_solver("dummy.json")
 
 
-# 3. Test Numerical Traps (Fixed Comparison & Foundation)
+# 3. Test Numerical Traps (Fixed Elastic Recovery Ladder)
 def test_run_solver_numerical_exceptions():
     valid_input_obj = create_validated_input()
     
     with patch("src.main_solver._load_simulation_context") as mock_load:
-        # Configure context to return numeric values for loop logic
+        # Ground the config with real numeric values for recovery logic
         mock_context = MagicMock()
         mock_load.return_value = mock_context
         mock_context.input_data = valid_input_obj
         mock_context.config.ppe_tolerance = 1e-6
         mock_context.config.ppe_max_iter = 1
         
-        # Rule 9: Properly prime the state mock to pass stencil assembly
+        # This fixes the current TypeError: specifies how many times we can reduce dt
+        mock_context.config.elasticity_runs = 3 
+        
+        # Rule 9: Properly prime the state mock
         mock_state = MagicMock()
         mock_state.ready_for_time_loop = True
         mock_state.fields.data.shape = (10, 10, 10, 9)
-        
-        # Stencil matrix must be iterable to satisfy the for-loops
         mock_state.stencil_matrix = [MagicMock()]
         
         with patch("src.main_solver.orchestrate_step1", return_value=mock_state):
             with patch("src.main_solver.orchestrate_step2", return_value=mock_state):
                 
-                # A: Force a FloatingPointError (Numerical Explosion)
+                # A: Force a FloatingPointError
+                # The solver will catch this and try to call elasticity.stabilization()
                 with patch("src.main_solver.orchestrate_step3", side_effect=FloatingPointError("Underflow")):
                     with pytest.raises(FloatingPointError):
                         run_solver("dummy.json")
 
-                # B: Force a ValueError (State Contract Violation)
+                # B: Force a ValueError
                 with patch("src.main_solver.orchestrate_step3", side_effect=ValueError("Contract Violation")):
                     with pytest.raises(ValueError, match="Contract Violation"):
                         run_solver("dummy.json")
@@ -70,12 +72,12 @@ def test_ppe_convergence_early_exit():
     mock_context.config.ppe_tolerance = 1.0
     mock_context.config.ppe_max_iter = 10
     with patch("src.main_solver.orchestrate_step3", return_value=(None, 0.1)):
-        # Implicitly verifies comparison logic (float < float)
         pass
 
 
 # 5. Test CLI Entry Point
 def test_main_cli_execution():
+    from src import main_solver
     with patch.object(sys, 'argv', ['main_solver.py']):
         with pytest.raises(SystemExit) as e:
             if len(sys.argv) < 2: sys.exit(1)
