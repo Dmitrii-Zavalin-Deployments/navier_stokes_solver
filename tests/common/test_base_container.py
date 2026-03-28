@@ -1,6 +1,5 @@
 # tests/common/test_base_container.py
 
-import json
 
 import numpy as np
 import pytest
