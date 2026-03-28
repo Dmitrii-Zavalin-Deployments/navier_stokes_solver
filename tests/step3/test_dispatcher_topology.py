@@ -1,7 +1,9 @@
 # tests/step3/test_dispatcher_topology.py
 
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
+
 from src.step3.boundaries.dispatcher import get_applicable_boundary_configs
 
 # --- TEST FIXTURES (The 'Assets') ---
