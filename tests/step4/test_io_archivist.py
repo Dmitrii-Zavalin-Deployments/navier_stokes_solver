@@ -1,11 +1,13 @@
 # tests/step4/test_io_archivist.py
 
-import pytest
-from unittest.mock import MagicMock, patch
 from pathlib import Path
+from unittest.mock import MagicMock, patch
+
 import numpy as np
+import pytest
+
 from src.step4.io_archivist import save_snapshot
-from src.common.field_schema import FI
+
 
 def test_save_snapshot_success(tmp_path):
     """
