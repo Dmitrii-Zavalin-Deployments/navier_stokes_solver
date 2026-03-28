@@ -1,10 +1,11 @@
 # tests/step1/test_orchestrate_step1.py
 
-import pytest
 from unittest.mock import MagicMock, patch
+
 import numpy as np
+
 from src.step1.orchestrate_step1 import orchestrate_step1
-from src.common.field_schema import FI
+
 
 def test_orchestrate_step1_debug_path():
     """
