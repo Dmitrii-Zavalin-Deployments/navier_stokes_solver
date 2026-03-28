@@ -73,7 +73,6 @@ def test_ppe_convergence_early_exit():
 
 # 5. Test CLI Entry Point
 def test_main_cli_execution():
-    from src import main_solver
     with patch.object(sys, 'argv', ['main_solver.py']):
         with pytest.raises(SystemExit) as e:
             if len(sys.argv) < 2: sys.exit(1)
