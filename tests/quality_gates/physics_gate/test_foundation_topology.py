@@ -16,9 +16,11 @@ def test_gate_1a_foundation_volume_parity():
 
     # 1. Setup: Explicit dimensions via SSoT path (Rule 5)
     nx, ny, nz = 4, 4, 4
-    solver_input = create_validated_input()
     
-    # Pathing Fix: Align with Rule 4 Hierarchy
+    # FIX: Pass dimensions directly to ensure mask data matches grid volume
+    solver_input = create_validated_input(nx=nx, ny=ny, nz=nz)
+    
+    # Pathing Fix: Ensure grid object properties are explicitly aligned
     solver_input.grid.nx = nx
     solver_input.grid.ny = ny
     solver_input.grid.nz = nz
@@ -49,7 +51,7 @@ def test_gate_2a_7_point_connectivity_stride():
 
     # 1. Setup: Initialize full topology (Step 1 -> Step 2)
     nx, ny, nz = 4, 4, 4
-    solver_input = create_validated_input()
+    solver_input = create_validated_input(nx=nx, ny=ny, nz=nz)
     solver_input.grid.nx = nx
     solver_input.grid.ny = ny
     solver_input.grid.nz = nz
@@ -90,7 +92,7 @@ def test_gate_2a_y_stride_integrity():
     """
 
     nx, ny, nz = 4, 4, 4
-    solver_input = create_validated_input()
+    solver_input = create_validated_input(nx=nx, ny=ny, nz=nz)
     solver_input.grid.nx = nx
     solver_input.grid.ny = ny
     solver_input.grid.nz = nz
@@ -127,7 +129,7 @@ def test_gate_2a_z_stride_integrity():
     Identity: id(k+1) = id(c) + (nx+2)*(ny+2)
     """
     nx, ny, nz = 4, 4, 4
-    solver_input = create_validated_input()
+    solver_input = create_validated_input(nx=nx, ny=ny, nz=nz)
     solver_input.grid.nx = nx
     solver_input.grid.ny = ny
     solver_input.grid.nz = nz

@@ -19,7 +19,8 @@ def test_logic_gate_3_physics_boundary_sync():
     
     # 1. Setup: Explicit Input to avoid "Silent Failure" (Rule 5)
     nx, ny, nz = 4, 4, 4
-    solver_input = create_validated_input()
+    # FIX: Pass dimensions to helper to ensure mask.data length == 64
+    solver_input = create_validated_input(nx=nx, ny=ny, nz=nz)
     
     # Pathing Fix: SolverInput properties set directly
     solver_input.grid.nx = nx
@@ -33,19 +34,21 @@ def test_logic_gate_3_physics_boundary_sync():
     state = make_step2_output_dummy(nx=nx, ny=ny, nz=nz)
     
     # 2. Logic-Layer Traversal (Rule 1: Pointer Density Check)
-    # Select a block adjacent to a boundary via the object-graph (StencilBlock)
-    block = state.stencil_matrix[0]
+    # STRATEGIC FIX: We select a CORE block (from state.stencil_matrix).
+    # Since its center is NOT a ghost, it will NOT be short-circuited.
+    block = state.stencil_matrix[0] 
     
-    # Identify a ghost neighbor using pointer-based traversal
+    # Identify the ghost neighbor (i_minus) which is at index (-1, 0, 0) relative to core
     ghost_cell = block.i_minus
     assert ghost_cell.is_ghost is True, "MMS Setup Error: Traversal failed to find Ghost Cell."
 
     # 3. Setup: "Numerical Drift" Injection
-    # Mutate logic-object to update underlying NumPy buffer via Rule 0 pointers.
+    # We "poison" the ghost cell with 1.0. 
+    # The Boundary Applier should reset this to 0.0 during orchestration.
     ghost_cell.set_field(FI.VX, 1.0) 
     
-    # 4. Action: Execute Step 3 Orchestration (Predictor/Corrector Loop Context)
-    # This must leverage the 'field_ref' pointers inside the Cell objects.
+    # 4. Action: Execute Step 3 Orchestration
+    # Because 'block' is a Core block, this will trigger Phase 1 (Predictor + Boundary Apply)
     updated_block, _ = orchestrate_step3(
         block=block,
         context=context,
@@ -55,25 +58,25 @@ def test_logic_gate_3_physics_boundary_sync():
     )
 
     # 5. Verification: Boundary Enforcement (Rule 7: Atomic Truth)
-    # The 'apply_boundary_values' logic must have reset the ghost VX.
-    # Success Metric: 1.0 (Dirty) -> 0.0 (Sanitized via No-Slip)
+    # The 'apply_boundary_values' inside the Core block orchestration 
+    # must have sanitized the ghost neighbor's VX field.
     final_vx = ghost_cell.get_field(FI.VX)
     
     assert final_vx != 1.0, (
-        "MMS FAILURE: Logic layer failed to mutate the NumPy Foundation in-place. "
-        "Check field_ref pointer integrity (Rule 0)."
+        "MMS FAILURE: Ghost short-circuit or Pointer integrity issue. "
+        "The logic layer failed to mutate the NumPy Foundation in-place."
     )
     assert final_vx == 0.0, (
         f"MMS FAILURE: Boundary Enforcement mismatch. Got {final_vx}, expected 0.0 (No-Slip)."
     )
 
     # 6. Verification: Predictor Hydration (Rule 1: Field Precision Audit)
-    # Ensure VX_STAR (intermediate field) was updated in the 'Sink' (NumPy buffer).
+    # Ensure VX_STAR (intermediate field) was updated in the core cell.
     vx_star_val = block.center.get_field(FI.VX_STAR)
     
     assert vx_star_val != 0.0, (
         "MMS FAILURE: Predictor step (VX_STAR) failed to hydrate the Foundation buffer. "
-        "Check vectorization/broadcasting in src/step3/physics_engine.py."
+        "Check physics kernel in src/step3/predictor.py."
     )
 
     # 7. SSoT Final Check (Rule 4)
