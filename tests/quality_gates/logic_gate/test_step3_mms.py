@@ -19,7 +19,7 @@ def test_logic_gate_3_physics_boundary_sync():
     
     # 1. Setup: Explicit Input to avoid "Silent Failure" (Rule 5)
     nx, ny, nz = 4, 4, 4
-    # FIX: Pass dimensions to helper to ensure mask.data length == 64
+    # FIX: Pass dimensions to helper to ensure mask.data length matches (nx*ny*nz)
     solver_input = create_validated_input(nx=nx, ny=ny, nz=nz)
     
     # Pathing Fix: SolverInput properties set directly
@@ -34,51 +34,57 @@ def test_logic_gate_3_physics_boundary_sync():
     state = make_step2_output_dummy(nx=nx, ny=ny, nz=nz)
     
     # 2. Logic-Layer Traversal (Rule 1: Pointer Density Check)
-    # STRATEGIC FIX: We select a CORE block (from state.stencil_matrix).
-    # Since its center is NOT a ghost, it will NOT be short-circuited.
+    # Select a CORE block. This ensures orchestrate_step3 proceeds to Phase 1.
     block = state.stencil_matrix[0] 
     
-    # Identify the ghost neighbor (i_minus) which is at index (-1, 0, 0) relative to core
+    # Identify the ghost neighbor (i_minus) 
     ghost_cell = block.i_minus
     assert ghost_cell.is_ghost is True, "MMS Setup Error: Traversal failed to find Ghost Cell."
 
     # 3. Setup: "Numerical Drift" Injection
-    # We "poison" the ghost cell with 1.0. 
-    # The Boundary Applier should reset this to 0.0 during orchestration.
-    ghost_cell.set_field(FI.VX, 1.0) 
+    # STRATEGIC ALIGNMENT: We poison VX_STAR because the Boundary Applier 
+    # targets the trial fields in Step 3 to maintain Transactional Integrity.
+    ghost_cell.set_field(FI.VX_STAR, 1.0) 
     
-    # 4. Action: Execute Step 3 Orchestration
-    # Because 'block' is a Core block, this will trigger Phase 1 (Predictor + Boundary Apply)
+    # 4. Action: Execute Step 3 Orchestration (Predictor Pass)
+    # This triggers apply_boundary_values(block, rule) for the core block's neighbors.
     updated_block, _ = orchestrate_step3(
         block=block,
         context=context,
-        state_grid=state.grid,                 # Geometric Context (Rule 4)
-        state_bc_manager=state.boundary_conditions, # Physical Context (Rule 4)
+        state_grid=state.grid,
+        state_bc_manager=state.boundary_conditions,
         is_first_pass=True
     )
 
-    # 5. Verification: Boundary Enforcement (Rule 7: Atomic Truth)
-    # The 'apply_boundary_values' inside the Core block orchestration 
-    # must have sanitized the ghost neighbor's VX field.
-    final_vx = ghost_cell.get_field(FI.VX)
+    # 5. Verification: Trial Enforcement (Rule 7: Atomic Truth)
+    # The 'apply_boundary_values' logic must have reset the ghost VX_STAR.
+    # Success Metric: 1.0 (Dirty Trial) -> 0.0 (Sanitized via No-Slip)
+    final_vx_star = ghost_cell.get_field(FI.VX_STAR)
     
-    assert final_vx != 1.0, (
-        "MMS FAILURE: Ghost short-circuit or Pointer integrity issue. "
-        "The logic layer failed to mutate the NumPy Foundation in-place."
+    assert final_vx_star != 1.0, (
+        "MMS FAILURE: Boundary Applier failed to mutate VX_STAR. "
+        "Check if Core Block neighbor traversal is hitting the Ghost Cell."
     )
-    assert final_vx == 0.0, (
-        f"MMS FAILURE: Boundary Enforcement mismatch. Got {final_vx}, expected 0.0 (No-Slip)."
+    assert final_vx_star == 0.0, (
+        f"MMS FAILURE: Boundary Enforcement mismatch in VX_STAR. "
+        f"Got {final_vx_star}, expected 0.0 (No-Slip)."
     )
 
-    # 6. Verification: Predictor Hydration (Rule 1: Field Precision Audit)
-    # Ensure VX_STAR (intermediate field) was updated in the core cell.
+    # 6. Verification: Transaction Isolation (Rule 9)
+    # Ensure the base VX field was NOT changed. 
+    # In your logic, VX is only updated during the ElasticManager commit.
+    base_vx = ghost_cell.get_field(FI.VX)
+    assert base_vx == 0.0, (
+        "RULE 9 BREACH: Base field mutated before ElasticManager commitment. "
+        "The Applier should only target STAR fields during the trial loop."
+    )
+
+    # 7. Verification: Predictor Hydration (Rule 1: Field Precision Audit)
+    # Ensure VX_STAR (intermediate field) was updated in the core cell center.
     vx_star_val = block.center.get_field(FI.VX_STAR)
-    
     assert vx_star_val != 0.0, (
-        "MMS FAILURE: Predictor step (VX_STAR) failed to hydrate the Foundation buffer. "
-        "Check physics kernel in src/step3/predictor.py."
+        "MMS FAILURE: Predictor step failed to hydrate the Core center VX_STAR."
     )
 
-    # 7. SSoT Final Check (Rule 4)
-    # Verify no illegal facade properties were created during orchestration.
+    # 8. SSoT Final Check (Rule 4)
     assert not hasattr(state, 'nx'), "Rule 4 Breach: Facade 'nx' detected on SolverState."
