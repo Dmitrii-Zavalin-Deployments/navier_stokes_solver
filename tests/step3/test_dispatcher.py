@@ -85,7 +85,7 @@ def test_missing_config_raises_keyerror(mock_block):
     mock_block.i_plus.is_ghost = True
     boundary_cfg = [{"location": "x_min", "type": "inflow"}] # missing x_max
     
-    with pytest.raises(KeyError, match="Missing boundary definition for face: x_max"):
+    with pytest.raises(KeyError, match="Missing boundary definition for x_max"):
         get_applicable_boundary_configs(mock_block, boundary_cfg, None, {})
 
 def test_external_missing_ref_velocity(mock_block):
