@@ -1,7 +1,7 @@
 # tests/step2/test_factory.py
 
 import pytest
-
+from unittest.mock import patch
 from src.common.grid_math import get_flat_index
 from src.step2.factory import get_cell
 from tests.helpers.solver_step1_output_dummy import make_step1_output_dummy
@@ -123,3 +123,46 @@ def test_factory_mask_alignment_drift_simulation():
     
     cell = get_cell(*target_coord, state)
     assert cell.mask == 0, "Factory failed to align physical coord with mask grid."
+
+def test_get_cell_debug_path():
+    """
+    Targets line 37: Verify the DEBUG logging path in the factory.
+    """
+    # 1. Setup a valid state (4x4x4 grid)
+    state = make_step1_output_dummy(nx=4, ny=4, nz=4)
+    
+    # 2. Patch DEBUG to True and capture output
+    with patch("src.step2.factory.DEBUG", True):
+        # Test Core Cell debug log
+        cell_core = get_cell(0, 0, 0, state)
+        assert cell_core.is_ghost is False
+        
+        # Test Ghost Cell debug log
+        cell_ghost = get_cell(-1, 0, 0, state)
+        assert cell_ghost.is_ghost is True
+
+def test_get_cell_padding_zone_error():
+    """
+    Targets lines 33-34: Verify IndexError for out-of-bounds coordinates.
+    """
+    state = make_step1_output_dummy(nx=4, ny=4, nz=4)
+    
+    # The valid range is -1 to nx (inclusive for ghosts). 
+    # nx=4 means valid range is [-1, 4].
+    # Let's hit the "else" (Padding Zone) by requesting index 10.
+    with pytest.raises(IndexError) as excinfo:
+        get_cell(10, 0, 0, state)
+    
+    assert "illegal Padding Zone" in str(excinfo.value)
+    assert "(10, 0, 0)" in str(excinfo.value)
+
+def test_get_cell_ghost_boundary_max():
+    """
+    Ensures the upper boundary ghost cell (index nx) works correctly.
+    """
+    nx = 4
+    state = make_step1_output_dummy(nx=nx, ny=4, nz=4)
+    
+    # i=4 is a ghost cell because it's not < grid.nx
+    cell = get_cell(nx, 0, 0, state)
+    assert cell.is_ghost is True
