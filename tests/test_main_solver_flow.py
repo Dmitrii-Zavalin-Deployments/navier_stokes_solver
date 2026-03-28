@@ -1,9 +1,9 @@
 # tests/test_main_solver_flow.py
 
-import importlib
+import runpy
 import sys
 from unittest.mock import MagicMock, patch
-import runpy
+
 import jsonschema
 import pytest
 
