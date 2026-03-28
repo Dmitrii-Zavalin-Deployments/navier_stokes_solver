@@ -1,6 +1,7 @@
 # tests/quality_gates/logic_gate/test_step3_mms.py
 
 from src.common.field_schema import FI
+from src.common.simulation_context import SimulationContext
 from src.step3.orchestrate_step3 import orchestrate_step3
 from tests.helpers.solver_input_schema_dummy import create_validated_input
 from tests.helpers.solver_step2_output_dummy import make_step2_output_dummy
@@ -17,22 +18,22 @@ def test_logic_gate_3_physics_boundary_sync():
     """
     
     # 1. Setup: Explicit Input to avoid "Silent Failure" (Rule 5)
-    # FIX: Use the base constructor and set attributes via the SSoT path.
     nx, ny, nz = 4, 4, 4
-    context = create_validated_input()
+    solver_input = create_validated_input()
     
-    # Pathing Fix: Ensure we traverse through .input_data to satisfy Rule 4
-    context.grid.nx = nx
-    context.grid.ny = ny
-    context.grid.nz = nz
+    # Pathing Fix: SolverInput properties set directly
+    solver_input.grid.nx = nx
+    solver_input.grid.ny = ny
+    solver_input.grid.nz = nz
+    
+    # Compliance Rule 4: Wrap in SimulationContext SSoT container
+    context = SimulationContext(input_data=solver_input, config=None)
     
     # Setup Step 2 output state (The "Foundation" and "Wiring")
-    # Using the same dimension lock for the dummy state generator
     state = make_step2_output_dummy(nx=nx, ny=ny, nz=nz)
     
     # 2. Logic-Layer Traversal (Rule 1: Pointer Density Check)
     # Select a block adjacent to a boundary via the object-graph (StencilBlock)
-    # We use the first block in the list container (Rule 0: No Object Arrays)
     block = state.stencil_matrix[0]
     
     # Identify a ghost neighbor using pointer-based traversal
@@ -40,13 +41,11 @@ def test_logic_gate_3_physics_boundary_sync():
     assert ghost_cell.is_ghost is True, "MMS Setup Error: Traversal failed to find Ghost Cell."
 
     # 3. Setup: "Numerical Drift" Injection
-    # Manually pollute the ghost cell buffer to test the Boundary Firewall.
-    # Rule 1 check: We mutate the logic-object, which updates the underlying NumPy buffer.
+    # Mutate logic-object to update underlying NumPy buffer via Rule 0 pointers.
     ghost_cell.set_field(FI.VX, 1.0) 
     
-    # 4. Action: Execute Step 3 Orchestration
-    # We pass the block and the SSoT containers (state.grid, state.boundary_conditions).
-    # This must leverage the 'field_ref' pointers inside the Cell objects (Rule 0).
+    # 4. Action: Execute Step 3 Orchestration (Predictor/Corrector Loop Context)
+    # This must leverage the 'field_ref' pointers inside the Cell objects.
     updated_block, _ = orchestrate_step3(
         block=block,
         context=context,
@@ -70,7 +69,6 @@ def test_logic_gate_3_physics_boundary_sync():
 
     # 6. Verification: Predictor Hydration (Rule 1: Field Precision Audit)
     # Ensure VX_STAR (intermediate field) was updated in the 'Sink' (NumPy buffer).
-    # We check the center cell of the block.
     vx_star_val = block.center.get_field(FI.VX_STAR)
     
     assert vx_star_val != 0.0, (

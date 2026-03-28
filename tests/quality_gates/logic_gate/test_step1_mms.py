@@ -1,11 +1,18 @@
 # tests/quality_gates/logic_gate/test_step1_mms.py
 
 import numpy as np
-
+import pytest
 from src.common.field_schema import FI
 from src.step1.orchestrate_step1 import orchestrate_step1
+from src.common.simulation_context import SimulationContext
 from tests.helpers.solver_input_schema_dummy import create_validated_input
 
+def wrap_in_context(solver_input):
+    """
+    Compliance: Rule 4. Wraps raw data in the appropriate 
+    SimulationContext to avoid __slots__ AttributeErrors.
+    """
+    return SimulationContext(input_data=solver_input, config=None)
 
 def test_logic_gate_1_padded_ingestion():
     """
@@ -18,14 +25,16 @@ def test_logic_gate_1_padded_ingestion():
     """
 
     # 1. Setup Input: Explicitly define grid to avoid Hidden Defaults (Rule 5)
-    # FIX: We use the base constructor and set attributes via the SSoT path.
     nx, ny, nz = 2, 2, 2
-    context = create_validated_input() 
+    solver_input = create_validated_input() 
     
-    # Pathing Fix: Ensure we traverse through .input_data to satisfy Rule 4
-    context.grid.nx = nx
-    context.grid.ny = ny
-    context.grid.nz = nz
+    # Pathing Fix: SolverInput has direct access to .grid
+    solver_input.grid.nx = nx
+    solver_input.grid.ny = ny
+    solver_input.grid.nz = nz
+    
+    # Compliance: Wrap in SimulationContext to simulate main_solver.py loop
+    context = wrap_in_context(solver_input)
     
     # Success Metric Calculation: (2+2)*(2+2)*(2+2) = 64 cells
     # This reflects the Ghost Cell Padding requirement for the Foundation.
@@ -36,8 +45,6 @@ def test_logic_gate_1_padded_ingestion():
     state = orchestrate_step1(context)
 
     # 3. Verification: (N+2)^3 Size Parity (Rule 1: Field Precision/Scale Audit)
-    # Verify that the Foundation (NumPy buffer) allocated the correct size.
-    # Data is accessed via the Physical Context container (state.fields).
     actual_cells = state.fields.data.shape[0]
     assert actual_cells == expected_cells, (
         f"MMS FAILURE [Size Parity]: Expected {expected_cells} cells, got {actual_cells}. "
@@ -45,7 +52,6 @@ def test_logic_gate_1_padded_ingestion():
     )
     
     # 4. Verification: Schema Consistency (Rule 1 & Rule 7)
-    # Verify the buffer width matches the FieldIndex (FI) atomic numerical truth.
     actual_width = state.fields.data.shape[1]
     expected_width = FI.num_fields()
     assert actual_width == expected_width, (
@@ -56,26 +62,18 @@ def test_logic_gate_1_padded_ingestion():
     # 5. Verification: Padded Masking Logic
     # SSoT Check: Mask data must reside in state.fields.data, not a facade property.
     mask_buffer = state.fields.data[:, FI.MASK]
-    
-    # Check that the mask is flattened (1D) within the foundation
     assert mask_buffer.ndim == 1, "MMS FAILURE: Mask buffer must be a 1D slice of the Foundation."
     
-    # Verification: Ghost Cell Padding
-    # Since we padded with constant_values=0, zeros MUST exist in the buffer.
-    # This validates the "Padded Masking Unified into Foundation" mandate.
+    # Verification: Ghost Cell Padding (0.0)
     unique_vals = np.unique(mask_buffer)
     assert 0.0 in unique_vals, (
         "MMS FAILURE [Padded Masking]: Ghost cell padding (0.0) missing from Foundation buffer."
     )
 
     # 6. Verification: Logic-Layer Hydration & SSoT Compliance (Rule 4)
-    # RULE: Hierarchy over Convenience. 
-    # Ensure managers are attached to their proper sub-containers.
     assert hasattr(state, 'fields'), "SSoT BREACH: state.fields (Physical Context) missing."
     assert hasattr(state, 'grid'), "SSoT BREACH: state.grid (Geometric Context) missing."
     
-    # ARCHITECTURAL CHECK: If 'mask' is a logic manager, it should be a sub-component 
-    # of the FieldManager or its own Registry, but NEVER a flat alias if it duplicates data.
-    # Based on Rule 4: "Adding facade properties... is strictly prohibited."
-    assert not hasattr(state, 'nx'), "Rule 4 Violation: Found 'nx' alias on SolverState. Use state.grid.nx."
+    # ARCHITECTURAL CHECK: No facade properties allowed on SolverState
+    assert not hasattr(state, 'nx'), "Rule 4 Violation: Found 'nx' alias on SolverState."
     assert not hasattr(state, 'density'), "Rule 4 Violation: Found 'density' alias on SolverState."

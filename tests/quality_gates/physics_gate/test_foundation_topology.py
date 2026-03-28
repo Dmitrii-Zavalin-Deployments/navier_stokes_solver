@@ -1,5 +1,6 @@
 # tests/quality_gates/physics_gate/test_foundation_topology.py
 
+from src.common.simulation_context import SimulationContext
 from src.step1.orchestrate_step1 import orchestrate_step1
 from src.step2.stencil_assembler import assemble_stencil_matrix
 from tests.helpers.solver_input_schema_dummy import create_validated_input
@@ -15,12 +16,15 @@ def test_gate_1a_foundation_volume_parity():
 
     # 1. Setup: Explicit dimensions via SSoT path (Rule 5)
     nx, ny, nz = 4, 4, 4
-    context = create_validated_input()
+    solver_input = create_validated_input()
     
     # Pathing Fix: Align with Rule 4 Hierarchy
-    context.grid.nx = nx
-    context.grid.ny = ny
-    context.grid.nz = nz
+    solver_input.grid.nx = nx
+    solver_input.grid.ny = ny
+    solver_input.grid.nz = nz
+
+    # Compliance: Wrap in SimulationContext SSoT container
+    context = SimulationContext(input_data=solver_input, config=None)
     
     # The Foundation must allocate space for the core + 2 ghost layers per dimension
     expected_volume = (nx + 2) * (ny + 2) * (nz + 2)
@@ -45,10 +49,12 @@ def test_gate_2a_7_point_connectivity_stride():
 
     # 1. Setup: Initialize full topology (Step 1 -> Step 2)
     nx, ny, nz = 4, 4, 4
-    context = create_validated_input()
-    context.grid.nx = nx
-    context.grid.ny = ny
-    context.grid.nz = nz
+    solver_input = create_validated_input()
+    solver_input.grid.nx = nx
+    solver_input.grid.ny = ny
+    solver_input.grid.nz = nz
+    
+    context = SimulationContext(input_data=solver_input, config=None)
     
     state = orchestrate_step1(context)
     # Step 2: Assemble the Registry
@@ -84,10 +90,12 @@ def test_gate_2a_y_stride_integrity():
     """
 
     nx, ny, nz = 4, 4, 4
-    context = create_validated_input()
-    context.grid.nx = nx
-    context.grid.ny = ny
-    context.grid.nz = nz
+    solver_input = create_validated_input()
+    solver_input.grid.nx = nx
+    solver_input.grid.ny = ny
+    solver_input.grid.nz = nz
+    
+    context = SimulationContext(input_data=solver_input, config=None)
     
     state = orchestrate_step1(context)
     stencils = assemble_stencil_matrix(state)
@@ -119,10 +127,12 @@ def test_gate_2a_z_stride_integrity():
     Identity: id(k+1) = id(c) + (nx+2)*(ny+2)
     """
     nx, ny, nz = 4, 4, 4
-    context = create_validated_input()
-    context.grid.nx = nx
-    context.grid.ny = ny
-    context.grid.nz = nz
+    solver_input = create_validated_input()
+    solver_input.grid.nx = nx
+    solver_input.grid.ny = ny
+    solver_input.grid.nz = nz
+    
+    context = SimulationContext(input_data=solver_input, config=None)
     
     state = orchestrate_step1(context)
     stencils = assemble_stencil_matrix(state)

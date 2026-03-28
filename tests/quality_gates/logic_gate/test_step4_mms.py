@@ -1,7 +1,7 @@
 # tests/quality_gates/logic_gate/test_step4_mms.py
 
 from unittest.mock import patch
-
+from src.common.simulation_context import SimulationContext
 from src.step4.orchestrate_step4 import orchestrate_step4
 from tests.helpers.solver_input_schema_dummy import create_validated_input
 from tests.helpers.solver_step2_output_dummy import make_step2_output_dummy
@@ -18,21 +18,24 @@ def test_logic_gate_4_archival_trigger_logic():
     """
 
     # 1. Setup: Explicit Input to avoid "Silent Failure" (Rule 5)
-    # Define the output interval in the simulation_parameters container.
     output_interval = 10
-    context = create_validated_input(nx=4, ny=4, nz=4)
-    context.simulation_parameters.output_interval = output_interval
+    solver_input = create_validated_input(nx=4, ny=4, nz=4)
+    
+    # Pathing Fix: Ensure simulation_parameters are set on the input object
+    solver_input.simulation_parameters.output_interval = output_interval
+
+    # Compliance Rule 4: Wrap in SimulationContext (The "Main Loop Context")
+    context = SimulationContext(input_data=solver_input, config=None)
 
     # 2. Setup: Use Step 2 dummy to get a full SolverState (The "Wiring")
-    # Step 4 requires the full SolverState to perform Slicing and HDF5 I/O.
     state = make_step2_output_dummy(nx=4, ny=4, nz=4)
     
     # 3. Scenario 1: Positive Trigger (state.iteration = 20)
-    # Rule 5: We explicitly set the iteration rather than assuming a default.
+    # Rule 5: Explicit iteration setting
     state.iteration = 20
     
-    # Action: Verify that orchestrate_step4 triggers the archivist (I mod Delta I == 0)
-    # We patch the save_snapshot utility to verify the trigger logic.
+    # Action: Verify that orchestrate_step4 triggers the archivist (20 % 10 == 0)
+    # Patch the save_snapshot utility to verify the trigger logic.
     with patch('src.step4.orchestrate_step4.save_snapshot') as mock_save:
         orchestrate_step4(state, context)
         
@@ -50,7 +53,6 @@ def test_logic_gate_4_archival_trigger_logic():
 
     # 5. Verification: Logic Layer Integrity (Rule 4)
     # Ensure the orchestrator returns the SolverState for the next time-loop iteration.
-    # We verify the SSoT structure is preserved.
     result = orchestrate_step4(state, context)
     
     assert isinstance(result, type(state)), (
@@ -60,7 +62,7 @@ def test_logic_gate_4_archival_trigger_logic():
     # Rule 4 Audit: Ensure no convenience aliases were added to the result
     assert not hasattr(result, 'output_interval'), (
         "Rule 4 Violation: Facade property 'output_interval' detected on state. "
-        "Must remain in context.simulation_parameters."
+        "Must remain in context.input_data.simulation_parameters."
     )
 
     # 6. Verification: Deterministic Persistence (Rule 5)
