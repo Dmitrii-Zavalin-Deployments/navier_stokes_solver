@@ -21,7 +21,7 @@ def get_applicable_boundary_configs(block: StencilBlock, boundary_cfg: list, gri
             return _find_config(boundary_cfg, b_type)
         except KeyError:
             # If spatial lookup fails, ONLY THEN do we allow mask fallback or raise
-            raise KeyError(f"Missing boundary definition for {b_type}")
+            raise KeyError(f"Missing boundary definition for {b_type}") from None
 
     # 2. INTERNAL MASK (Axioms) only if it's NOT a domain boundary
     mask = block.center.mask
