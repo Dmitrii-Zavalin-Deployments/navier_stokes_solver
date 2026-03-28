@@ -1,8 +1,10 @@
 # tests/step1/test_helpers.py
 
+from unittest.mock import patch
+
 import numpy as np
 import pytest
-from unittest.mock import patch
+
 from src.common.solver_input import GridInput
 from src.step1.helpers import generate_3d_masks
 
