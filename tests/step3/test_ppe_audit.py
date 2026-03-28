@@ -1,10 +1,13 @@
 # tests/step3/test_ppe_audit.py
 
-import pytest
-import numpy as np
 from unittest.mock import MagicMock, patch
-from src.step3.ppe_solver import solve_pressure_poisson_step
+
+import numpy as np
+import pytest
+
 from src.common.field_schema import FI
+from src.step3.ppe_solver import solve_pressure_poisson_step
+
 
 def test_solve_ppe_step_post_update_audit_failure():
     """
