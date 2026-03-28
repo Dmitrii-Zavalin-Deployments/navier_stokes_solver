@@ -38,22 +38,32 @@ def test_gate_4_type_casting_integrity():
 
 def test_gate_4_schema_validation_and_firewall():
     """
-    Verification: Ensure state.validate_against_schema("schema/solver_input_schema.json") blocks incomplete states.
+    Verification: Ensure state.validate_against_schema blocks incomplete states.
     Asserts: Validation fails on uninitialized/None fields (Double-Lock Barrier).
     """
+    # 1. Setup: Create a perfectly valid baseline
     solver_input = create_validated_input()
     context = wrap_in_context(solver_input)
     state = orchestrate_step1(context)
     
-    # 1. Corrupt the state foundation
+    # Verify baseline is clean first (Safety Check)
+    state.validate_against_schema("schema/solver_input_schema.json")
+    
+    # 2. Corrupt the state foundation (Injecting the "Silent Issue" trigger)
+    # We use the private attribute to bypass any protective setters for the test
     state.grid._nx = None 
     
-    # 2. Assert: The schema validator must catch the drift
-    # This aligns with the 'Double-Lock' requirement in Line 74
-    with pytest.raises(ValueError, match='Validation Failure'): # Replace with specific jsonschema.ValidationError if imported
+    # 3. Assert: The schema validator MUST raise a clear error
+    # We change ValueError to a more generic Exception or 
+    # the specific jsonschema.ValidationError if you have it.
+    with pytest.raises(Exception) as excinfo:
         state.validate_against_schema("schema/solver_input_schema.json")
+    
+    # Ensure the error message specifically mentions the missing 'nx'
+    assert "nx" in str(excinfo.value), f"Schema failed but didn't flag 'nx'. Found: {excinfo.value}"
         
-    # 3. Assert: ready_for_time_loop remains False (Sentinel Integrity)
+    # 4. Assert: ready_for_time_loop remains False (Sentinel Integrity)
+    # This proves the firewall actually BLOCKED the transition
     assert state.ready_for_time_loop is False
 
 def test_gate_4_physical_drift_rollback():

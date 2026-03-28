@@ -4,7 +4,7 @@ from src.common.field_schema import FI
 from src.common.simulation_context import SimulationContext
 from src.step3.orchestrate_step3 import orchestrate_step3
 from tests.helpers.solver_step2_output_dummy import make_step2_output_dummy
-
+from tests.helpers.solver_input_schema_dummy import create_validated_input
 
 def test_logic_gate_3_physics_boundary_sync():
     """
@@ -16,7 +16,6 @@ def test_logic_gate_3_physics_boundary_sync():
     nx, ny, nz = 4, 4, 4
     state = make_step2_output_dummy(nx=nx, ny=ny, nz=nz)
     # create_validated_input used for SSoT context
-    from tests.helpers.input_helper import create_validated_input
     solver_input = create_validated_input(nx=nx, ny=ny, nz=nz)
     context = SimulationContext(input_data=solver_input, config=None)
 
@@ -56,7 +55,6 @@ def test_logic_gate_3_center_mutation_audit():
     # 1. Setup
     nx, ny, nz = 4, 4, 4
     state = make_step2_output_dummy(nx=nx, ny=ny, nz=nz)
-    from tests.helpers.input_helper import create_validated_input
     context = SimulationContext(input_data=create_validated_input(nx=nx, ny=ny, nz=nz), config=None)
 
     # 2. Target a block that IS a Ghost Block (to trigger Boundary Applier)
