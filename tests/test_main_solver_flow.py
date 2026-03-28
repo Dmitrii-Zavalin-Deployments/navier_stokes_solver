@@ -20,7 +20,6 @@ def test_load_context_missing_config():
 # 2. Test State Contract Violations
 def test_run_solver_state_schema_violation():
     valid_input_obj = create_validated_input()
-    # Use real Step 4 dummy for structural integrity
     real_state = make_step4_output_dummy() 
     
     with patch("src.main_solver._load_simulation_context") as mock_load:
@@ -28,8 +27,8 @@ def test_run_solver_state_schema_violation():
         mock_load.return_value = mock_context
         mock_context.input_data = valid_input_obj
         
-        # Patch the internal validation method to simulate a failure
-        with patch.object(real_state, 'validate_against_schema') as mock_val:
+        # FIX: Patch the CLASS method to bypass __slots__ instance restrictions
+        with patch("src.common.solver_state.SolverState.validate_against_schema") as mock_val:
             mock_val.side_effect = jsonschema.exceptions.ValidationError("State Mismatch")
             
             with patch("src.main_solver.orchestrate_step1", return_value=real_state), \
@@ -37,20 +36,19 @@ def test_run_solver_state_schema_violation():
                 with pytest.raises(jsonschema.exceptions.ValidationError, match="State Mismatch"):
                     run_solver("dummy.json")
 
-# 3. Test Convergence (Using Dummies to solve TypeErrors)
+# 3. Test Convergence
 def test_run_solver_convergence_and_debug():
-    # Hydrate real objects using your helpers
     real_state = make_step4_output_dummy(nx=2, ny=2, nz=2)
     real_input = create_validated_input()
     
     with patch("src.main_solver._load_simulation_context") as mock_load:
         mock_context = MagicMock()
         mock_load.return_value = mock_context
-        mock_context.input_data = real_input
-        # Bridge Rule 4: Ensure to_dict works for the schema validator
-        mock_context.input_data.to_dict.return_value = real_input.to_dict()
         
-        # Force loop exit after one pass using the helper's attributes
+        # FIX: real_input is a real object; its to_dict() just works. 
+        # We only need to ensure the mock_context uses our real_input.
+        mock_context.input_data = real_input
+        
         real_state.ready_for_time_loop = True 
         
         def side_effect_exit(state_in, context_in):
@@ -65,7 +63,7 @@ def test_run_solver_convergence_and_debug():
             
             run_solver("dummy.json")
 
-# 4. Test Floating Point Trap (Verifying the Stability Ladder)
+# 4. Test Floating Point Trap
 def test_run_solver_floating_point_trap():
     real_state = make_step4_output_dummy()
     real_input = create_validated_input()
@@ -74,9 +72,7 @@ def test_run_solver_floating_point_trap():
         mock_context = MagicMock()
         mock_load.return_value = mock_context
         mock_context.input_data = real_input
-        mock_context.input_data.to_dict.return_value = real_input.to_dict()
         
-        # Stability parameters
         mock_context.config.ppe_max_retries = 2
         mock_context.config.dt_min_limit = 1e-6
         
@@ -84,6 +80,5 @@ def test_run_solver_floating_point_trap():
              patch("src.main_solver.orchestrate_step2", return_value=real_state), \
              patch("src.main_solver.orchestrate_step3", side_effect=FloatingPointError("NaN detected")):
             
-            # The Elasticity engine should escalate to RuntimeError
             with pytest.raises(RuntimeError, match="CRITICAL INSTABILITY"):
                 run_solver("dummy.json")
