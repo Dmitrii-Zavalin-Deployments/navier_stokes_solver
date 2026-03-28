@@ -78,7 +78,6 @@ def test_ppe_convergence_early_exit():
 # 5. Test CLI Entry Point (Lines 156-166)
 def test_main_cli_execution():
     """VERIFICATION: Ensure the CLI handles missing arguments and fatal errors gracefully."""
-    from src import main_solver
     
     # Test: No arguments provided (Line 156-158)
     with patch.object(sys, 'argv', ['main_solver.py']):
