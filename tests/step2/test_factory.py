@@ -1,7 +1,9 @@
 # tests/step2/test_factory.py
 
-import pytest
 from unittest.mock import patch
+
+import pytest
+
 from src.common.grid_math import get_flat_index
 from src.step2.factory import get_cell
 from tests.helpers.solver_step1_output_dummy import make_step1_output_dummy
