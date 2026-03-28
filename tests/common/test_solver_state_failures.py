@@ -14,8 +14,9 @@ from src.common.solver_state import (
     MaskManager,
     SolverState,
     verify_foundation_integrity,
+    FieldManager,
+    PhysicalConstraintsManager
 )
-
 
 # --- 1. Testing Foundation Integrity Failures (Lines 24-25, 56) ---
 def test_verify_foundation_integrity_failures():
@@ -72,29 +73,16 @@ def test_manager_validation_errors():
         bcm.conditions = "not_a_list"
 
 # --- 3. Testing Mask and Force Failures (Lines 513, 558, 576) ---
-import numpy as np
-import pytest
-
-from src.common.solver_state import (
-    ExternalForceManager,
-    FieldManager,
-    GridManager,
-    MaskManager,
-    PhysicalConstraintsManager,
-    SolverState,
-)
-
-
 def test_mask_and_force_failures():
     # 1. Line 513: Uninitialized Mask Serialization
     mm = MaskManager()
-    # Updated match to catch the specific base_container message
-    with pytest.raises(RuntimeError, match="Access Error: 'mask' in MaskManager is uninitialized"):
+    # Matches the direct RuntimeError in MaskManager.to_dict (Line 328)
+    with pytest.raises(RuntimeError, match="MaskManager: _mask is uninitialized"):
         mm.to_dict()
     
     # 2. Line 558: Uninitialized Force Serialization
     efm = ExternalForceManager()
-    # The code fails at the property access before it even hits the custom check in to_dict()
+    # Matches the _get_safe error from BaseContainer
     with pytest.raises(RuntimeError, match="Access Error: 'force_vector' in ExternalForceManager is uninitialized"):
         efm.to_dict()
         
@@ -105,26 +93,25 @@ def test_mask_and_force_failures():
 def test_validate_physical_readiness_failures():
     state = SolverState()
     
-    # FIX: Use real FieldManager instead of MagicMock to pass the type check
     fm = FieldManager()
     fm.data = np.zeros((10, 10))
     state.fields = fm 
     
-    # Line 606: Missing constraints
+    # Line 609: Missing constraints triggers _get_safe before Line 610
     state.physical_constraints = None
-    with pytest.raises(RuntimeError, match="CRITICAL: Physical Constraints are not defined"):
+    with pytest.raises(RuntimeError, match="Access Error: 'physical_constraints' in SolverState is uninitialized"):
         state.validate_physical_readiness()
         
     # Setup constraints for next checks
     state.physical_constraints = PhysicalConstraintsManager()
     
-    # Line 610: NaNs in Foundation
+    # Line 612: NaNs in Foundation
     fm.data[0, 0] = np.nan
     with pytest.raises(RuntimeError, match="CRITICAL: NaNs/Infs detected in Foundation buffer!"):
         state.validate_physical_readiness()
         
-    # Line 613: Grid not initialized
-    fm.data[0, 0] = 0.0 # Clean up NaN
-    state.grid = GridManager() # nx is None by default
+    # Line 614: Grid not initialized
+    fm.data[0, 0] = 0.0 
+    state.grid = GridManager() # nx is None
     with pytest.raises(RuntimeError, match="CRITICAL: Grid not properly initialized"):
         state.validate_physical_readiness()
