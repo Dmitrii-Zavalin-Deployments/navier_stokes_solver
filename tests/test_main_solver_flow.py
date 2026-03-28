@@ -1,11 +1,11 @@
 # tests/test_main_solver_flow.py
 
+import importlib
 from unittest.mock import MagicMock, patch
 
 import jsonschema
 import pytest
-import sys
-import importlib
+
 from src.common.solver_config import SolverConfig  # Grounding the config
 from src.main_solver import _load_simulation_context, run_solver
 from tests.helpers.solver_input_schema_dummy import create_validated_input
