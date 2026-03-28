@@ -23,9 +23,9 @@ def test_logic_gate_1_padded_ingestion():
     context = create_validated_input() 
     
     # Pathing Fix: Ensure we traverse through .input_data to satisfy Rule 4
-    context.input_data.grid.nx = nx
-    context.input_data.grid.ny = ny
-    context.input_data.grid.nz = nz
+    context.grid.nx = nx
+    context.grid.ny = ny
+    context.grid.nz = nz
     
     # Success Metric Calculation: (2+2)*(2+2)*(2+2) = 64 cells
     # This reflects the Ghost Cell Padding requirement for the Foundation.

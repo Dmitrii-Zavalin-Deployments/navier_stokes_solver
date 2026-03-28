@@ -18,9 +18,9 @@ def test_gate_1a_foundation_volume_parity():
     context = create_validated_input()
     
     # Pathing Fix: Align with Rule 4 Hierarchy
-    context.input_data.grid.nx = nx
-    context.input_data.grid.ny = ny
-    context.input_data.grid.nz = nz
+    context.grid.nx = nx
+    context.grid.ny = ny
+    context.grid.nz = nz
     
     # The Foundation must allocate space for the core + 2 ghost layers per dimension
     expected_volume = (nx + 2) * (ny + 2) * (nz + 2)
@@ -46,9 +46,9 @@ def test_gate_2a_7_point_connectivity_stride():
     # 1. Setup: Initialize full topology (Step 1 -> Step 2)
     nx, ny, nz = 4, 4, 4
     context = create_validated_input()
-    context.input_data.grid.nx = nx
-    context.input_data.grid.ny = ny
-    context.input_data.grid.nz = nz
+    context.grid.nx = nx
+    context.grid.ny = ny
+    context.grid.nz = nz
     
     state = orchestrate_step1(context)
     # Step 2: Assemble the Registry
@@ -85,9 +85,9 @@ def test_gate_2a_y_stride_integrity():
 
     nx, ny, nz = 4, 4, 4
     context = create_validated_input()
-    context.input_data.grid.nx = nx
-    context.input_data.grid.ny = ny
-    context.input_data.grid.nz = nz
+    context.grid.nx = nx
+    context.grid.ny = ny
+    context.grid.nz = nz
     
     state = orchestrate_step1(context)
     stencils = assemble_stencil_matrix(state)
@@ -120,9 +120,9 @@ def test_gate_2a_z_stride_integrity():
     """
     nx, ny, nz = 4, 4, 4
     context = create_validated_input()
-    context.input_data.grid.nx = nx
-    context.input_data.grid.ny = ny
-    context.input_data.grid.nz = nz
+    context.grid.nx = nx
+    context.grid.ny = ny
+    context.grid.nz = nz
     
     state = orchestrate_step1(context)
     stencils = assemble_stencil_matrix(state)

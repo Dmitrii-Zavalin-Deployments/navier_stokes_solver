@@ -21,7 +21,7 @@ def test_logic_gate_4_archival_trigger_logic():
     # Define the output interval in the simulation_parameters container.
     output_interval = 10
     context = create_validated_input(nx=4, ny=4, nz=4)
-    context.input_data.simulation_parameters.output_interval = output_interval
+    context.simulation_parameters.output_interval = output_interval
 
     # 2. Setup: Use Step 2 dummy to get a full SolverState (The "Wiring")
     # Step 4 requires the full SolverState to perform Slicing and HDF5 I/O.
@@ -60,7 +60,7 @@ def test_logic_gate_4_archival_trigger_logic():
     # Rule 4 Audit: Ensure no convenience aliases were added to the result
     assert not hasattr(result, 'output_interval'), (
         "Rule 4 Violation: Facade property 'output_interval' detected on state. "
-        "Must remain in context.input_data.simulation_parameters."
+        "Must remain in context.simulation_parameters."
     )
 
     # 6. Verification: Deterministic Persistence (Rule 5)

@@ -19,15 +19,15 @@ def test_gate_2a_registry_traceability():
     context = create_validated_input() 
     
     # Fix: Manually set grid dimensions in the SSoT container
-    context.input_data.grid.nx = nx
-    context.input_data.grid.ny = ny
-    context.input_data.grid.nz = nz
+    context.grid.nx = nx
+    context.grid.ny = ny
+    context.grid.nz = nz
 
     # Fix: Traceable constants must live in fluid_properties sub-container
     traceable_rho = 13.52
     traceable_mu = 0.00173
-    context.input_data.fluid_properties.density = traceable_rho
-    context.input_data.fluid_properties.viscosity = traceable_mu
+    context.fluid_properties.density = traceable_rho
+    context.fluid_properties.viscosity = traceable_mu
     
     # 2. Action: Hydrate through the actual orchestrator
     state = orchestrate_step1(context)
@@ -44,9 +44,9 @@ def test_gate_2a_foundation_mismatch_catch(monkeypatch):
     """
     context = create_validated_input()
     # Ensure dimensions match expected corrupted buffer size (Rule 9: 4^3 = 64)
-    context.input_data.grid.nx = 2
-    context.input_data.grid.ny = 2
-    context.input_data.grid.nz = 2
+    context.grid.nx = 2
+    context.grid.ny = 2
+    context.grid.nz = 2
     
     state = orchestrate_step1(context)
     

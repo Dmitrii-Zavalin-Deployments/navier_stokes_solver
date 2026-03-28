@@ -22,9 +22,9 @@ def test_logic_gate_3_physics_boundary_sync():
     context = create_validated_input()
     
     # Pathing Fix: Ensure we traverse through .input_data to satisfy Rule 4
-    context.input_data.grid.nx = nx
-    context.input_data.grid.ny = ny
-    context.input_data.grid.nz = nz
+    context.grid.nx = nx
+    context.grid.ny = ny
+    context.grid.nz = nz
     
     # Setup Step 2 output state (The "Foundation" and "Wiring")
     # Using the same dimension lock for the dummy state generator

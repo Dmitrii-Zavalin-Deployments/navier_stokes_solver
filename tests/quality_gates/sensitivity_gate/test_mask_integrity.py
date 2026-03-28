@@ -21,11 +21,11 @@ def test_gate_1b_overflow_guard_logic():
     context = create_validated_input()
     
     # Pathing Fix: Ensure we traverse through .input_data to satisfy Rule 4
-    context.input_data.grid.nx = nx
-    context.input_data.grid.ny = ny
-    context.input_data.grid.nz = nz
+    context.grid.nx = nx
+    context.grid.ny = ny
+    context.grid.nz = nz
     
-    grid = context.input_data.grid
+    grid = context.grid
     
     # Valid input: 8 cells (2*2*2)
     valid_mask = [1] * 8
@@ -50,11 +50,11 @@ def test_gate_1b_mapping_overflow_trigger(monkeypatch):
     # 1. Setup: Explicit dimensions via SSoT path
     nx, ny, nz = 2, 2, 2
     context = create_validated_input()
-    context.input_data.grid.nx = nx
-    context.input_data.grid.ny = ny
-    context.input_data.grid.nz = nz
+    context.grid.nx = nx
+    context.grid.ny = ny
+    context.grid.nz = nz
     
-    grid = context.input_data.grid
+    grid = context.grid
     valid_mask = [1] * 8
     
     # 2. Action: Monkeypatch the coordinate getter to return an out-of-bounds index (i=5)
@@ -82,11 +82,11 @@ def test_gate_1b_padding_integrity():
     # 1. Setup: 2x2x2 core
     nx, ny, nz = 2, 2, 2
     context = create_validated_input()
-    context.input_data.grid.nx = nx
-    context.input_data.grid.ny = ny
-    context.input_data.grid.nz = nz
+    context.grid.nx = nx
+    context.grid.ny = ny
+    context.grid.nz = nz
     
-    grid = context.input_data.grid
+    grid = context.grid
     valid_mask = [1] * 8
     
     # 2. Action: Hydrate the 3D core

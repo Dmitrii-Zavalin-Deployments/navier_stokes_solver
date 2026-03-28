@@ -112,7 +112,7 @@ class TestVerticalIntegrity:
         
         # Rule 4: Set state to trigger an archival event
         state.iteration = 10 
-        global_context.input_data.simulation_parameters.output_interval = 10
+        global_context.simulation_parameters.output_interval = 10
         
         if not os.path.exists("output"): 
             os.makedirs("output")

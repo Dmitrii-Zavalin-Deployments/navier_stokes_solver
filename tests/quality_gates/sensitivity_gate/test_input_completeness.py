@@ -20,11 +20,11 @@ def test_gate_1a_mask_size_mandate():
     context = create_validated_input()
     
     # Pathing Fix: Manual hydration of the SSoT Grid object
-    context.input_data.grid.nx = nx
-    context.input_data.grid.ny = ny
-    context.input_data.grid.nz = nz
+    context.grid.nx = nx
+    context.grid.ny = ny
+    context.grid.nz = nz
     
-    grid = context.input_data.grid
+    grid = context.grid
     
     # 2. Create "Bad Data" (20 cells instead of 27)
     # This simulates a malformed raw JSON intake (e.g., truncated data).
@@ -47,11 +47,11 @@ def test_gate_1a_perfect_match_pass():
     nx, ny, nz = 2, 2, 2
     context = create_validated_input()
     
-    context.input_data.grid.nx = nx
-    context.input_data.grid.ny = ny
-    context.input_data.grid.nz = nz
+    context.grid.nx = nx
+    context.grid.ny = ny
+    context.grid.nz = nz
     
-    grid = context.input_data.grid
+    grid = context.grid
     
     # Define valid input: 8 cells exactly.
     valid_mask_data = [1, 1, 0, 0, -1, -1, 1, 1] 
@@ -79,11 +79,11 @@ def test_gate_1a_empty_input_firewall():
     nx, ny, nz = 2, 2, 2
     context = create_validated_input()
     
-    context.input_data.grid.nx = nx
-    context.input_data.grid.ny = ny
-    context.input_data.grid.nz = nz
+    context.grid.nx = nx
+    context.grid.ny = ny
+    context.grid.nz = nz
     
-    grid = context.input_data.grid
+    grid = context.grid
     
     # The volume check (2*2*2=8) must fail against an empty list.
     with pytest.raises(ValueError, match="Expected 8 cells, got 0"):
