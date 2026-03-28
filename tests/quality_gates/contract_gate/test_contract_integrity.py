@@ -1,6 +1,5 @@
 # tests/quality_gates/contract_gate/test_contract_integrity.py
 
-import jsonschema
 import numpy as np
 import pytest
 
