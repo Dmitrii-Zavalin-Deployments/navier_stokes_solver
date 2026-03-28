@@ -38,9 +38,9 @@ def test_set_safe_type_error():
 def test_numpy_schema_validation_error(tmp_path, mocker):
     """
     Coverage for Line 50: Explicitly trigger the NumPy diagnostic.
-    We patch the CLASS method to bypass instance-level __setattr__ security.
+    Forces the validator to receive a raw array, hitting the forensic metadata block.
     """
-    # 1. Setup Schema
+    # 1. Setup Schema (Strict integer requirement)
     schema = {
         "type": "object",
         "properties": {"velocity": {"type": "integer"}},
@@ -50,16 +50,16 @@ def test_numpy_schema_validation_error(tmp_path, mocker):
     import json
     schema_file.write_text(json.dumps(schema))
 
-    # 2. Setup Data
+    # 2. Setup Container with scientific data
     container = MockContainer()
     raw_array = np.array([1.1, 2.2])
     container._velocity = raw_array
 
-    # 3. CLASS-LEVEL PATCH
-    # This replaces the method for all MockContainer instances during this test,
-    # bypassing the __setattr__ 'Memory Leak Prevention' check.
-    mocker.patch(
-        'tests.common.test_base_container.MockContainer.to_dict', 
+    # 3. THE FIX: Patch 'to_dict' on the MockContainer class directly.
+    # We return the raw array inside the dict so Line 48 'hasattr(val, "shape")' is True.
+    mocker.patch.object(
+        MockContainer, 
+        'to_dict', 
         return_value={"velocity": raw_array}
     )
 
@@ -67,7 +67,7 @@ def test_numpy_schema_validation_error(tmp_path, mocker):
     with pytest.raises(ValueError) as exc_info:
         container.validate_against_schema(str(schema_file))
     
-    # 5. VERIFICATION
+    # 5. VERIFICATION: Ensure Line 50's specific forensic output is present
     error_msg = str(exc_info.value)
     assert "numpy.ndarray" in error_msg
     assert "shape: (2,)" in error_msg
