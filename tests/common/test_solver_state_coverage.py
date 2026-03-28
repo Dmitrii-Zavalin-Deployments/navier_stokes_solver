@@ -83,6 +83,16 @@ def test_solver_state_defensive_logic(caplog):
         state.audit_physical_bounds()
 
     # 6. Physical Readiness Checks (Lines 610-615)
-    state.fields = None
+    # We satisfy Rule 5 by providing a FieldManager, but make its data None
+    empty_fm = FieldManager()
+    # Manually bypass setter if needed, or just don't allocate
+    state.fields = empty_fm 
+    
     with pytest.raises(RuntimeError, match="Foundation buffer is missing"):
+        state.validate_physical_readiness()
+
+    # 7. Final Coverage: Trigger the remaining Grid check (Line 613)
+    state.fields = fm # Restore valid fields
+    state.grid._nx = None # Force-break the grid initialization
+    with pytest.raises(RuntimeError, match="Grid not properly initialized"):
         state.validate_physical_readiness()
