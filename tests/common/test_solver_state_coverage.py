@@ -7,8 +7,12 @@ import pytest
 
 from src.common.field_schema import FI
 from src.common.solver_state import (
-    SolverState, FieldManager, GridManager, PhysicalConstraintsManager, 
-    BoundaryCondition, BoundaryConditionManager, MaskManager
+    BoundaryCondition,
+    BoundaryConditionManager,
+    FieldManager,
+    GridManager,
+    PhysicalConstraintsManager,
+    SolverState,
 )
 
 
