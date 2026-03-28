@@ -30,22 +30,24 @@ def test_run_solver_schema_violation():
                 run_solver("dummy.json")
 
 
-# 3. Test Numerical Traps (Fixed Elastic Recovery Ladder)
+# 3. Test Numerical Traps (Final Elastic Grounding)
 def test_run_solver_numerical_exceptions():
     valid_input_obj = create_validated_input()
     
     with patch("src.main_solver._load_simulation_context") as mock_load:
-        # Ground the config with real numeric values for recovery logic
         mock_context = MagicMock()
         mock_load.return_value = mock_context
         mock_context.input_data = valid_input_obj
+        
+        # Grounding the Elasticity Engine parameters
+        # These must be real values to pass the 'safety ladder' logic
         mock_context.config.ppe_tolerance = 1e-6
         mock_context.config.ppe_max_iter = 1
+        mock_context.config.elasticity_runs = 3
+        # Ensure time_step exists for ElasticManager init
+        mock_context.config.simulation_parameters.time_step = 0.01 
         
-        # This fixes the current TypeError: specifies how many times we can reduce dt
-        mock_context.config.elasticity_runs = 3 
-        
-        # Rule 9: Properly prime the state mock
+        # Rule 9: Prime the state mock
         mock_state = MagicMock()
         mock_state.ready_for_time_loop = True
         mock_state.fields.data.shape = (10, 10, 10, 9)
@@ -54,13 +56,12 @@ def test_run_solver_numerical_exceptions():
         with patch("src.main_solver.orchestrate_step1", return_value=mock_state):
             with patch("src.main_solver.orchestrate_step2", return_value=mock_state):
                 
-                # A: Force a FloatingPointError
-                # The solver will catch this and try to call elasticity.stabilization()
+                # A: Test FloatingPointError recovery trigger
                 with patch("src.main_solver.orchestrate_step3", side_effect=FloatingPointError("Underflow")):
                     with pytest.raises(FloatingPointError):
                         run_solver("dummy.json")
 
-                # B: Force a ValueError
+                # B: Test ValueError branch
                 with patch("src.main_solver.orchestrate_step3", side_effect=ValueError("Contract Violation")):
                     with pytest.raises(ValueError, match="Contract Violation"):
                         run_solver("dummy.json")
