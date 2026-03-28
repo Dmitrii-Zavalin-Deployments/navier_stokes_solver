@@ -1,11 +1,12 @@
 # tests/quality_gates/logic_gate/test_step1_mms.py
 
 import numpy as np
-import pytest
+
 from src.common.field_schema import FI
-from src.step1.orchestrate_step1 import orchestrate_step1
 from src.common.simulation_context import SimulationContext
+from src.step1.orchestrate_step1 import orchestrate_step1
 from tests.helpers.solver_input_schema_dummy import create_validated_input
+
 
 def wrap_in_context(solver_input):
     """

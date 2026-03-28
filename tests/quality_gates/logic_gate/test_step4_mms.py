@@ -1,6 +1,7 @@
 # tests/quality_gates/logic_gate/test_step4_mms.py
 
 from unittest.mock import patch
+
 from src.common.simulation_context import SimulationContext
 from src.step4.orchestrate_step4 import orchestrate_step4
 from tests.helpers.solver_input_schema_dummy import create_validated_input
