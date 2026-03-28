@@ -3,7 +3,7 @@
 import importlib
 import sys
 from unittest.mock import MagicMock, patch
-
+import runpy
 import jsonschema
 import pytest
 
@@ -98,55 +98,47 @@ def test_run_solver_floating_point_trap():
             with pytest.raises(RuntimeError, match="CRITICAL INSTABILITY"):
                 run_solver("dummy.json")
 
+
 def test_cli_entrypoint_success():
-    """Forces execution of the __main__ block by spoofing __name__."""
+    """Simulates running the module as a script with valid args."""
     test_args = ["src/main_solver.py", "dummy_input.json"]
-    import src.main_solver
-    
-    # Cleaned: Removed 'as mock_print' since we don't assert against it here
+
     with patch("sys.argv", test_args), \
          patch("src.main_solver.run_solver") as mock_run, \
          patch("builtins.print"):
-        
+
         mock_run.return_value = "mock_output.zip"
-        src.main_solver.__name__ = "__main__"
-        
+
         with pytest.raises(SystemExit) as e:
-            importlib.reload(src.main_solver)
-        
+            runpy.run_module("src.main_solver", run_name="__main__")
+
         assert e.value.code == 0
         mock_run.assert_called_once_with("dummy_input.json")
 
+
 def test_cli_entrypoint_no_args():
-    """Tests the usage prompt when no path is provided."""
-    import src.main_solver
-    
+    """Simulates running the module as a script with no args."""
     with patch("sys.argv", ["src/main_solver.py"]), \
          patch("builtins.print") as mock_print:
-        
-        src.main_solver.__name__ = "__main__"
-        
+
         with pytest.raises(SystemExit) as e:
-            importlib.reload(src.main_solver)
-            
+            runpy.run_module("src.main_solver", run_name="__main__")
+
         assert e.value.code == 1
         mock_print.assert_any_call("Usage: python src/main_solver.py <input_json_path>")
 
+
 def test_cli_entrypoint_error():
-    """Tests the fatal error handling and traceback."""
-    import src.main_solver
-    
+    """Simulates fatal error inside CLI entrypoint."""
     with patch("sys.argv", ["src/main_solver.py", "bad.json"]), \
          patch("src.main_solver.run_solver") as mock_run, \
          patch("traceback.print_exc"), \
          patch("builtins.print") as mock_print:
-        
+
         mock_run.side_effect = Exception("System Crash")
-        src.main_solver.__name__ = "__main__"
-        
+
         with pytest.raises(SystemExit) as e:
-            importlib.reload(src.main_solver)
-            
+            runpy.run_module("src.main_solver", run_name="__main__")
+
         assert e.value.code == 1
-        # sys.stderr is now defined because of the top-level import
         mock_print.assert_any_call("FATAL PIPELINE ERROR: System Crash", file=sys.stderr)
