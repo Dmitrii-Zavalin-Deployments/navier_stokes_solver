@@ -1,15 +1,23 @@
 # tests/common/test_solver_state_coverage.py
 
-import pytest
-import numpy as np
 import logging
-from src.common.solver_state import (
-    SolverState, FieldManager, GridManager, PhysicalConstraintsManager, 
-    BoundaryCondition, BoundaryConditionManager, DomainManager, MaskManager,
-    ExternalForceManager, FluidPropertiesManager, InitialConditionManager,
-    verify_foundation_integrity
-)
+
+import numpy as np
+import pytest
+
 from src.common.field_schema import FI
+from src.common.solver_state import (
+    BoundaryCondition,
+    BoundaryConditionManager,
+    FieldManager,
+    FluidPropertiesManager,
+    GridManager,
+    MaskManager,
+    PhysicalConstraintsManager,
+    SolverState,
+    verify_foundation_integrity,
+)
+
 
 def test_solver_state_defensive_logic(caplog):
     state = SolverState()
