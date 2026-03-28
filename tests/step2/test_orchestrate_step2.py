@@ -1,10 +1,11 @@
 # tests/step2/test_orchestrate_step2.py
 
-import pytest
 from unittest.mock import patch
+
 from src.step2.orchestrate_step2 import orchestrate_step2
 from tests.helpers.solver_step1_output_dummy import make_step1_output_dummy
 from tests.helpers.solver_step2_output_dummy import make_step2_output_dummy
+
 
 def test_orchestrate_step2_full_flow_with_debug():
     """
