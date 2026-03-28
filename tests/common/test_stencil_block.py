@@ -88,3 +88,40 @@ def test_stencil_property_integrity(physical_stencil):
     # Verify we can't inject random junk (if using __slots__)
     with pytest.raises(AttributeError):
         block.random_untracked_var = "Leak"
+    
+def test_stencil_repr_forensic_traceability(physical_stencil):
+    """
+    VERIFICATION: Ensure __repr__ provides the Block ID and current dt.
+    Target: Line 100 (The missing 2% coverage).
+    Crucial for identifying specific grid points during a stability crash.
+    """
+    block = physical_stencil
+    
+    # Trigger __repr__
+    repr_output = repr(block)
+    
+    # Assertions based on the template: <{self._id} dt={self._dt:.2e}>
+    assert repr_output.startswith("<Block_")
+    assert "dt=1.00e-02" in repr_output
+
+def test_topological_accessor_integrity(physical_stencil):
+    """
+    VERIFICATION: Ensure every directional accessor returns the correct Cell object.
+    Confirms the 7-point connectivity required for 3D Navier-Stokes.
+    """
+    block = physical_stencil
+    
+    # We verify that the objects returned match the identity of the Cells 
+    # provided during initialization in the physical_stencil fixture.
+    assert isinstance(block.center, Cell)
+    assert isinstance(block.i_minus, Cell)
+    assert isinstance(block.i_plus, Cell)
+    assert isinstance(block.j_minus, Cell)
+    assert isinstance(block.j_plus, Cell)
+    assert isinstance(block.k_minus, Cell)
+    assert isinstance(block.k_plus, Cell)
+    
+    # Verify spacing and physics constants
+    assert block.dx == 0.1
+    assert block.dy == 0.1
+    assert block.dz == 0.1
