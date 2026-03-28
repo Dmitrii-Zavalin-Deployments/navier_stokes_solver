@@ -4,7 +4,8 @@ from unittest.mock import MagicMock, patch
 
 import jsonschema
 import pytest
-
+import sys
+import importlib
 from src.common.solver_config import SolverConfig  # Grounding the config
 from src.main_solver import _load_simulation_context, run_solver
 from tests.helpers.solver_input_schema_dummy import create_validated_input
@@ -95,3 +96,55 @@ def test_run_solver_floating_point_trap():
             
             with pytest.raises(RuntimeError, match="CRITICAL INSTABILITY"):
                 run_solver("dummy.json")
+
+def test_cli_entrypoint_success():
+    """
+    Forces execution of the 'if __name__ == "__main__":' block 
+    to achieve 100% coverage on src/main_solver.py.
+    """
+    # 1. Mock the command line arguments
+    # [sys.argv[0] is the script name, sys.argv[1] is the input path]
+    test_args = ["src/main_solver.py", "dummy_input.json"]
+    
+    with patch("sys.argv", test_args), \
+         patch("src.main_solver.run_solver") as mock_run, \
+         patch("builtins.print") as mock_print:
+        
+        # Define what the solver returns on success
+        mock_run.return_value = "mock_output.zip"
+        
+        # 2. Re-import or Reload the module to trigger the __main__ block
+        import src.main_solver
+        with pytest.raises(SystemExit) as e:
+            importlib.reload(src.main_solver)
+        
+        # 3. Assertions
+        assert e.value.code == 0  # sys.exit(0)
+        mock_run.assert_called_once_with("dummy_input.json")
+        mock_print.assert_any_call("Pipeline complete. Artifacts archived at: mock_output.zip")
+
+def test_cli_entrypoint_no_args():
+    """Tests the 'Usage' branch when no arguments are provided."""
+    with patch("sys.argv", ["src/main_solver.py"]), \
+         patch("builtins.print") as mock_print:
+        
+        import src.main_solver
+        with pytest.raises(SystemExit) as e:
+            importlib.reload(src.main_solver)
+            
+        assert e.value.code == 1  # sys.exit(1)
+        mock_print.assert_any_call("Usage: python src/main_solver.py <input_json_path>")
+
+def test_cli_entrypoint_error():
+    """Tests the 'FATAL PIPELINE ERROR' branch."""
+    with patch("sys.argv", ["src/main_solver.py", "bad_input.json"]), \
+         patch("src.main_solver.run_solver") as mock_run, \
+         patch("traceback.print_exc"):
+        
+        mock_run.side_effect = Exception("System Crash")
+        
+        import src.main_solver
+        with pytest.raises(SystemExit) as e:
+            importlib.reload(src.main_solver)
+            
+        assert e.value.code == 1
