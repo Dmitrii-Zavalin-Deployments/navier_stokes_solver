@@ -119,3 +119,31 @@ def test_validate_physical_readiness_failures():
     # triggers _get_safe("nx") before the 'is None' check can complete.
     with pytest.raises(RuntimeError, match="Access Error: 'nx' in GridManager is uninitialized"):
         state.validate_physical_readiness()
+
+def test_initial_condition_velocity_validation():
+    """
+    Validates Lines 236-238: Enforces that velocity must be a 3D NumPy array.
+    Tests non-array input and incorrectly sized arrays.
+    """
+    ic = InitialConditionManager()
+
+    # 1. Test None (Should pass because of 'value is not None' check)
+    ic.velocity = None
+    assert ic._velocity is None
+
+    # 2. Test non-numpy array input (TypeError/ValueError)
+    with pytest.raises(ValueError, match="Velocity must be a 3D NumPy array."):
+        ic.velocity = [0.0, 0.0, 0.0]  # List instead of np.ndarray
+
+    # 3. Test wrong size (2D instead of 3D)
+    with pytest.raises(ValueError, match="Velocity must be a 3D NumPy array."):
+        ic.velocity = np.array([1.0, 0.0])
+
+    # 4. Test wrong size (4D instead of 3D)
+    with pytest.raises(ValueError, match="Velocity must be a 3D NumPy array."):
+        ic.velocity = np.array([1.0, 0.0, 0.0, 0.0])
+
+    # 5. Success Case
+    valid_v = np.array([1.0, 2.0, 3.0])
+    ic.velocity = valid_v
+    np.testing.assert_array_equal(ic.velocity, valid_v)
