@@ -59,53 +59,57 @@ def test_run_solver_elastic_success_signal():
     Forensic Audit: Validates Line 120 of src/main_solver.py.
     Ensures that a successful iteration triggers the 'stabilization(is_needed=False)' 
     signal to the Elasticity Engine.
+    
+    Fixes:
+    - NameError: Correctly defines mock_elastic_cls from the patch.
+    - TypeError: Sets total_time to ensure float comparison works.
+    - F841: Cleans up unused variable assignments.
     """
+
     # 1. Prepare real dummies for state and input
     real_state = make_step4_output_dummy(nx=2, ny=2, nz=2)
-    real_input = create_validated_input()
+    real_input = create_validated_input(nx=2, ny=2, nz=2)
     
-    # 2. Explicitly create the config dummy (since state doesn't have it)
-    # This matches the expected SolverConfig structure
-    real_config = SolverConfig(
-        ppe_tolerance=1e-6,
-        ppe_max_iter=10,
-        dt_min_limit=1e-6,
-        ppe_max_retries=1
-    )
+    # Ensure total_time is a float for the loop termination check
+    real_input.simulation_parameters.total_time = 1.0
     
-    with patch("src.main_solver._load_simulation_context") as mock_load:
-        mock_context = MagicMock()
-        mock_load.return_value = mock_context
-        
-        # 3. Correctly hydrate the mock context
-        mock_context.input_data = real_input
-        mock_context.config = real_config
-        
-        # Ensure the loop triggers
-        real_state.ready_for_time_loop = True 
-        
-        def exit_immediately(state_in, context_in):
-            # Force the loop to terminate after the first pass
-            state_in.ready_for_time_loop = False
-            return state_in
+    # 2. Setup the loop trigger
+    real_state.ready_for_time_loop = True 
+    real_state.time = 0.0
+    real_state.iteration = 1
 
-        # 4. Patch the ElasticManager and Orchestrators
-        with patch("src.main_solver.ElasticManager"), \
-             patch("src.main_solver.orchestrate_step1", return_value=real_state), \
-             patch("src.main_solver.orchestrate_step2", return_value=real_state), \
-             patch("src.main_solver.orchestrate_step3", return_value=(None, 0.000001)), \
-             patch("src.main_solver.orchestrate_step4", side_effect=exit_immediately), \
-             patch("src.main_solver.archive_simulation_artifacts", return_value="mock.zip"):
-            
-            # Setup the mock instance behavior
-            mock_elastic_instance = mock_elastic.return_value
-            mock_elastic_instance.dt = 0.01 
-            
-            # Execute the solver
-            run_solver("dummy.json")
-            
-            # 5. VERIFY: The success signal must be sent to the elasticity engine
-            mock_elastic_instance.stabilization.assert_called_with(is_needed=False)
+    def exit_immediately(state_in, context_in):
+        # Force the loop to terminate after the first pass
+        state_in.ready_for_time_loop = False
+        return state_in
+
+    # 3. Patch the ElasticManager and Orchestrators
+    # Note: Added 'as mock_elastic_cls' to fix the NameError
+    with patch("src.main_solver._load_simulation_context") as mock_load, \
+         patch("src.main_solver.ElasticManager") as mock_elastic_cls, \
+         patch("src.main_solver.orchestrate_step1", return_value=real_state), \
+         patch("src.main_solver.orchestrate_step2", return_value=real_state), \
+         patch("src.main_solver.orchestrate_step3", return_value=(None, 1e-7)), \
+         patch("src.main_solver.orchestrate_step4", side_effect=exit_immediately), \
+         patch("src.main_solver.archive_simulation_artifacts"):
+        
+        # Hydrate the context
+        mock_context = MagicMock()
+        mock_context.input_data = real_input
+        mock_context.config.ppe_max_iter = 10
+        mock_context.config.ppe_tolerance = 1e-5
+        mock_load.return_value = mock_context
+
+        # FIX: Define the instance from the patched class
+        mock_elastic_instance = mock_elastic_cls.return_value
+        mock_elastic_instance.dt = 0.01 
+        
+        # Execute the solver
+        run_solver("dummy.json")
+        
+        # 4. VERIFY: The success signal must be sent to the elasticity engine
+        # This confirms that because max_delta < ppe_tolerance, stabilization is False
+        mock_elastic_instance.stabilization.assert_called_with(is_needed=False)
 
 def test_run_solver_floating_point_critical_trap(caplog):
     """
@@ -178,12 +182,21 @@ def test_run_solver_value_error_contract_violation(caplog):
 def test_ppe_iteration_convergence_break(tmp_path):
     """
     Validates Lines 116-118: PPE loop breaks early on convergence.
+    
+    Fixes:
+    - TypeError: Ensures state.time and total_time are floats for >= comparison.
+    - ValueError: Step 3 returns (None, delta) for unpacking.
+    - F841: Removes unused 'as' assignments to satisfy the linter.
     """
 
+    # 1. Setup real dummy objects
     input_file = tmp_path / "input.json"
     dummy_input = create_validated_input(nx=2, ny=2, nz=2)
+    # Ensure total_time is a float to avoid TypeError in comparison at line 128
+    dummy_input.simulation_parameters.total_time = 1.0
     input_file.write_text(json.dumps(dummy_input.to_dict()))
     
+    # 2. Patch the pipeline. Removed unused 'as' references to pass Ruff.
     with patch("src.main_solver._load_simulation_context") as mock_load, \
          patch("src.main_solver.orchestrate_step1"), \
          patch("src.main_solver.orchestrate_step2") as mock_step2, \
@@ -192,29 +205,35 @@ def test_ppe_iteration_convergence_break(tmp_path):
          patch("src.main_solver.ElasticManager"), \
          patch("src.main_solver.archive_simulation_artifacts"):
 
+        # 3. Setup Context with numerical config
         mock_context = MagicMock()
         mock_context.config.ppe_max_iter = 10
         mock_context.config.ppe_tolerance = 1e-5
-        # FIX 2: Attach the REAL dummy input to the context
         mock_context.input_data = dummy_input 
         mock_load.return_value = mock_context
         
+        # 4. Setup State (Ensuring time is a float)
         mock_state = MagicMock()
         mock_state.ready_for_time_loop = True
         mock_state.stencil_matrix = [MagicMock()]
-        # FIX 3: Set time to a real float to support comparison
         mock_state.iteration = 0
-        mock_state.time = 0.0 
-        mock_state.time = 0.1234
+        mock_state.time = 0.0  # Must be float
         mock_step2.return_value = mock_state
 
+        # 5. Define Convergence: Step 3 returns delta < ppe_tolerance
+        # Returns (None, 1e-6) which is less than the 1e-5 tolerance
         mock_step3.return_value = (None, 1e-6)
 
+        # 6. Safety: Break the while loop after one iteration
         def side_effect(*args, **kwargs):
             mock_state.ready_for_time_loop = False
             return mock_state
         mock_state.capture_stable_state.side_effect = side_effect
         
+        # Execute
         run_solver(str(input_file))
 
+        # 7. Verification: 
+        # Predictor pass (1) + PPE iteration (1) = 2 total calls to Step 3.
+        # If the break failed, it would have called Step 3 ten times (ppe_max_iter).
         assert mock_step3.call_count == 2
