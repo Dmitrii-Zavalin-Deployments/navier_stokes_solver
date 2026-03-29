@@ -10,7 +10,10 @@ import pytest
 
 from src.common.solver_config import SolverConfig  # Grounding the config
 from src.main_solver import _load_simulation_context, run_solver
-from tests.helpers.solver_input_schema_dummy import create_validated_input
+from tests.helpers.solver_input_schema_dummy import (
+    create_validated_input, 
+    get_explicit_solver_config
+)
 from tests.helpers.solver_step4_output_dummy import make_step4_output_dummy
 
 
