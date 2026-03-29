@@ -13,7 +13,7 @@ from tests.helpers.solver_step4_output_dummy import make_step4_output_dummy
 
 def test_run_solver_floating_point_critical_trap(caplog):
     real_state = make_step4_output_dummy(nx=2, ny=2, nz=2)
-    fully_hydrated_config = SolverConfig(ppe_tolerance=1e-6, ppe_max_iter=1, dt_min_limit=1e-6, ppe_max_retries=0)
+    fully_hydrated_config = SolverConfig(ppe_tolerance=1e-6, ppe_max_iter=1, dt_min_limit=1e-6, ppe_max_retries=1)
     
     with patch("src.main_solver._load_simulation_context") as mock_load:
         mock_context = MagicMock(input_data=create_validated_input(), config=fully_hydrated_config)
@@ -33,7 +33,7 @@ def test_run_solver_telemetry_logging(caplog):
     real_state = make_step4_output_dummy(nx=2, ny=2, nz=2)
     with patch("src.main_solver._load_simulation_context") as mock_load:
         mock_load.return_value = MagicMock(
-            config=SolverConfig(ppe_tolerance=1e-6, ppe_max_iter=1000, dt_min_limit=1e-6, ppe_max_retries=0),
+            config=SolverConfig(ppe_tolerance=1e-6, ppe_max_iter=1000, dt_min_limit=1e-6, ppe_max_retries=1),
             input_data=create_validated_input(nx=2, ny=2, nz=2)
         )
         real_state.iteration = 10
@@ -69,7 +69,7 @@ def test_run_solver_elastic_success_signal():
         ppe_tolerance=1e-6,
         ppe_max_iter=10,
         dt_min_limit=1e-6,
-        ppe_max_retries=0
+        ppe_max_retries=1
     )
     
     with patch("src.main_solver._load_simulation_context") as mock_load:
@@ -123,14 +123,14 @@ def test_run_solver_floating_point_critical_trap(caplog):
         ppe_max_iter=1,
         ppe_tolerance=1e-6,
         dt_min_limit=1e-6,      # Sets the ladder floor
-        ppe_max_retries=0       # Sets the ladder steps
+        ppe_max_retries=1       # Sets the ladder steps
     )
 
     # 3. Mock the loader and orchestrator
     with patch("src.main_solver._load_simulation_context") as mock_load, \
          patch("src.main_solver.orchestrate_step1", return_value=real_state), \
          patch("src.main_solver.orchestrate_step2", return_value=real_state), \
-         patch("src.main_solver.orchestrate_step3", side_effect=FloatingPointError("NaN")):
+         patch("src.main_solver.orchestrate_step3", side_effect=[FloatingPointError("NaN"), FloatingPointError("NaN")]):
         
         mock_context = MagicMock()
         mock_load.return_value = mock_context
@@ -156,7 +156,7 @@ def test_run_solver_value_error_contract_violation(caplog):
         ppe_max_iter=1,
         ppe_tolerance=1e-6,
         dt_min_limit=1e-6,
-        ppe_max_retries=0
+        ppe_max_retries=1
     )
 
     with patch("src.main_solver._load_simulation_context") as mock_load, \
