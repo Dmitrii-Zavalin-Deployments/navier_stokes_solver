@@ -132,3 +132,25 @@ def test_load_context_missing_config_file():
         
         with pytest.raises(FileNotFoundError, match="config.json required"):
             _load_simulation_context("valid_input.json")
+
+def test_run_solver_input_schema_violation():
+    """
+    Forensic Audit: Validates Lines 63-67 of src/main_solver.py.
+    Triggers a jsonschema.ValidationError to ensure input contract enforcement.
+    """
+    with patch("src.main_solver._load_simulation_context") as mock_load, \
+         patch("src.main_solver.open", create=True) as mock_open:
+        
+        # Setup valid context but force a schema validation failure
+        mock_context = MagicMock()
+        mock_load.return_value = mock_context
+        
+        # Mock reading the schema file (Step 1 of validation)
+        mock_open.return_value.__enter__.return_value.read.return_value = "{}"
+        
+        with patch("jsonschema.validate") as mock_validate:
+            # Simulate a failure in the jsonschema library itself
+            mock_validate.side_effect = jsonschema.exceptions.ValidationError("Invalid Input Structure")
+            
+            with pytest.raises(jsonschema.exceptions.ValidationError, match="Invalid Input Structure"):
+                run_solver("dummy_input.json")
