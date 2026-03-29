@@ -105,9 +105,11 @@ def test_cli_entrypoint_success():
          patch("src.main_solver.run_solver") as mock_run, \
          patch("builtins.print"):
 
-        # Mock context so validation passes
+        # Mock context with valid to_dict()
         mock_context = MagicMock()
+        mock_context.input_data.to_dict.return_value = {"ok": True}
         mock_load.return_value = mock_context
+
         mock_run.return_value = "mock_output.zip"
 
         with pytest.raises(SystemExit) as e:
@@ -137,8 +139,9 @@ def test_cli_entrypoint_error():
          patch("traceback.print_exc"), \
          patch("builtins.print") as mock_print:
 
-        # Mock context so load succeeds
+        # Mock context with valid to_dict()
         mock_context = MagicMock()
+        mock_context.input_data.to_dict.return_value = {"ok": True}
         mock_load.return_value = mock_context
 
         # Force run_solver to crash
