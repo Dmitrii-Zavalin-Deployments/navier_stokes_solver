@@ -374,8 +374,9 @@ def test_external_force_manager_to_dict_fails_uninitialized():
     Validates Lines 345-347: Ensures ExternalForceManager.to_dict() raises 
     AttributeError if force_vector is None.
     """
-    from src.common.solver_state import ExternalForceManager
     import pytest
+
+    from src.common.solver_state import ExternalForceManager
 
     # 1. Initialize manager but leave force_vector as None (default)
     force_mgr = ExternalForceManager()
@@ -389,8 +390,9 @@ def test_external_force_manager_to_dict_success():
     """
     Baseline check for ExternalForceManager.to_dict() success path.
     """
-    from src.common.solver_state import ExternalForceManager
     import numpy as np
+
+    from src.common.solver_state import ExternalForceManager
     
     force_mgr = ExternalForceManager()
     gravity = np.array([0.0, -9.81, 0.0])
