@@ -1,8 +1,9 @@
 # tests/main_solver/test_physics.py
 
+import json
 import logging
 from unittest.mock import MagicMock, patch
-import json
+
 import pytest
 
 from src.common.solver_config import SolverConfig
