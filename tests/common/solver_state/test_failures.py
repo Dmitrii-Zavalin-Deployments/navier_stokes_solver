@@ -16,6 +16,7 @@ from src.common.solver_state import (
     PhysicalConstraintsManager,
     SolverState,
     verify_foundation_integrity,
+    BoundaryConditionManager,
 )
 from tests.helpers.solver_step1_output_dummy import make_step1_output_dummy
 
@@ -232,16 +233,6 @@ def test_audit_fails_without_pressure_reference():
     Validates Lines 557-559: Ensures audit_physical_bounds raises RuntimeError 
     when no pressure/outflow/inflow boundary with a 'p' value exists.
     """
-    import pytest
-
-    from src.common.solver_state import (
-        BoundaryCondition,
-        BoundaryConditionManager,
-        FieldManager,
-        GridManager,
-        PhysicalConstraintsManager,
-        SolverState,
-    )
 
     # 1. Setup minimal state required for Rule 7 Audit
     state = SolverState()
@@ -299,16 +290,6 @@ def test_audit_fails_on_unsupported_boundary_location():
     Validates Lines 575-577: Ensures audit_physical_bounds raises RuntimeError 
     if a boundary location is provided that the indexer doesn't recognize.
     """
-    import pytest
-
-    from src.common.solver_state import (
-        BoundaryCondition,
-        BoundaryConditionManager,
-        FieldManager,
-        GridManager,
-        PhysicalConstraintsManager,
-        SolverState,
-    )
 
     # 1. Setup minimal valid environment
     state = SolverState()
@@ -351,21 +332,39 @@ def test_validate_readiness_fails_without_foundation():
     Validates Lines 605-607: Ensures setting ready_for_time_loop = True raises 
     RuntimeError if the fields buffer is missing.
     """
-    import pytest
-
-    from src.common.solver_state import FieldManager, SolverState
 
     # 1. Test case: fields manager is None
     state = SolverState()
     # Ensure fields is explicitly None (though it is by default in __init__)
     state._fields = None 
 
-    with pytest.raises(RuntimeError, match="CRITICAL: Foundation buffer is missing."):
+    with pytest.raises(RuntimeError, match="Access Error: 'fields' in SolverState is uninitialized."):
         state.ready_for_time_loop = True
 
     # 2. Test case: fields manager exists but data is not allocated
     state = SolverState()
     state.fields = FieldManager() # _data is None by default
     
-    with pytest.raises(RuntimeError, match="CRITICAL: Foundation buffer is missing."):
+    with pytest.raises(RuntimeError, match="Access Error: 'fields' in SolverState is uninitialized."):
+        state.ready_for_time_loop = True
+
+def test_validate_readiness_fails_without_physical_constraints():
+    """
+    Validates Lines 609-611: Ensures setting ready_for_time_loop = True raises 
+    RuntimeError if physical_constraints is None.
+    """
+
+    # 1. Setup a state that HAS a buffer but MISSES constraints
+    state = SolverState()
+    
+    # Manually initialize the fields so we pass the first check (Line 605)
+    state.fields = FieldManager()
+    state.fields.allocate(n_cells=10)
+    
+    # Explicitly ensure physical_constraints is None (default behavior)
+    state.physical_constraints = None
+
+    # 2. Trigger the Sentinel
+    # The setter for ready_for_time_loop calls validate_physical_readiness()
+    with pytest.raises(RuntimeError, match="CRITICAL: Physical Constraints are not defined."):
         state.ready_for_time_loop = True
