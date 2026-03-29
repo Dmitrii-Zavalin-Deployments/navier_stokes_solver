@@ -164,24 +164,28 @@ def test_run_solver_telemetry_logging(caplog):
     """
     Forensic Audit: Validates telemetry logic (Line 125-126).
     Ensures step progress is captured in DEBUG logs.
-    
-    Resolution: Uses make_step4_output_dummy to ensure SolverConfig 
-    is fully hydrated with dt_min_limit per Rule 5.
     """
-    # 1. Use the Step 4 dummy which already has a valid SolverConfig and initialized fields
+    # 1. Use the Step 4 dummy for a hydrated state
     real_state = make_step4_output_dummy(nx=2, ny=2, nz=2)
     
-    # 2. Extract the context that is already correctly bundled in the dummy's creation logic
-    # We still need a mock_load to return a context that matches our state's configuration
+    # 2. Explicitly recreate the config (as state doesn't hold it)
+    from src.common.solver_config import SolverConfig
+    hydrated_config = SolverConfig(
+        ppe_tolerance=1e-6,
+        ppe_max_iter=1000,
+        dt_min_limit=1e-6,
+        ppe_max_retries=5
+    )
+    
     with patch("src.main_solver._load_simulation_context") as mock_load:
         mock_context = MagicMock()
         mock_load.return_value = mock_context
         
-        # Pull the valid config and input from the dummy's setup
-        mock_context.config = real_state.config # Assuming state holds a ref, or recreate:
+        # 3. Attach the real config and input data to the mock context
+        mock_context.config = hydrated_config
         mock_context.input_data = create_validated_input(nx=2, ny=2, nz=2)
         
-        # 3. Setup the iteration trigger
+        # Setup the iteration trigger for Step 125 logic
         real_state.iteration = 10
         real_state.ready_for_time_loop = True 
         
@@ -196,7 +200,6 @@ def test_run_solver_telemetry_logging(caplog):
              patch("src.main_solver.orchestrate_step4", side_effect=exit_immediately), \
              patch("src.main_solver.archive_simulation_artifacts", return_value="zip"):
             
-            # Set level to DEBUG to capture the target lines
             with caplog.at_level(logging.DEBUG):
                 run_solver("dummy.json")
                 
