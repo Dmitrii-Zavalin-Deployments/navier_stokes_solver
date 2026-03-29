@@ -59,36 +59,49 @@ def test_run_solver_elastic_success_signal():
     Ensures that a successful iteration triggers the 'stabilization(is_needed=False)' 
     signal to the Elasticity Engine.
     """
+    # 1. Prepare real dummies for state and input
     real_state = make_step4_output_dummy(nx=2, ny=2, nz=2)
     real_input = create_validated_input()
+    
+    # 2. Explicitly create the config dummy (since state doesn't have it)
+    # This matches the expected SolverConfig structure
+    real_config = SolverConfig(
+        ppe_tolerance=1e-6,
+        ppe_max_iter=10,
+        dt_min_limit=1e-6,
+        ppe_max_retries=5
+    )
     
     with patch("src.main_solver._load_simulation_context") as mock_load:
         mock_context = MagicMock()
         mock_load.return_value = mock_context
-        mock_context.input_data = real_input
-        mock_context.config = real_state.config
         
-        # Setup: Ensure one loop iteration then exit
+        # 3. Correctly hydrate the mock context
+        mock_context.input_data = real_input
+        mock_context.config = real_config
+        
+        # Ensure the loop triggers
         real_state.ready_for_time_loop = True 
         
         def exit_immediately(state_in, context_in):
+            # Force the loop to terminate after the first pass
             state_in.ready_for_time_loop = False
             return state_in
 
-        # Mock the ElasticManager inside run_solver
+        # 4. Patch the ElasticManager and Orchestrators
         with patch("src.main_solver.ElasticManager") as mock_elastic_cls, \
              patch("src.main_solver.orchestrate_step1", return_value=real_state), \
              patch("src.main_solver.orchestrate_step2", return_value=real_state), \
-             patch("src.main_solver.orchestrate_step3", return_value=(None, 0.001)), \
+             patch("src.main_solver.orchestrate_step3", return_value=(None, 0.000001)), \
              patch("src.main_solver.orchestrate_step4", side_effect=exit_immediately), \
              patch("src.main_solver.archive_simulation_artifacts", return_value="mock.zip"):
             
-            # Instantiate the mock manager
+            # Setup the mock instance behavior
             mock_elastic_instance = mock_elastic_cls.return_value
-            # We must mock .dt because line 91 reads it
             mock_elastic_instance.dt = 0.01 
             
+            # Execute the solver
             run_solver("dummy.json")
             
-            # THE SMOKING GUN: Verify line 120 was executed
+            # 5. VERIFY: The success signal must be sent to the elasticity engine
             mock_elastic_instance.stabilization.assert_called_with(is_needed=False)
