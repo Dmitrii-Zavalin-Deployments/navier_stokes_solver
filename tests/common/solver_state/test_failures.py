@@ -299,12 +299,16 @@ def test_audit_fails_on_unsupported_boundary_location():
     Validates Lines 575-577: Ensures audit_physical_bounds raises RuntimeError 
     if a boundary location is provided that the indexer doesn't recognize.
     """
-    from src.common.solver_state import (
-        SolverState, PhysicalConstraintsManager, FieldManager, 
-        GridManager, BoundaryConditionManager, BoundaryCondition
-    )
-    import numpy as np
     import pytest
+
+    from src.common.solver_state import (
+        BoundaryCondition,
+        BoundaryConditionManager,
+        FieldManager,
+        GridManager,
+        PhysicalConstraintsManager,
+        SolverState,
+    )
 
     # 1. Setup minimal valid environment
     state = SolverState()
