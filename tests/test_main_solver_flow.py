@@ -175,7 +175,6 @@ def test_run_solver_telemetry_logging(caplog):
         mock_load.return_value = mock_context
         
         # Pull the valid config and input from the dummy's setup
-        from src.common.simulation_context import SimulationContext
         mock_context.config = real_state.config # Assuming state holds a ref, or recreate:
         mock_context.input_data = create_validated_input(nx=2, ny=2, nz=2)
         
