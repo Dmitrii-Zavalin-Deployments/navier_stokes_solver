@@ -1,12 +1,15 @@
 # tests/main_solver/test_guards.py
 
 import sys
-from unittest.mock import patch
+import logging
+from pathlib import Path
+from unittest.mock import patch, MagicMock
 
 import pytest
 
 # Core imports from the solver
-from src.main_solver import _load_simulation_context, main
+from src.main_solver import _load_simulation_context, main, run_solver
+
 
 # --- 1. File System Presence Guards ---
 
@@ -74,3 +77,45 @@ def test_cli_entrypoint_fatal_error():
             
         assert e.value.code == 1
         mock_print.assert_any_call("FATAL PIPELINE ERROR: System Collapse", file=sys.stderr)
+
+def test_solver_heartbeat_logging(tmp_path, caplog):
+    """
+    Validates Lines 125-127: Ensures the debug heartbeat 
+    triggers at iteration 10 with correct formatting.
+    """
+    # 1. Setup mock environment
+    input_file = tmp_path / "input.json"
+    input_file.write_text('{"simulation_parameters": {"total_time": 1.0}}')
+
+    # 2. Patch the entire pipeline to isolate the loop heartbeat logic
+    with patch("src.main_solver._load_simulation_context") as mock_load, \
+         patch("src.main_solver.orchestrate_step1"), \
+         patch("src.main_solver.orchestrate_step2") as mock_step2, \
+         patch("src.main_solver.orchestrate_step3"), \
+         patch("src.main_solver.orchestrate_step4"), \
+         patch("src.main_solver.ElasticManager") as mock_elastic_cls, \
+         patch("src.main_solver.archive_simulation_artifacts"):
+
+        # Setup state to trigger the log (Iteration 10)
+        mock_state = MagicMock()
+        mock_state.ready_for_time_loop = True
+        mock_state.iteration = 10  # This triggers the % 10 == 0
+        mock_state.time = 0.1234
+        mock_step2.return_value = mock_state
+
+        # Mock elasticity dt for the log format check
+        mock_elastic = mock_elastic_cls.return_value
+        mock_elastic.dt = 0.005
+
+        # Kill loop immediately after one pass to prevent infinite recursion in mock
+        def stop_loop(*args, **kwargs):
+            mock_state.ready_for_time_loop = False
+            return mock_state
+        mock_state.capture_stable_state.side_effect = stop_loop
+
+        # 3. Execute with DEBUG level enabled to catch the heartbeat
+        with caplog.at_level(logging.DEBUG, logger="Solver.Main"):
+            run_solver(str(input_file))
+
+        # 4. Verification: Check the forensic string format
+        assert "Step 10 | Time 0.1234 | dt 5.00e-03" in caplog.text
