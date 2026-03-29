@@ -190,21 +190,24 @@ jobs:
           git config --global user.name "${GIT_USER_NAME:-'github-actions[bot]'}"
           git config --global user.email "${GIT_USER_EMAIL:-'github-actions[bot]@users.noreply.github.com'}"
           
-          # 2. Initial Sync
-          # Get the latest state before we touch the file
+          # 2. Workspace Cleanup (The Fix for Exit Code 128)
+          # We force-remove any generated simulation data so the rebase can happen
+          git checkout performance_audit.md || true
+          git clean -fd data/testing-input-output/
+
+          # 3. Initial Sync
           git pull origin HEAD --rebase
 
-          # 3. Extract Metadata
+          # 4. Extract Metadata
           RUN_DATE=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
           STATUS="${{ job.status }}"
           CURRENT_BRANCH=${GITHUB_REF##*/}
-          
           CPU_LOAD=$(top -bn1 | grep "Cpu(s)" | awk '{print $2 + $4 "%"}')
           MEM_USAGE=$(free -m | awk '/Mem:/ { print $3 "/" $2 "MB" }')
 
-          # 4. Generate Audit Entry
+          # 5. Generate Audit Entry
           NEW_ENTRY=$(cat <<EOF
-          
+
           ### Audit: $RUN_DATE
           - **Branch:** \`$CURRENT_BRANCH\`
           - **Status:** $STATUS
@@ -214,11 +217,9 @@ jobs:
           EOF
           )
 
-          # 5. Update Ledger (Prepend Logic)
+          # 6. Update Ledger (Prepend Logic)
           HEADER="# 🌊 Navier–Stokes Solver Performance Audit"
-          
           if [ -f "performance_audit.md" ]; then
-              # Keep header, insert new entry, append old body
               tail -n +2 performance_audit.md > old_body.tmp
               echo "$HEADER" > performance_audit.md
               echo "$NEW_ENTRY" >> performance_audit.md
@@ -229,15 +230,13 @@ jobs:
               echo "$NEW_ENTRY" >> performance_audit.md
           fi
 
-          # 6. Commit and Final Push
+          # 7. Commit and Final Push
           git add performance_audit.md
           
           if [ -n "$(git status --porcelain performance_audit.md)" ]; then
             git commit -m "📊 audit: [${{ job.status }}] update performance ledger"
-            
-            # Final rebase in case a parallel job finished while this one was running
+            # Final safety pull before push
             git pull origin HEAD --rebase
-            
             git push origin HEAD
           else
             echo "✅ No changes to the ledger."
