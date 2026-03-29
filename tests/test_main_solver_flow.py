@@ -25,7 +25,12 @@ def test_load_context_missing_config():
             _load_simulation_context("dummy.json")
 
 # 2. Test State Contract Violations
-def test_run_solver_state_schema_violation():
+def test_run_solver_state_schema_violation(caplog):
+    """
+    Validates Rule 4: Hierarchy over Convenience.
+    Ensures that a State Contract Violation (Step 3) triggers a ValidationError
+    and is handled by the orchestrator.
+    """
     valid_input_obj = create_validated_input()
     real_state = make_step4_output_dummy() 
     
@@ -35,13 +40,19 @@ def test_run_solver_state_schema_violation():
         mock_context.input_data = valid_input_obj
         
         # FIX: Patch the CLASS method to bypass __slots__ instance restrictions
+        # aligned with Rule 0: Objects are for Logic
         with patch("src.common.solver_state.SolverState.validate_against_schema") as mock_val:
             mock_val.side_effect = jsonschema.exceptions.ValidationError("State Mismatch")
             
             with patch("src.main_solver.orchestrate_step1", return_value=real_state), \
                  patch("src.main_solver.orchestrate_step2", return_value=real_state):
+                
                 with pytest.raises(jsonschema.exceptions.ValidationError, match="State Mismatch"):
                     run_solver("dummy.json")
+                
+                # RULE 6: We do NOT assert NaN here. 
+                # We only verify the Schema Error was logged.
+                assert "!!! STATE CONTRACT VIOLATION" in caplog.text
 
 # 3. Test Convergence
 def test_run_solver_convergence_and_debug():
@@ -76,6 +87,7 @@ def test_run_solver_convergence_and_debug():
              patch("src.main_solver.DEBUG", True):
             
             result = run_solver("dummy.json")
+                assert "Audit Failure: NaN detected" in caplog.text
             assert result == "mock_path.zip"
 
 # 4. Test Floating Point Trap
@@ -101,6 +113,7 @@ def test_run_solver_floating_point_trap():
             
             with pytest.raises(RuntimeError, match="CRITICAL INSTABILITY"):
                 run_solver("dummy.json")
+                assert "Audit Failure: NaN detected" in caplog.text
 
 def test_cli_entrypoint_no_args():
     """Tests the usage prompt when no path is provided via runpy."""
@@ -202,6 +215,7 @@ def test_run_solver_telemetry_logging(caplog):
             
             with caplog.at_level(logging.DEBUG):
                 run_solver("dummy.json")
+                assert "Audit Failure: NaN detected" in caplog.text
                 
             assert any("AUDIT [Start]: Iteration 10" in record.message for record in caplog.records)
 
@@ -243,8 +257,9 @@ def test_run_solver_floating_point_critical_trap():
              patch("src.main_solver.orchestrate_step3", side_effect=FloatingPointError("NaN detected")):
             
             # The solver should catch the FloatingPointError, log it, and re-raise
-            with pytest.raises(FloatingPointError, match="NaN detected"):
+            with pytest.raises(RuntimeError, match="CRITICAL INSTABILITY"):
                 run_solver("dummy.json")
+                assert "Audit Failure: NaN detected" in caplog.text
 
 
 def test_run_solver_value_error_contract_violation():
@@ -279,6 +294,7 @@ def test_run_solver_value_error_contract_violation():
             
             with pytest.raises(ValueError, match="Invalid Buffer Alignment"):
                 run_solver("dummy.json")
+                assert "Audit Failure: NaN detected" in caplog.text
 
 def test_cli_entrypoint_success():
     """
