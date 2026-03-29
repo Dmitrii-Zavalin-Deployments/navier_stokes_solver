@@ -1,6 +1,6 @@
 # tests/common/solver_state/test_failures.py
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch, PropertyMock
 
 import numpy as np
 import pytest
