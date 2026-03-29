@@ -107,3 +107,28 @@ def test_cli_entrypoint_no_args():
             
         assert e.value.code == 1
         mock_print.assert_any_call("Usage: python src/main_solver.py <input_json_path>")
+
+def test_load_context_missing_input_file():
+    """
+    Forensic Audit: Validates Line 41-42 of src/main_solver.py.
+    Ensures the solver terminates if the primary input JSON is missing.
+    """
+    with patch("src.main_solver.Path.exists") as mock_exists:
+        # First call (input_path) returns False
+        mock_exists.return_value = False
+        
+        with pytest.raises(FileNotFoundError, match="Input file missing"):
+            _load_simulation_context("non_existent_input.json")
+
+
+def test_load_context_missing_config_file():
+    """
+    Forensic Audit: Validates Line 43-44 of src/main_solver.py.
+    Ensures the solver terminates if the required config.json is missing.
+    """
+    with patch("src.main_solver.Path.exists") as mock_exists:
+        # First call (input_path) is True, Second call (config_path) is False
+        mock_exists.side_effect = [True, False]
+        
+        with pytest.raises(FileNotFoundError, match="config.json required"):
+            _load_simulation_context("valid_input.json")
