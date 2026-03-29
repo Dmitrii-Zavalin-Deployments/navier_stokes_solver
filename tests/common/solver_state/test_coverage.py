@@ -1,4 +1,4 @@
-# tests/common/test_solver_state_coverage.py
+# tests/common/solver_state/test_coverage.py
 
 import logging
 

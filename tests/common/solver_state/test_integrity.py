@@ -1,4 +1,4 @@
-# tests/common/test_solver_state.py
+# tests/common/solver_state/test_integrity.py
 
 import logging
 
@@ -105,3 +105,40 @@ class TestSolverStateFoundation:
         populated_state.stencil_matrix = None 
         with pytest.raises(RuntimeError):
             populated_state.ready_for_time_loop = True
+
+    def test_verify_foundation_integrity_ignores_ghosts(self, populated_state, caplog):
+        """
+        Validates Lines 55-57: Ensure POST skips Ghost Cells.
+        We deliberately corrupt a Ghost Cell; if the loop doesn't 'continue', 
+        it will trigger a Memory Drift RuntimeError.
+        """
+        caplog.set_level(logging.INFO)
+        num_cells = populated_state.fields.data.shape[0]
+
+        class MockBlock:
+            def __init__(self, idx, is_ghost=False):
+                # We create a 'center' object that mimics the solver's block structure
+                self.center = type('obj', (object,), {
+                    'is_ghost': is_ghost, 
+                    'index': idx, 
+                    # If it's a ghost, we give it 'poisoned' data that doesn't 
+                    # match the Identity Priming formula.
+                    'p': -999.9 if is_ghost else float(idx) + (float(FI.P) / 10.0),
+                    'u': [-999.9, 0, 0] if is_ghost else [float(idx) + (float(FI.VX) / 10.0), 0, 0]
+                })
+
+        # Create a matrix where the first cell is a GHOST and the rest are REAL
+        stencil = []
+        stencil.append(MockBlock(0, is_ghost=True)) # The "Trap"
+        for i in range(1, num_cells):
+            stencil.append(MockBlock(i, is_ghost=False))
+            
+        populated_state.stencil_matrix = stencil
+
+        # EXECUTION: If the 'continue' logic is broken, this raises RuntimeError
+        verify_foundation_integrity(populated_state)
+        
+        # VERIFICATION
+        assert "Memory integrity verified" in caplog.text
+        # Ensure we didn't accidentally pass because there were no blocks
+        assert len(populated_state.stencil_matrix) == num_cells

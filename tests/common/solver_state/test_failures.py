@@ -1,4 +1,4 @@
-# tests/common/test_solver_state_failures.py
+# tests/common/solver_state/test_failures.py
 
 from unittest.mock import MagicMock
 
