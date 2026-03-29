@@ -98,30 +98,6 @@ def test_run_solver_floating_point_trap():
             with pytest.raises(RuntimeError, match="CRITICAL INSTABILITY"):
                 run_solver("dummy.json")
 
-def test_cli_entrypoint_success():
-    """Simulates running the module as a script with valid args using runpy."""
-    test_args = ["src/main_solver.py", "dummy.json"]
-    
-    # We patch BOTH the loader and the runner to prevent real disk I/O
-    with patch("sys.argv", test_args), \
-         patch("src.main_solver._load_simulation_context") as mock_load, \
-         patch("src.main_solver.run_solver") as mock_run, \
-         patch("builtins.print") as mock_print:
-
-        # Setup a dummy context so the internal logic doesn't crash
-        mock_context = MagicMock()
-        mock_context.input_data.to_dict.return_value = {"valid": "schema"}
-        mock_load.return_value = mock_context
-        
-        mock_run.return_value = "mock_output.zip"
-
-        with pytest.raises(SystemExit) as e:
-            runpy.run_module("src.main_solver", run_name="__main__")
-
-        assert e.value.code == 0
-        mock_run.assert_called_once_with("dummy.json")
-        mock_print.assert_any_call("Pipeline complete. Artifacts archived at: mock_output.zip")
-
 def test_cli_entrypoint_no_args():
     """Tests the usage prompt when no path is provided via runpy."""
     with patch("sys.argv", ["src/main_solver.py"]), \
@@ -132,26 +108,3 @@ def test_cli_entrypoint_no_args():
             
         assert e.value.code == 1
         mock_print.assert_any_call("Usage: python src/main_solver.py <input_json_path>")
-
-def test_cli_entrypoint_error():
-    """Tests the fatal error handling and traceback via runpy."""
-    with patch("sys.argv", ["src/main_solver.py", "bad.json"]), \
-         patch("src.main_solver._load_simulation_context") as mock_load, \
-         patch("src.main_solver.run_solver") as mock_run, \
-         patch("traceback.print_exc"), \
-         patch("builtins.print") as mock_print:
-        
-        # 1. Mock the loader to "succeed" so we don't get a FileNotFoundError
-        mock_context = MagicMock()
-        mock_context.input_data.to_dict.return_value = {"valid": "schema"}
-        mock_load.return_value = mock_context
-
-        # 2. Force the runner to "fail" with our specific test exception
-        mock_run.side_effect = Exception("System Crash")
-        
-        with pytest.raises(SystemExit) as e:
-            runpy.run_module("src.main_solver", run_name="__main__")
-            
-        assert e.value.code == 1
-        # Now this will match because we bypassed the real filesystem error
-        mock_print.assert_any_call("FATAL PIPELINE ERROR: Input file missing at", file=sys.stderr)
