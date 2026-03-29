@@ -338,7 +338,7 @@ def test_validate_readiness_fails_without_foundation():
     # Ensure fields is explicitly None (though it is by default in __init__)
     state._fields = None 
 
-    with pytest.raises(RuntimeError, match="Access Error: 'data' in FieldManager is uninitialized."):
+    with pytest.raises(RuntimeError, match="Access Error: 'fields' in SolverState is uninitialized."):
         state.ready_for_time_loop = True
 
     # 2. Test case: fields manager exists but data is not allocated
