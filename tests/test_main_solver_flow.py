@@ -239,3 +239,37 @@ def test_run_solver_value_error_contract_violation():
             
             with pytest.raises(ValueError, match="Invalid Buffer Alignment"):
                 run_solver("dummy.json")
+
+def test_cli_entrypoint_success():
+    """
+    Forensic Audit: Validates Lines 159-162 of src/main_solver.py.
+    Ensures that a successful run exits with code 0 and prints the zip path.
+    """
+    # We patch run_solver in the module being run by runpy
+    with patch("src.main_solver.run_solver", return_value="mock_artifacts.zip"), \
+         patch("sys.argv", ["src/main_solver.py", "valid_input.json"]), \
+         patch("builtins.print") as mock_print:
+        
+        with pytest.raises(SystemExit) as e:
+            runpy.run_module("src.main_solver", run_name="__main__")
+            
+        assert e.value.code == 0
+        mock_print.assert_any_call("Pipeline complete. Artifacts archived at: mock_artifacts.zip")
+
+
+def test_cli_entrypoint_fatal_error():
+    """
+    Forensic Audit: Validates Lines 163-166 of src/main_solver.py.
+    Ensures that an unhandled exception triggers the FATAL error message and exit code 1.
+    """
+    with patch("src.main_solver.run_solver", side_effect=RuntimeError("System Collapse")), \
+         patch("sys.argv", ["src/main_solver.py", "valid_input.json"]), \
+         patch("builtins.print") as mock_print, \
+         patch("traceback.print_exc"): # Prevent polluting test logs with stack trace
+        
+        with pytest.raises(SystemExit) as e:
+            runpy.run_module("src.main_solver", run_name="__main__")
+            
+        assert e.value.code == 1
+        # Check stderr printing (using any_call because of the file=sys.stderr argument)
+        mock_print.assert_any_call("FATAL PIPELINE ERROR: System Collapse", file=sys.stderr)
