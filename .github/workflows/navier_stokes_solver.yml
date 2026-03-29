@@ -151,19 +151,22 @@ jobs:
 
       - name: 📥 Synchronize Input (Dropbox)
         run: |
-          chmod +x ./download_from_dropbox.sh
-          ./download_from_dropbox.sh
+          # Point to the correct subdirectory 'src'
+          chmod +x src/download_from_dropbox.sh
+          ./src/download_from_dropbox.sh
           echo "--- Post-Download Repository State ---"
           ls -R
 
       - name: 🌊 Execute Navier-Stokes Solver
-        run: python3 main_solver.py
+        # python3 needs the path to the file in src/
+        run: python3 src/main_solver.py
 
       - name: 📤 Synchronize Results (Dropbox)
         if: success()
         run: |
-          chmod +x ./upload_to_dropbox.sh
-          ./upload_to_dropbox.sh
+          # Point to the correct subdirectory 'src'
+          chmod +x src/upload_to_dropbox.sh
+          ./src/upload_to_dropbox.sh
           echo "--- Post-Upload Repository State ---"
           ls -R
 
