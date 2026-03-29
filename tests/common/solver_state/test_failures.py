@@ -293,3 +293,51 @@ def test_audit_fails_without_pressure_reference():
         state.audit_physical_bounds()
     except RuntimeError as e:
         assert "No pressure reference boundary found" not in str(e)
+
+def test_audit_fails_on_unsupported_boundary_location():
+    """
+    Validates Lines 575-577: Ensures audit_physical_bounds raises RuntimeError 
+    if a boundary location is provided that the indexer doesn't recognize.
+    """
+    from src.common.solver_state import (
+        SolverState, PhysicalConstraintsManager, FieldManager, 
+        GridManager, BoundaryConditionManager, BoundaryCondition
+    )
+    import numpy as np
+    import pytest
+
+    # 1. Setup minimal valid environment
+    state = SolverState()
+    state.grid = GridManager()
+    state.grid.x_min, state.grid.x_max = 0.0, 1.0
+    state.grid.y_min, state.grid.y_max = 0.0, 1.0
+    state.grid.z_min, state.grid.z_max = 0.0, 1.0
+    state.grid.nx = state.grid.ny = state.grid.nz = 2
+    
+    state.fields = FieldManager()
+    state.fields.allocate(n_cells=8)
+    
+    state.physical_constraints = PhysicalConstraintsManager()
+    state.physical_constraints.min_velocity = -10.0
+    state.physical_constraints.max_velocity = 10.0
+    state.physical_constraints.min_pressure = -100.0
+    state.physical_constraints.max_pressure = 100.0
+
+    # 2. Inject an "Illegal" boundary location
+    # We bypass the setter check by using the private attribute directly
+    # to simulate a corrupted state or a logic bypass.
+    bc_manager = BoundaryConditionManager()
+    rogue_bc = BoundaryCondition()
+    rogue_bc.type = "pressure"
+    rogue_bc.values = {"p": 0.0}
+    # Direct injection of unsupported location
+    rogue_bc._location = "interdimensional_portal" 
+    
+    bc_manager.add_condition(rogue_bc)
+    state.boundary_conditions = bc_manager
+
+    # 3. Trigger the Sentinel
+    # The code should find the BC (it has 'p'), but fail when trying to 
+    # slice the grid indices for 'interdimensional_portal'.
+    with pytest.raises(RuntimeError, match="Unsupported boundary location 'interdimensional_portal'"):
+        state.audit_physical_bounds()
