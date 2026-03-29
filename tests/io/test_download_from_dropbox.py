@@ -20,9 +20,11 @@ def test_token_manager_refresh_success():
         
         token = tm.refresh_access_token("refresh_me")
         assert token == "new_shiny_token"
-        # Verify Rule 5: Payload contains all explicit credentials
-        args, kwargs = mock_post.call_args
+        
+        # Verify Rule 5: Payload contains explicit credentials
+        _, kwargs = mock_post.call_args
         assert kwargs['data']['client_id'] == "fake_id"
+        assert kwargs['data']['client_secret'] == "fake_secret"
 
 def test_token_manager_refresh_failure():
     """Rule 5: Verify RuntimeError on auth failure (Zero-Default Policy)."""
@@ -32,55 +34,67 @@ def test_token_manager_refresh_failure():
         mock_post.return_value.status_code = 401
         mock_post.return_value.text = "Unauthorized"
         
-        with pytest.raises(RuntimeError, match="Authentication Failure"):
+        # Updated match to reflect the latest error string in dropbox_utils.py
+        with pytest.raises(RuntimeError, match="Dropbox Auth Failed"):
             tm.refresh_access_token("bad_token")
 
 @patch("dropbox.Dropbox")
-def test_cloud_ingestor_pagination(mock_dbx_class):
-    """Rule 10: Verify the Archivist handles pagination and filtering correctly."""
+def test_cloud_ingestor_recursive_sync(mock_dbx_class):
+    """Rule 10: Verify recursion, path reconstruction, and filtering."""
     
-    # 1. Setup Dependency Injection (Rule 5)
+    # 1. Setup Dependency Injection
     mock_tm = MagicMock(spec=TokenManager)
     mock_tm.refresh_access_token.return_value = "fake_access_token"
-    
-    # 2. Mock Dropbox internal responses
     mock_dbx = mock_dbx_class.return_value
     
-    # Page 1: Contains a valid file and a cursor for more data
+    # Page 1: A valid file in a subfolder
     page1 = MagicMock()
     file_valid = MagicMock(spec=dropbox.files.FileMetadata)
     file_valid.name = "simulation_01.h5"
-    file_valid.path_lower = "/remote/simulation_01.h5"
+    # Note: path_lower must include the source folder to test relpath logic
+    file_valid.path_lower = "/remote/case_01/simulation_01.h5"
     page1.entries = [file_valid]
     page1.has_more = True
     page1.cursor = "next_page_token"
     
-    # Page 2: Contains an invalid file extension (should be filtered)
+    # Page 2: A folder metadata entry and an invalid file extension
     page2 = MagicMock()
+    folder_entry = MagicMock(spec=dropbox.files.FolderMetadata)
+    folder_entry.path_lower = "/remote/case_02"
+    
     file_invalid = MagicMock(spec=dropbox.files.FileMetadata)
     file_invalid.name = "notes.txt"
-    page2.entries = [file_invalid]
+    file_invalid.path_lower = "/remote/notes.txt"
+    
+    page2.entries = [folder_entry, file_invalid]
     page2.has_more = False
     
-    # Map the sequence of calls
+    # Mocking Dropbox responses
     mock_dbx.files_list_folder.return_value = page1
     mock_dbx.files_list_folder_continue.return_value = page2
     mock_dbx.files_download.return_value = (None, MagicMock(content=b"physics_data"))
 
-    # 3. Instantiate and Execute
-    # Log path is required by __slots__ (Rule 0)
+    # 3. Execute
     log_path = Path("test_ingest.log")
+    local_base = Path("./local_test_data")
     
-    # We mock open to avoid writing actual files during testing
-    with patch("builtins.open", mock_open()):
-        # DI: Injecting the mock_tm into the ingestor
+    # Use patch to prevent actual filesystem I/O during test
+    with patch("builtins.open", mock_open()), \
+         patch("pathlib.Path.mkdir"):
+        
         ingestor = CloudIngestor(mock_tm, "initial_refresh_token", log_path)
-        ingestor.sync("/remote", Path("./local_test_data"), [".h5"])
+        # Syncing /remote with .h5 filter
+        ingestor.sync("/remote", local_base, [".h5"])
     
-    # 4. Assertions (Forensic Audit)
-    # Check that it started with the correct folder
-    mock_dbx.files_list_folder.assert_called_once_with("/remote")
-    # Check that it used the cursor to get page 2
+    # 4. Assertions
+    # Verify Rule 8: files_list_folder called with recursive=True
+    mock_dbx.files_list_folder.assert_called_once_with("/remote", recursive=True)
+    
+    # Verify Pagination
     mock_dbx.files_list_folder_continue.assert_called_once_with("next_page_token")
-    # Verify Rule 8 (Minimalism): Only 1 download occurred because .txt was ignored
-    assert mock_dbx.files_download.call_count == 1
+    
+    # Verify Path Reconstruction logic:
+    # rel_path = os.path.relpath("/remote/case_01/simulation_01.h5", "/remote")
+    # should result in "case_01/simulation_01.h5"
+    # We check if files_download was called for the correct path
+    mock_dbx.files_download.assert_called_once_with(path="/remote/case_01/simulation_01.h5")
