@@ -161,17 +161,25 @@ def test_run_solver_telemetry_logging(caplog):
     """
     Forensic Audit: Validates telemetry logic (Line 125-126).
     Ensures step progress is captured in DEBUG logs.
-    """
-    real_state = make_step4_output_dummy(nx=2, ny=2, nz=2)
-    real_input = create_validated_input()
     
+    Resolution: Uses make_step4_output_dummy to ensure SolverConfig 
+    is fully hydrated with dt_min_limit per Rule 5.
+    """
+    # 1. Use the Step 4 dummy which already has a valid SolverConfig and initialized fields
+    real_state = make_step4_output_dummy(nx=2, ny=2, nz=2)
+    
+    # 2. Extract the context that is already correctly bundled in the dummy's creation logic
+    # We still need a mock_load to return a context that matches our state's configuration
     with patch("src.main_solver._load_simulation_context") as mock_load:
         mock_context = MagicMock()
         mock_load.return_value = mock_context
-        mock_context.input_data = real_input
-        mock_context.config = SolverConfig(ppe_tolerance=1e-1, ppe_max_iter=1)
         
-        # Force exactly 10 iterations to trigger the % 10 logic
+        # Pull the valid config and input from the dummy's setup
+        from src.common.simulation_context import SimulationContext
+        mock_context.config = real_state.config # Assuming state holds a ref, or recreate:
+        mock_context.input_data = create_validated_input(nx=2, ny=2, nz=2)
+        
+        # 3. Setup the iteration trigger
         real_state.iteration = 10
         real_state.ready_for_time_loop = True 
         
@@ -179,6 +187,7 @@ def test_run_solver_telemetry_logging(caplog):
             state_in.ready_for_time_loop = False
             return state_in
 
+        # 4. Orchestration Mocks
         with patch("src.main_solver.orchestrate_step1", return_value=real_state), \
              patch("src.main_solver.orchestrate_step2", return_value=real_state), \
              patch("src.main_solver.orchestrate_step3", return_value=(None, 0.001)), \
@@ -196,25 +205,40 @@ def test_run_solver_floating_point_critical_trap():
     Forensic Audit: Validates Lines 145-147 of src/main_solver.py.
     Ensures that if NumPy traps a NaN/Inf (FloatingPointError), 
     the solver logs the specific iteration and raises the error.
+    
+    Resolution: Hydrates SolverConfig fully to satisfy ElasticManager constraints.
     """
-    real_state = make_step4_output_dummy()
+    # 1. Use Step 4 dummy to get a fully populated state and config
+    real_state = make_step4_output_dummy(nx=2, ny=2, nz=2)
     real_input = create_validated_input()
+    
+    # 2. Extract the valid config from the dummy setup to prevent 'uninitialized' errors
+    from src.common.solver_config import SolverConfig
+    MOCK_CONFIG_DATA = {
+        "ppe_tolerance": 1e-6,
+        "ppe_max_iter": 1,
+        "dt_min_limit": 1e-6,
+        "ppe_max_retries": 5
+    }
+    fully_hydrated_config = SolverConfig(**MOCK_CONFIG_DATA)
     
     with patch("src.main_solver._load_simulation_context") as mock_load:
         mock_context = MagicMock()
         mock_load.return_value = mock_context
         mock_context.input_data = real_input
-        mock_context.config = SolverConfig(ppe_max_iter=1)
+        mock_context.config = fully_hydrated_config
         
+        # Set iteration for log verification
         real_state.iteration = 42
         real_state.ready_for_time_loop = True 
 
-        # Trigger the trap during the Step 3 Orchestration (Physics Kernel)
+        # 3. Trigger the trap during the Step 3 Orchestration (Physics Kernel)
         with patch("src.main_solver.orchestrate_step1", return_value=real_state), \
              patch("src.main_solver.orchestrate_step2", return_value=real_state), \
-             patch("src.main_solver.orchestrate_step3", side_effect=FloatingPointError("Underflow/Overflow")):
+             patch("src.main_solver.orchestrate_step3", side_effect=FloatingPointError("NaN detected")):
             
-            with pytest.raises(FloatingPointError):
+            # The solver should catch the FloatingPointError, log it, and re-raise
+            with pytest.raises(FloatingPointError, match="NaN detected"):
                 run_solver("dummy.json")
 
 
@@ -223,12 +247,21 @@ def test_run_solver_value_error_contract_violation():
     Forensic Audit: Validates Lines 149-151 of src/main_solver.py.
     Ensures that generic ValueErrors (Data Integrity breaches) 
     are caught, logged, and re-raised.
+    
+    Resolution: Hydrates input_data.to_dict() with a real dict to pass 
+    the internal jsonschema validation gate.
     """
-    real_state = make_step4_output_dummy()
+    real_state = make_step4_output_dummy(nx=2, ny=2, nz=2)
+    # Get a real dictionary representation of valid input
+    real_input_dict = get_explicit_solver_config(nx=2, ny=2, nz=2)
     
     with patch("src.main_solver._load_simulation_context") as mock_load:
         mock_context = MagicMock()
         mock_load.return_value = mock_context
+        
+        # Ensure the schema validation passes by returning a real dict
+        mock_context.input_data.to_dict.return_value = real_input_dict
+        mock_context.config = real_state.config
         
         real_state.ready_for_time_loop = True 
 
@@ -236,7 +269,8 @@ def test_run_solver_value_error_contract_violation():
         with patch("src.main_solver.orchestrate_step1", return_value=real_state), \
              patch("src.main_solver.orchestrate_step2", return_value=real_state), \
              patch("src.main_solver.orchestrate_step3", return_value=(None, 0.0)), \
-             patch("src.main_solver.orchestrate_step4", side_effect=ValueError("Invalid Buffer Alignment")):
+             patch("src.main_solver.orchestrate_step4", side_effect=ValueError("Invalid Buffer Alignment")), \
+             patch("src.main_solver.archive_simulation_artifacts", return_value="zip"):
             
             with pytest.raises(ValueError, match="Invalid Buffer Alignment"):
                 run_solver("dummy.json")
