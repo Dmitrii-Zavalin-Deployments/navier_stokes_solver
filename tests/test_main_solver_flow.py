@@ -2,7 +2,7 @@
 
 import runpy
 from unittest.mock import MagicMock, patch
-
+import logging
 import jsonschema
 import pytest
 
@@ -154,3 +154,37 @@ def test_run_solver_input_schema_violation():
             
             with pytest.raises(jsonschema.exceptions.ValidationError, match="Invalid Input Structure"):
                 run_solver("dummy_input.json")
+
+def test_run_solver_telemetry_logging(caplog):
+    """
+    Forensic Audit: Validates telemetry logic (Line 125-126).
+    Ensures step progress is captured in DEBUG logs.
+    """
+    real_state = make_step4_output_dummy(nx=2, ny=2, nz=2)
+    real_input = create_validated_input()
+    
+    with patch("src.main_solver._load_simulation_context") as mock_load:
+        mock_context = MagicMock()
+        mock_load.return_value = mock_context
+        mock_context.input_data = real_input
+        mock_context.config = SolverConfig(ppe_tolerance=1e-1, ppe_max_iter=1)
+        
+        # Force exactly 10 iterations to trigger the % 10 logic
+        real_state.iteration = 10
+        real_state.ready_for_time_loop = True 
+        
+        def exit_immediately(state_in, context_in):
+            state_in.ready_for_time_loop = False
+            return state_in
+
+        with patch("src.main_solver.orchestrate_step1", return_value=real_state), \
+             patch("src.main_solver.orchestrate_step2", return_value=real_state), \
+             patch("src.main_solver.orchestrate_step3", return_value=(None, 0.001)), \
+             patch("src.main_solver.orchestrate_step4", side_effect=exit_immediately), \
+             patch("src.main_solver.archive_simulation_artifacts", return_value="zip"):
+            
+            # Set level to DEBUG to capture the target lines
+            with caplog.at_level(logging.DEBUG):
+                run_solver("dummy.json")
+                
+            assert "Step 10 | Time" in caplog.text
