@@ -102,14 +102,19 @@ def test_cli_entrypoint_success():
     """Simulates running the module as a script with valid args using runpy."""
     test_args = ["src/main_solver.py", "dummy.json"]
     
-    # We patch run_solver directly at the entry point of the module execution
+    # We patch BOTH the loader and the runner to prevent disk I/O
     with patch("sys.argv", test_args), \
+         patch("src.main_solver._load_simulation_context") as mock_load, \
          patch("src.main_solver.run_solver") as mock_run, \
          patch("builtins.print") as mock_print:
 
+        # Setup a dummy context so run_solver doesn't crash during initialization
+        mock_context = MagicMock()
+        mock_context.input_data.to_dict.return_value = {"valid": "schema"}
+        mock_load.return_value = mock_context
+        
         mock_run.return_value = "mock_output.zip"
 
-        # runpy.run_module executes the code just like 'python -m src.main_solver'
         with pytest.raises(SystemExit) as e:
             runpy.run_module("src.main_solver", run_name="__main__")
 
@@ -130,18 +135,17 @@ def test_cli_entrypoint_no_args():
 
 def test_cli_entrypoint_error():
     """Tests the fatal error handling and traceback via runpy."""
-    # Note: We use the actual filename expected by the logic to avoid path errors
     with patch("sys.argv", ["src/main_solver.py", "bad.json"]), \
          patch("src.main_solver.run_solver") as mock_run, \
          patch("traceback.print_exc"), \
          patch("builtins.print") as mock_print:
         
-        # We force the error here so it doesn't try to load real files
+        # This force-trigger ensures we hit the 'except Exception' block in __main__
         mock_run.side_effect = Exception("System Crash")
         
         with pytest.raises(SystemExit) as e:
             runpy.run_module("src.main_solver", run_name="__main__")
             
         assert e.value.code == 1
-        # Match the specific error we injected
+        # The audit showed index 0 diff was due to disk-errors; this bypasses them.
         mock_print.assert_any_call("FATAL PIPELINE ERROR: System Crash", file=sys.stderr)
