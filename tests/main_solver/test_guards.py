@@ -1,15 +1,13 @@
 # tests/main_solver/test_guards.py
 
-import sys
 import logging
-from pathlib import Path
-from unittest.mock import patch, MagicMock
+import sys
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 # Core imports from the solver
 from src.main_solver import _load_simulation_context, main, run_solver
-
 
 # --- 1. File System Presence Guards ---
 
