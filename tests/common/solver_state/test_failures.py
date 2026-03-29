@@ -345,3 +345,26 @@ def test_audit_fails_on_unsupported_boundary_location():
     # slice the grid indices for 'interdimensional_portal'.
     with pytest.raises(RuntimeError, match="Unsupported boundary location 'interdimensional_portal'"):
         state.audit_physical_bounds()
+
+def test_validate_readiness_fails_without_foundation():
+    """
+    Validates Lines 605-607: Ensures setting ready_for_time_loop = True raises 
+    RuntimeError if the fields buffer is missing.
+    """
+    from src.common.solver_state import SolverState, FieldManager
+    import pytest
+
+    # 1. Test case: fields manager is None
+    state = SolverState()
+    # Ensure fields is explicitly None (though it is by default in __init__)
+    state._fields = None 
+
+    with pytest.raises(RuntimeError, match="CRITICAL: Foundation buffer is missing."):
+        state.ready_for_time_loop = True
+
+    # 2. Test case: fields manager exists but data is not allocated
+    state = SolverState()
+    state.fields = FieldManager() # _data is None by default
+    
+    with pytest.raises(RuntimeError, match="CRITICAL: Foundation buffer is missing."):
+        state.ready_for_time_loop = True
