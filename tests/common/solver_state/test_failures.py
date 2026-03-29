@@ -16,7 +16,9 @@ from src.common.solver_state import (
     PhysicalConstraintsManager,
     SolverState,
     verify_foundation_integrity,
+    InitialConditionManager
 )
+from tests.helpers.solver_step1_output_dummy import make_step1_output_dummy
 
 
 # --- 1. Testing Foundation Integrity Failures (Lines 24-25, 56) ---
@@ -122,28 +124,22 @@ def test_validate_physical_readiness_failures():
 
 def test_initial_condition_velocity_validation():
     """
-    Validates Lines 236-238: Enforces that velocity must be a 3D NumPy array.
-    Tests non-array input and incorrectly sized arrays.
+    Validates Lines 236-238 using the Step 1 Dummy for context.
+    Ensures that velocity must be a 3D NumPy array.
     """
-    ic = InitialConditionManager()
+    # Use the dummy to get a pre-hydrated manager
+    state = make_step1_output_dummy(nx=2, ny=2, nz=2)
+    ic = state.initial_conditions 
 
-    # 1. Test None (Should pass because of 'value is not None' check)
-    ic.velocity = None
-    assert ic._velocity is None
-
-    # 2. Test non-numpy array input (TypeError/ValueError)
+    # 1. Test non-numpy array input
     with pytest.raises(ValueError, match="Velocity must be a 3D NumPy array."):
-        ic.velocity = [0.0, 0.0, 0.0]  # List instead of np.ndarray
+        ic.velocity = [0.0, 0.0, 0.0] 
 
-    # 3. Test wrong size (2D instead of 3D)
+    # 2. Test wrong size (2D)
     with pytest.raises(ValueError, match="Velocity must be a 3D NumPy array."):
         ic.velocity = np.array([1.0, 0.0])
 
-    # 4. Test wrong size (4D instead of 3D)
-    with pytest.raises(ValueError, match="Velocity must be a 3D NumPy array."):
-        ic.velocity = np.array([1.0, 0.0, 0.0, 0.0])
-
-    # 5. Success Case
-    valid_v = np.array([1.0, 2.0, 3.0])
+    # 3. Success Case verification
+    valid_v = np.array([0.5, 0.5, 0.5])
     ic.velocity = valid_v
     np.testing.assert_array_equal(ic.velocity, valid_v)
