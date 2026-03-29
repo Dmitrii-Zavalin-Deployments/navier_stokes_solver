@@ -152,7 +152,7 @@ def run_solver(input_path: str) -> str:
 
     return archive_simulation_artifacts(state)
 
-if __name__ == "__main__":
+def main():
     if len(sys.argv) < 2:
         print("Usage: python src/main_solver.py <input_json_path>")
         sys.exit(1)
@@ -164,3 +164,6 @@ if __name__ == "__main__":
         print(f"FATAL PIPELINE ERROR: {str(e)}", file=sys.stderr)
         traceback.print_exc()
         sys.exit(1)
+
+if __name__ == "__main__":
+    main()
