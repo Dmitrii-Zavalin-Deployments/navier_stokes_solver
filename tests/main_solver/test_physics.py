@@ -1,6 +1,5 @@
 # tests/main_solver/test_physics.py
 
-import json
 import logging
 from unittest.mock import MagicMock, patch
 

@@ -1,15 +1,12 @@
 # tests/main_solver/test_guards.py
 
-import json
-import logging
 import sys
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
 # Core imports from the solver
-from src.main_solver import _load_simulation_context, main, run_solver
-from tests.helpers.solver_input_schema_dummy import create_validated_input
+from src.main_solver import _load_simulation_context, main
 
 # --- 1. File System Presence Guards ---
 
