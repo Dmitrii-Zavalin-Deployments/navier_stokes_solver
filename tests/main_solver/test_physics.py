@@ -173,3 +173,60 @@ def test_run_solver_value_error_contract_violation(caplog):
             run_solver("dummy.json")
 
         assert "🚫 CONTRACT VIOLATION: Illegal Stencil State" in caplog.text
+
+def test_ppe_iteration_convergence_break(tmp_path):
+    """
+    Validates Lines 116-118: Ensures the PPE loop breaks early 
+    when max_delta falls below the ppe_tolerance.
+    """
+    # 1. Setup mock paths and minimal config
+    input_file = tmp_path / "input.json"
+    input_file.write_text('{"simulation_parameters": {"total_time": 0.01}}') # Minimal run
+    
+    # 2. Patch the dependencies to isolate the loop logic
+    with patch("src.main_solver._load_simulation_context") as mock_load, \
+         patch("src.main_solver.orchestrate_step1"), \
+         patch("src.main_solver.orchestrate_step2") as mock_step2, \
+         patch("src.main_solver.orchestrate_step3") as mock_step3, \
+         patch("src.main_solver.orchestrate_step4"), \
+         patch("src.main_solver.ElasticManager"), \
+         patch("src.main_solver.archive_simulation_artifacts"):
+
+        # Setup Context & Config
+        mock_context = MagicMock()
+        mock_context.config.ppe_max_iter = 10
+        mock_context.config.ppe_tolerance = 1e-5
+        mock_load.return_value = mock_context
+        
+        # Setup State
+        mock_state = MagicMock()
+        mock_state.ready_for_time_loop = True
+        mock_state.stencil_matrix = [MagicMock()] # One block to iterate
+        mock_state.iteration = 0
+        mock_state.time = 0.0
+        mock_step2.return_value = mock_state
+
+        # 3. Define Step3 behavior:
+        # First call (is_first_pass=True) returns nothing
+        # Second call (is_first_pass=False) returns delta = 1e-6 (CONVERGED)
+        mock_step3.return_value = (None, 1e-6)
+
+        # To prevent infinite loop in test, shut down after first iteration
+        def side_effect(*args, **kwargs):
+            mock_state.ready_for_time_loop = False
+            return mock_state
+        
+        # Trigger the solver
+        run_solver(str(input_file))
+
+        # 4. VERIFICATION
+        # orchestrate_step3 should have been called exactly TWICE for one iteration:
+        # 1. Once for the Predictor Pass (is_first_pass=True)
+        # 2. Once for the PPE Pass (is_first_pass=False) -> then it BREAKS
+        
+        # Total calls = (1 predictor) + (1 PPE iteration) = 2
+        assert mock_step3.call_count == 2
+        
+        # Verify the second call was the PPE pass
+        args, kwargs = mock_step3.call_args_list[1]
+        assert kwargs['is_first_pass'] is False
