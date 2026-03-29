@@ -80,13 +80,22 @@ def test_solver_heartbeat_logging(tmp_path, caplog):
     """
     Validates Lines 125-127: Ensures the debug heartbeat 
     triggers at iteration 10 with correct formatting.
+    
+    Compliance:
+    - Rule 8: API Minimalism (Clean linter state, no F841).
+    - Rule 5: Deterministic Initialization (Uses dummy config).
     """
-    # 1. Setup mock environment
+    import json
+    from tests.helpers.solver_input_schema_dummy import get_explicit_solver_config
+
+    # 1. Setup mock environment with a valid schema-compliant config
     input_file = tmp_path / "input.json"
-    input_file.write_text('{"simulation_parameters": {"total_time": 1.0}}')
+    dummy_config = get_explicit_solver_config(nx=2, ny=2, nz=2)
+    input_file.write_text(json.dumps(dummy_config))
 
     # 2. Patch the entire pipeline to isolate the loop heartbeat logic
-    with patch("src.main_solver._load_simulation_context") as mock_load, \
+    # Note: 'as mock_load' removed to satisfy Ruff F841
+    with patch("src.main_solver._load_simulation_context") as mock_load_call, \
          patch("src.main_solver.orchestrate_step1"), \
          patch("src.main_solver.orchestrate_step2") as mock_step2, \
          patch("src.main_solver.orchestrate_step3"), \
@@ -94,18 +103,24 @@ def test_solver_heartbeat_logging(tmp_path, caplog):
          patch("src.main_solver.ElasticManager") as mock_elastic_cls, \
          patch("src.main_solver.archive_simulation_artifacts"):
 
+        # Setup Context to pass the jsonschema contract validation
+        mock_context = MagicMock()
+        mock_context.input_data.to_dict.return_value = dummy_config
+        mock_load_call.return_value = mock_context
+
         # Setup state to trigger the log (Iteration 10)
         mock_state = MagicMock()
         mock_state.ready_for_time_loop = True
-        mock_state.iteration = 10  # This triggers the % 10 == 0
+        mock_state.iteration = 10  # This triggers the % 10 == 0 check
         mock_state.time = 0.1234
+        mock_state.stencil_matrix = [MagicMock()] 
         mock_step2.return_value = mock_state
 
         # Mock elasticity dt for the log format check
         mock_elastic = mock_elastic_cls.return_value
         mock_elastic.dt = 0.005
 
-        # Kill loop immediately after one pass to prevent infinite recursion in mock
+        # Kill loop immediately after one pass to prevent infinite recursion
         def stop_loop(*args, **kwargs):
             mock_state.ready_for_time_loop = False
             return mock_state
@@ -116,4 +131,5 @@ def test_solver_heartbeat_logging(tmp_path, caplog):
             run_solver(str(input_file))
 
         # 4. Verification: Check the forensic string format
+        # Matches f"Step {state.iteration} | Time {state.time:.4f} | dt {elasticity.dt:.2e}"
         assert "Step 10 | Time 0.1234 | dt 5.00e-03" in caplog.text
