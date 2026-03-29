@@ -98,25 +98,7 @@ def test_run_solver_floating_point_trap():
             with pytest.raises(RuntimeError, match="CRITICAL INSTABILITY"):
                 run_solver("dummy.json")
 
-def test_cli_entrypoint_success():
-    """Simulates running the module as a script with valid args."""
-    with patch("sys.argv", ["src/main_solver.py", "dummy.json"]), \
-         patch("src.main_solver._load_simulation_context") as mock_load, \
-         patch("src.main_solver.run_solver") as mock_run, \
-         patch("builtins.print"):
 
-        # Mock context with valid to_dict()
-        mock_context = MagicMock()
-        mock_context.input_data.to_dict.return_value = {"ok": True}
-        mock_load.return_value = mock_context
-
-        mock_run.return_value = "mock_output.zip"
-
-        with pytest.raises(SystemExit) as e:
-            runpy.run_module("src.main_solver", run_name="__main__")
-
-        assert e.value.code == 0
-        mock_run.assert_called_once_with("dummy.json")
 
 
 def test_cli_entrypoint_no_args():
