@@ -7,6 +7,7 @@ import pytest
 
 from src.common.solver_state import (
     BoundaryCondition,
+    BoundaryConditionManager,
     DomainManager,
     ExternalForceManager,
     FieldManager,
@@ -16,7 +17,6 @@ from src.common.solver_state import (
     PhysicalConstraintsManager,
     SolverState,
     verify_foundation_integrity,
-    BoundaryConditionManager,
 )
 from tests.helpers.solver_step1_output_dummy import make_step1_output_dummy
 
