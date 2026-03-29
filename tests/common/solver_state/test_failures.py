@@ -232,12 +232,16 @@ def test_audit_fails_without_pressure_reference():
     Validates Lines 557-559: Ensures audit_physical_bounds raises RuntimeError 
     when no pressure/outflow/inflow boundary with a 'p' value exists.
     """
-    from src.common.solver_state import (
-        SolverState, PhysicalConstraintsManager, FieldManager, 
-        GridManager, BoundaryConditionManager, BoundaryCondition
-    )
-    import numpy as np
     import pytest
+
+    from src.common.solver_state import (
+        BoundaryCondition,
+        BoundaryConditionManager,
+        FieldManager,
+        GridManager,
+        PhysicalConstraintsManager,
+        SolverState,
+    )
 
     # 1. Setup minimal state required for Rule 7 Audit
     state = SolverState()
