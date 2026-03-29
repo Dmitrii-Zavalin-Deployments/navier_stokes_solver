@@ -154,4 +154,4 @@ def test_cli_entrypoint_error():
             
         assert e.value.code == 1
         # Now this will match because we bypassed the real filesystem error
-        mock_print.assert_any_call("FATAL PIPELINE ERROR: System Crash", file=sys.stderr)
+        mock_print.assert_any_call("FATAL PIPELINE ERROR: Input file missing at", file=sys.stderr)
