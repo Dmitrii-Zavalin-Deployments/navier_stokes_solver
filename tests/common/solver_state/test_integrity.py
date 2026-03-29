@@ -142,3 +142,44 @@ class TestSolverStateFoundation:
         assert "Memory integrity verified" in caplog.text
         # Ensure we didn't accidentally pass because there were no blocks
         assert len(populated_state.stencil_matrix) == num_cells
+    
+    def test_verify_foundation_integrity_failure_vx_drift(self, populated_state, caplog):
+        """
+        Validates Lines 66-69: Detects mismatch in Velocity (VX) pointers.
+        If the block's internal 'u[0]' differs from the Primed Identity, 
+        it triggers a Critical Vector Component Displacement error.
+        """
+        caplog.set_level(logging.CRITICAL)
+        num_cells = populated_state.fields.data.shape[0]
+
+        class DriftingVelocityBlock:
+            def __init__(self, idx, should_drift=False):
+                self.center = type('obj', (object,), {
+                    'is_ghost': False, 
+                    'index': idx, 
+                    # Pressure is correct
+                    'p': float(idx) + (float(FI.P) / 10.0),
+                    # Velocity X is deliberately sabotaged if should_drift is True
+                    'u': [
+                        -888.8 if should_drift else float(idx) + (float(FI.VX) / 10.0), 
+                        0.0, 
+                        0.0
+                    ]
+                })
+
+        # Create a matrix where the last cell has drifted
+        stencil = []
+        for i in range(num_cells - 1):
+            stencil.append(DriftingVelocityBlock(i, should_drift=False))
+        
+        # Inject the drift at the final index
+        stencil.append(DriftingVelocityBlock(num_cells - 1, should_drift=True))
+            
+        populated_state.stencil_matrix = stencil
+
+        # EXECUTION & VERIFICATION
+        expected_error = f"CRITICAL: Vector Component Displacement at Index {num_cells - 1}!"
+        with pytest.raises(RuntimeError, match=expected_error):
+            verify_foundation_integrity(populated_state)
+            
+        assert f"MEMORY DRIFT [VX]: Index {num_cells - 1}" in caplog.text
