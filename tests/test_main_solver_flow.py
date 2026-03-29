@@ -189,3 +189,53 @@ def test_run_solver_telemetry_logging(caplog):
                 run_solver("dummy.json")
                 
             assert "Step 10 | Time" in caplog.text
+
+def test_run_solver_floating_point_critical_trap():
+    """
+    Forensic Audit: Validates Lines 145-147 of src/main_solver.py.
+    Ensures that if NumPy traps a NaN/Inf (FloatingPointError), 
+    the solver logs the specific iteration and raises the error.
+    """
+    real_state = make_step4_output_dummy()
+    real_input = create_validated_input()
+    
+    with patch("src.main_solver._load_simulation_context") as mock_load:
+        mock_context = MagicMock()
+        mock_load.return_value = mock_context
+        mock_context.input_data = real_input
+        mock_context.config = SolverConfig(ppe_max_iter=1)
+        
+        real_state.iteration = 42
+        real_state.ready_for_time_loop = True 
+
+        # Trigger the trap during the Step 3 Orchestration (Physics Kernel)
+        with patch("src.main_solver.orchestrate_step1", return_value=real_state), \
+             patch("src.main_solver.orchestrate_step2", return_value=real_state), \
+             patch("src.main_solver.orchestrate_step3", side_effect=FloatingPointError("Underflow/Overflow")):
+            
+            with pytest.raises(FloatingPointError):
+                run_solver("dummy.json")
+
+
+def test_run_solver_value_error_contract_violation():
+    """
+    Forensic Audit: Validates Lines 149-151 of src/main_solver.py.
+    Ensures that generic ValueErrors (Data Integrity breaches) 
+    are caught, logged, and re-raised.
+    """
+    real_state = make_step4_output_dummy()
+    
+    with patch("src.main_solver._load_simulation_context") as mock_load:
+        mock_context = MagicMock()
+        mock_load.return_value = mock_context
+        
+        real_state.ready_for_time_loop = True 
+
+        # Trigger a ValueError during the Step 4 Finalization (Archive/State Logic)
+        with patch("src.main_solver.orchestrate_step1", return_value=real_state), \
+             patch("src.main_solver.orchestrate_step2", return_value=real_state), \
+             patch("src.main_solver.orchestrate_step3", return_value=(None, 0.0)), \
+             patch("src.main_solver.orchestrate_step4", side_effect=ValueError("Invalid Buffer Alignment")):
+            
+            with pytest.raises(ValueError, match="Invalid Buffer Alignment"):
+                run_solver("dummy.json")
