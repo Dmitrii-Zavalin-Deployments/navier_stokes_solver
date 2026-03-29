@@ -109,34 +109,41 @@ def test_run_solver_elastic_success_signal():
 def test_run_solver_floating_point_critical_trap(caplog):
     """
     Forensic Audit: Validates Line 145-147 of src/main_solver.py.
+    Ensures that a FloatingPointError (e.g. NaN/Division by Zero) is logged 
+    as a CRITICAL failure and re-raised without attempting recovery.
     """
+    # 1. Setup real state/input objects to bypass lower-level type checks
     real_state = make_step4_output_dummy()
     real_input = create_validated_input()
     real_state.ready_for_time_loop = True
 
-    # Initialize a SAFE config with all required members for ElasticManager
+    # 2. Hydrate SolverConfig with ALL required fields for the Elasticity Engine.
+    # This prevents the 'dt_min_limit is uninitialized' RuntimeError.
     safe_config = SolverConfig(
         ppe_max_iter=1,
         ppe_tolerance=1e-6,
-        dt_min_limit=1e-6,
-        ppe_max_retries=5
+        dt_min_limit=1e-6,      # Required for self.dt_floor
+        ppe_max_retries=5       # Required to build the _dt_range ladder
     )
 
+    # 3. Patch the orchestrator to trigger the trap in the main loop
     with patch("src.main_solver._load_simulation_context") as mock_load, \
          patch("src.main_solver.orchestrate_step1", return_value=real_state), \
          patch("src.main_solver.orchestrate_step2", return_value=real_state), \
          patch("src.main_solver.orchestrate_step3", side_effect=FloatingPointError("NaN")):
         
+        # Configure the mock context to return our hydrated objects
         mock_context = MagicMock()
         mock_load.return_value = mock_context
         mock_context.input_data = real_input
         mock_context.config = safe_config
 
+        # 4. Execute and verify the terminal failure
         with pytest.raises(FloatingPointError):
             run_solver("dummy.json")
 
+        # 5. Verify the forensic log entry exists
         assert "NUMERICAL CRITICAL: Floating point trap sprung" in caplog.text
-
 
 def test_run_solver_value_error_contract_violation(caplog):
     """
