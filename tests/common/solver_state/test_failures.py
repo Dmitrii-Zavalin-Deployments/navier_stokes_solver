@@ -431,3 +431,25 @@ def test_validate_physical_readiness_fails_with_none_data():
     
     with pytest.raises(RuntimeError, match="CRITICAL: Foundation buffer is missing."):
         state.validate_physical_readiness()
+
+def test_validate_physical_readiness_fails_without_constraints():
+    """
+    Validates Lines 609-611: Ensures RuntimeError is raised if 
+    Physical Constraints are missing during the readiness check.
+    """
+
+    # 1. Setup a state and provide the field foundation 
+    # (to pass the first check at Line 605)
+    state = SolverState()
+    state.fields = FieldManager()
+    state.fields.allocate(n_cells=10)
+    
+    # 2. Ensure physical_constraints is None (default behavior)
+    # We explicitly set the internal variable to bypass the 'Access Error' 
+    # logic of the BaseContainer if necessary.
+    state._physical_constraints = None 
+
+    # 3. Verify the specific RuntimeError for Physical Constraints
+    expected_error = "CRITICAL: Physical Constraints are not defined."
+    with pytest.raises(RuntimeError, match=expected_error):
+        state.validate_physical_readiness()
