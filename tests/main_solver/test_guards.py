@@ -1,10 +1,12 @@
 # tests/main_solver/test_guards.py
 
 import runpy
-import sys
 from unittest.mock import patch
+
 import pytest
+
 from src.main_solver import _load_simulation_context
+
 
 def test_load_context_missing_input_file():
     with patch("src.main_solver.Path.exists") as mock_exists:

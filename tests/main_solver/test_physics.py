@@ -1,12 +1,15 @@
 # tests/main_solver/test_physics.py
 
 import logging
-import pytest
 from unittest.mock import MagicMock, patch
-from src.main_solver import run_solver
+
+import pytest
+
 from src.common.solver_config import SolverConfig
+from src.main_solver import run_solver
 from tests.helpers.solver_input_schema_dummy import create_validated_input
 from tests.helpers.solver_step4_output_dummy import make_step4_output_dummy
+
 
 def test_run_solver_floating_point_critical_trap(caplog):
     real_state = make_step4_output_dummy(nx=2, ny=2, nz=2)

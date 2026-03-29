@@ -1,11 +1,14 @@
 # tests/main_solver/test_contracts.py
 
+from unittest.mock import MagicMock, patch
+
 import jsonschema
 import pytest
-from unittest.mock import MagicMock, patch
+
 from src.main_solver import run_solver
 from tests.helpers.solver_input_schema_dummy import create_validated_input
 from tests.helpers.solver_step4_output_dummy import make_step4_output_dummy
+
 
 def test_run_solver_input_schema_violation():
     with patch("src.main_solver._load_simulation_context") as mock_load, \
