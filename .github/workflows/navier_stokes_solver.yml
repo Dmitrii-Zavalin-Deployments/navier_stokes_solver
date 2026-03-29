@@ -14,7 +14,7 @@ jobs:
       PYTHONPATH: ${{ github.workspace }}
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
       # Define the 'Gold Standard' test command here (e.g. # pytest -s tests/ -vv --cov=src --cov-report=term-missing)
-      TEST_COMMAND: "pytest -s tests/main_solver/test_physics.py::test_run_solver_elastic_success_signal -vv"
+      TEST_COMMAND: "pytest -s tests/main_solver/test_physics.py -vv"
     
     steps:
       - name: 🗂️ Checkout Repository

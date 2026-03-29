@@ -105,3 +105,53 @@ def test_run_solver_elastic_success_signal():
             
             # 5. VERIFY: The success signal must be sent to the elasticity engine
             mock_elastic_instance.stabilization.assert_called_with(is_needed=False)
+
+def test_run_solver_floating_point_critical_trap(caplog):
+    """
+    Forensic Audit: Validates Line 145-147 of src/main_solver.py.
+    Ensures that a FloatingPointError (e.g. Division by Zero) is logged 
+    as a CRITICAL failure and re-raised.
+    """
+    real_state = make_step4_output_dummy()
+    real_input = create_validated_input()
+    real_state.ready_for_time_loop = True
+
+    with patch("src.main_solver._load_simulation_context") as mock_load, \
+         patch("src.main_solver.orchestrate_step1", return_value=real_state), \
+         patch("src.main_solver.orchestrate_step2", return_value=real_state), \
+         patch("src.main_solver.orchestrate_step3", side_effect=FloatingPointError("NaN")):
+        
+        mock_context = MagicMock()
+        mock_load.return_value = mock_context
+        mock_context.input_data = real_input
+        mock_context.config = SolverConfig(ppe_max_iter=1)
+
+        with pytest.raises(FloatingPointError):
+            run_solver("dummy.json")
+
+        assert "NUMERICAL CRITICAL: Floating point trap sprung" in caplog.text
+
+
+def test_run_solver_value_error_contract_violation(caplog):
+    """
+    Forensic Audit: Validates Line 149-151 of src/main_solver.py.
+    Ensures that a ValueError (Contract Violation) is logged correctly and re-raised.
+    """
+    real_state = make_step4_output_dummy()
+    real_input = create_validated_input()
+    real_state.ready_for_time_loop = True
+
+    with patch("src.main_solver._load_simulation_context") as mock_load, \
+         patch("src.main_solver.orchestrate_step1", return_value=real_state), \
+         patch("src.main_solver.orchestrate_step2", return_value=real_state), \
+         patch("src.main_solver.orchestrate_step3", side_effect=ValueError("Illegal Stencil State")):
+        
+        mock_context = MagicMock()
+        mock_load.return_value = mock_context
+        mock_context.input_data = real_input
+        mock_context.config = SolverConfig(ppe_max_iter=1)
+
+        with pytest.raises(ValueError, match="Illegal Stencil State"):
+            run_solver("dummy.json")
+
+        assert "🚫 CONTRACT VIOLATION: Illegal Stencil State" in caplog.text
