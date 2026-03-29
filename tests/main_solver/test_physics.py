@@ -109,12 +109,18 @@ def test_run_solver_elastic_success_signal():
 def test_run_solver_floating_point_critical_trap(caplog):
     """
     Forensic Audit: Validates Line 145-147 of src/main_solver.py.
-    Ensures that a FloatingPointError (e.g. Division by Zero) is logged 
-    as a CRITICAL failure and re-raised.
     """
     real_state = make_step4_output_dummy()
     real_input = create_validated_input()
     real_state.ready_for_time_loop = True
+
+    # Initialize a SAFE config with all required members for ElasticManager
+    safe_config = SolverConfig(
+        ppe_max_iter=1,
+        ppe_tolerance=1e-6,
+        dt_min_limit=1e-6,
+        ppe_max_retries=5
+    )
 
     with patch("src.main_solver._load_simulation_context") as mock_load, \
          patch("src.main_solver.orchestrate_step1", return_value=real_state), \
@@ -124,7 +130,7 @@ def test_run_solver_floating_point_critical_trap(caplog):
         mock_context = MagicMock()
         mock_load.return_value = mock_context
         mock_context.input_data = real_input
-        mock_context.config = SolverConfig(ppe_max_iter=1)
+        mock_context.config = safe_config
 
         with pytest.raises(FloatingPointError):
             run_solver("dummy.json")
@@ -135,11 +141,17 @@ def test_run_solver_floating_point_critical_trap(caplog):
 def test_run_solver_value_error_contract_violation(caplog):
     """
     Forensic Audit: Validates Line 149-151 of src/main_solver.py.
-    Ensures that a ValueError (Contract Violation) is logged correctly and re-raised.
     """
     real_state = make_step4_output_dummy()
     real_input = create_validated_input()
     real_state.ready_for_time_loop = True
+
+    safe_config = SolverConfig(
+        ppe_max_iter=1,
+        ppe_tolerance=1e-6,
+        dt_min_limit=1e-6,
+        ppe_max_retries=5
+    )
 
     with patch("src.main_solver._load_simulation_context") as mock_load, \
          patch("src.main_solver.orchestrate_step1", return_value=real_state), \
@@ -149,7 +161,7 @@ def test_run_solver_value_error_contract_violation(caplog):
         mock_context = MagicMock()
         mock_load.return_value = mock_context
         mock_context.input_data = real_input
-        mock_context.config = SolverConfig(ppe_max_iter=1)
+        mock_context.config = safe_config
 
         with pytest.raises(ValueError, match="Illegal Stencil State"):
             run_solver("dummy.json")
