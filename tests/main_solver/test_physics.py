@@ -20,7 +20,6 @@ def test_run_solver_floating_point_critical_trap(caplog):
         mock_load.return_value = mock_context
         real_state.iteration = 42
         real_state.ready_for_time_loop = True 
-        it = iter([FloatingPointError('NaN'), FloatingPointError('Trap Reached')])
 
         with patch("src.main_solver.orchestrate_step1", return_value=real_state), \
              patch("src.main_solver.orchestrate_step2", return_value=real_state), \
@@ -39,7 +38,6 @@ def test_run_solver_telemetry_logging(caplog):
         )
         real_state.iteration = 10
         real_state.ready_for_time_loop = True 
-        it = iter([FloatingPointError('NaN'), FloatingPointError('Trap Reached')])
         
         def exit_immediately(state_in, context_in):
             state_in.ready_for_time_loop = False
@@ -84,7 +82,6 @@ def test_run_solver_elastic_success_signal():
         
         # Ensure the loop triggers
         real_state.ready_for_time_loop = True 
-        it = iter([FloatingPointError('NaN'), FloatingPointError('Trap Reached')])
         
         def exit_immediately(state_in, context_in):
             # Force the loop to terminate after the first pass
@@ -119,7 +116,6 @@ def test_run_solver_floating_point_critical_trap(caplog):
     real_state = make_step4_output_dummy()
     real_input = create_validated_input()
     real_state.ready_for_time_loop = True
-        it = iter([FloatingPointError('NaN'), FloatingPointError('Trap Reached')])
 
     # 2. Configure the Safety Ladder (src/common/elasticity.py:30)
     # These values ensure the linear interpolation in __init__ doesn't fail.
@@ -155,7 +151,6 @@ def test_run_solver_value_error_contract_violation(caplog):
     real_state = make_step4_output_dummy()
     real_input = create_validated_input()
     real_state.ready_for_time_loop = True
-        it = iter([FloatingPointError('NaN'), FloatingPointError('Trap Reached')])
 
     safe_config = SolverConfig(
         ppe_max_iter=1,
