@@ -86,6 +86,7 @@ def test_solver_heartbeat_logging(tmp_path, caplog):
     - Rule 5: Deterministic Initialization (Uses dummy config).
     """
     import json
+
     from tests.helpers.solver_input_schema_dummy import get_explicit_solver_config
 
     # 1. Setup mock environment with a valid schema-compliant config
