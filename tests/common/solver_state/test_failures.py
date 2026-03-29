@@ -226,3 +226,66 @@ def test_rollback_without_cache_fails():
     
     # This should now pass without error
     state.rollback_to_stable_state()
+
+def test_audit_fails_without_pressure_reference():
+    """
+    Validates Lines 557-559: Ensures audit_physical_bounds raises RuntimeError 
+    when no pressure/outflow/inflow boundary with a 'p' value exists.
+    """
+    from src.common.solver_state import (
+        SolverState, PhysicalConstraintsManager, FieldManager, 
+        GridManager, BoundaryConditionManager, BoundaryCondition
+    )
+    import numpy as np
+    import pytest
+
+    # 1. Setup minimal state required for Rule 7 Audit
+    state = SolverState()
+    
+    # Setup Grid (2x2x2)
+    state.grid = GridManager()
+    state.grid.x_min, state.grid.x_max = 0.0, 1.0
+    state.grid.y_min, state.grid.y_max = 0.0, 1.0
+    state.grid.z_min, state.grid.z_max = 0.0, 1.0
+    state.grid.nx = state.grid.ny = state.grid.nz = 2
+    
+    # Setup Fields
+    state.fields = FieldManager()
+    state.fields.allocate(n_cells=8)
+    
+    # Setup Physical Constraints
+    pc = PhysicalConstraintsManager()
+    pc.min_velocity, pc.max_velocity = -10.0, 10.0
+    pc.min_pressure, pc.max_pressure = -100.0, 100.0
+    state.physical_constraints = pc
+
+    # 2. Setup Boundary Conditions WITHOUT a pressure anchor
+    # We only add a wall, which usually doesn't define a fixed pressure value
+    bc_manager = BoundaryConditionManager()
+    wall = BoundaryCondition()
+    wall.location = "wall"
+    wall.type = "no-slip"
+    wall.values = {"u": [0, 0, 0]}
+    bc_manager.add_condition(wall)
+    state.boundary_conditions = bc_manager
+
+    # 3. Trigger the Sentinel (Rule 7)
+    # This should fail because 'ref_bc' will be None
+    expected_msg = "No pressure reference boundary found \(Required for Rule 7\)."
+    with pytest.raises(RuntimeError, match=expected_msg):
+        state.audit_physical_bounds()
+
+    # 4. Success Path Verification
+    # Add a pressure anchor and verify it no longer raises this specific error
+    p_anchor = BoundaryCondition()
+    p_anchor.location = "x_max"
+    p_anchor.type = "pressure"
+    p_anchor.values = {"p": 0.0}
+    bc_manager.add_condition(p_anchor)
+    
+    # Now it should pass this check (it might fail later on numerical values, 
+    # but the 'ref_bc is None' check is satisfied).
+    try:
+        state.audit_physical_bounds()
+    except RuntimeError as e:
+        assert "No pressure reference boundary found" not in str(e)
