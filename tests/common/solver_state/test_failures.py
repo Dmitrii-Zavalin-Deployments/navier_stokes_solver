@@ -142,3 +142,34 @@ def test_initial_condition_velocity_validation():
     valid_v = np.array([0.5, 0.5, 0.5])
     ic.velocity = valid_v
     np.testing.assert_array_equal(ic.velocity, valid_v)
+
+def test_mask_validation_logic():
+    """
+    Validates Lines 339-341: Enforces Mask must be a NumPy array containing only -1, 0, or 1.
+    """
+    from tests.helpers.solver_step1_output_dummy import make_step1_output_dummy
+    
+    # 1. Hydrate via Dummy
+    state = make_step1_output_dummy(nx=2, ny=2, nz=2)
+    mm = state.mask
+
+    # 2. Test non-array input (Trigger first part of the 'or')
+    with pytest.raises(ValueError, match="Mask must be a NumPy array of -1, 0, 1."):
+        mm.mask = [1, 0, -1]  # List instead of np.ndarray
+
+    # 3. Test invalid values (Trigger second part of the 'or')
+    with pytest.raises(ValueError, match="Mask must be a NumPy array of -1, 0, 1."):
+        mm.mask = np.array([1, 0, 2])  # '2' is not a valid cell type
+
+    # 4. Test floats (Strictly enforcing discrete topology)
+    with pytest.raises(ValueError, match="Mask must be a NumPy array of -1, 0, 1."):
+        mm.mask = np.array([1.0, 0.5, -1.0])
+
+    # 5. Success Case: Valid discrete topology
+    valid_mask = np.array([-1, 0, 1], dtype=int)
+    mm.mask = valid_mask
+    np.testing.assert_array_equal(mm.mask, valid_mask)
+    
+    # 6. Test None (Should pass bypass check)
+    mm.mask = None
+    assert mm._mask is None
