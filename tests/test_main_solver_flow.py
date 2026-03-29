@@ -203,7 +203,7 @@ def test_run_solver_telemetry_logging(caplog):
             with caplog.at_level(logging.DEBUG):
                 run_solver("dummy.json")
                 
-            assert "Step 10 | Time" in caplog.text
+            assert "AUDIT \[Start\]: Iteration 10" in caplog.text
 
 def test_run_solver_floating_point_critical_trap():
     """
