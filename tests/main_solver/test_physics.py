@@ -98,7 +98,7 @@ def test_run_solver_elastic_success_signal():
              patch("src.main_solver.archive_simulation_artifacts", return_value="mock.zip"):
             
             # Setup the mock instance behavior
-            mock_elastic_instance = mock_elastic_cls.return_value
+            mock_elastic_instance = mock_elastic.return_value
             mock_elastic_instance.dt = 0.01 
             
             # Execute the solver
@@ -205,6 +205,7 @@ def test_ppe_iteration_convergence_break(tmp_path):
         # FIX 3: Set time to a real float to support comparison
         mock_state.iteration = 0
         mock_state.time = 0.0 
+            mock_state.time = 0.1234
         mock_step2.return_value = mock_state
 
         mock_step3.return_value = (None, 1e-6)
