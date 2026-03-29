@@ -98,26 +98,27 @@ def test_run_solver_floating_point_trap():
             with pytest.raises(RuntimeError, match="CRITICAL INSTABILITY"):
                 run_solver("dummy.json")
 
-
 def test_cli_entrypoint_success():
     """Simulates running the module as a script with valid args."""
-    test_args = ["src/main_solver.py", "dummy_input.json"]
-
-    with patch("sys.argv", test_args), \
+    with patch("sys.argv", ["src/main_solver.py", "dummy.json"]), \
+         patch("src.main_solver._load_simulation_context") as mock_load, \
          patch("src.main_solver.run_solver") as mock_run, \
          patch("builtins.print"):
 
+        # Mock context so validation passes
+        mock_context = MagicMock()
+        mock_load.return_value = mock_context
         mock_run.return_value = "mock_output.zip"
 
         with pytest.raises(SystemExit) as e:
             runpy.run_module("src.main_solver", run_name="__main__")
 
         assert e.value.code == 0
-        mock_run.assert_called_once_with("dummy_input.json")
+        mock_run.assert_called_once_with("dummy.json")
 
 
 def test_cli_entrypoint_no_args():
-    """Simulates running the module as a script with no args."""
+    """Tests the usage prompt when no path is provided."""
     with patch("sys.argv", ["src/main_solver.py"]), \
          patch("builtins.print") as mock_print:
 
@@ -129,12 +130,18 @@ def test_cli_entrypoint_no_args():
 
 
 def test_cli_entrypoint_error():
-    """Simulates fatal error inside CLI entrypoint."""
+    """Tests the fatal error handling and traceback."""
     with patch("sys.argv", ["src/main_solver.py", "bad.json"]), \
+         patch("src.main_solver._load_simulation_context") as mock_load, \
          patch("src.main_solver.run_solver") as mock_run, \
          patch("traceback.print_exc"), \
          patch("builtins.print") as mock_print:
 
+        # Mock context so load succeeds
+        mock_context = MagicMock()
+        mock_load.return_value = mock_context
+
+        # Force run_solver to crash
         mock_run.side_effect = Exception("System Crash")
 
         with pytest.raises(SystemExit) as e:
