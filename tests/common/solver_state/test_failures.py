@@ -16,7 +16,6 @@ from src.common.solver_state import (
     PhysicalConstraintsManager,
     SolverState,
     verify_foundation_integrity,
-    InitialConditionManager
 )
 from tests.helpers.solver_step1_output_dummy import make_step1_output_dummy
 
