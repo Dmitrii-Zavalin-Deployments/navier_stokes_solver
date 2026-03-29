@@ -103,6 +103,7 @@ def test_solver_heartbeat_logging(tmp_path, caplog):
         mock_context.input_data = dummy_input # REAL object for total_time comparison
         mock_context.config.ppe_max_iter = 1
         mock_context.config.ppe_tolerance = 1e-6
+        mock_context.config.ppe_tolerance = 1e-6
         mock_load.return_value = mock_context
 
         # Setup State

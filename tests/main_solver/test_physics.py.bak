@@ -205,7 +205,7 @@ def test_ppe_iteration_convergence_break(tmp_path):
         # FIX 3: Set time to a real float to support comparison
         mock_state.iteration = 0
         mock_state.time = 0.0 
-        mock_state.time = 0.1234
+            mock_state.time = 0.1234
         mock_step2.return_value = mock_state
 
         mock_step3.return_value = (None, 1e-6)
