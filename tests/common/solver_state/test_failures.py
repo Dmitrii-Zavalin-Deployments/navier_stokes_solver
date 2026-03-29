@@ -177,18 +177,19 @@ def test_mask_validation_logic():
 def test_external_force_serialization_enforcement():
     """
     Validates Lines 345-347: Ensures force_vector is initialized before serialization.
+    Note: BaseContainer's _get_safe (Rule 5) catches this first as a RuntimeError.
     """
 
     efm = ExternalForceManager()
 
-    # 1. Test Attribute Error on uninitialized serialization
-    # Trigger: self.force_vector is None
-    with pytest.raises(AttributeError, match="ExternalForceManager: force_vector must be initialized."):
+    # 1. Test Access Error on uninitialized serialization
+    # The base class _get_safe raises RuntimeError if any slot is None.
+    with pytest.raises(RuntimeError, match="Access Error: 'force_vector' in ExternalForceManager is uninitialized."):
         efm.to_dict()
 
-    # 2. Test validation logic in the setter (Asset Integrity)
+    # 2. Test validation logic in the setter
     with pytest.raises(ValueError, match="force_vector must be a 3D NumPy array."):
-        efm.force_vector = np.array([0.0, -9.81]) # Only 2D
+        efm.force_vector = np.array([0.0, -9.81]) 
 
     # 3. Success Case: Valid serialization
     gravity = np.array([0.0, 0.0, -9.81])
@@ -196,4 +197,32 @@ def test_external_force_serialization_enforcement():
     
     serialized = efm.to_dict()
     assert serialized["force_vector"] == [0.0, 0.0, -9.81]
-    assert isinstance(serialized["force_vector"], list)
+
+def test_rollback_without_cache_fails():
+    """
+    Validates Lines 512-514: Ensures rollback_to_stable_state raises RuntimeError 
+    if capture_stable_state was never called.
+    """
+
+    # 1. Initialize a clean state
+    state = SolverState()
+    
+    # 2. Verify cache is explicitly None on init
+    assert state._cache_buffer is None
+
+    # 3. Trigger the safety sentinel (The "Smoking Gun")
+    # This simulates a failure occurring before the first iteration's capture
+    with pytest.raises(RuntimeError, match="CRITICAL: Rollback requested but no cache exists."):
+        state.rollback_to_stable_state()
+
+    # 4. Verify that after a capture, rollback no longer raises
+    # (Mocking minimal requirements for capture)
+    from src.common.solver_state import FieldManager
+    state.fields = FieldManager()
+    state.fields.allocate(n_cells=10)
+    
+    state.capture_stable_state()
+    assert state._cache_buffer is not None
+    
+    # This should now pass without error
+    state.rollback_to_stable_state()
