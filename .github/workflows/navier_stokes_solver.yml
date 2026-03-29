@@ -190,10 +190,10 @@ jobs:
           git config --global user.name "${GIT_USER_NAME:-'github-actions[bot]'}"
           git config --global user.email "${GIT_USER_EMAIL:-'github-actions[bot]@users.noreply.github.com'}"
           
-          # 2. Workspace Cleanup (The Fix for Exit Code 128)
-          # We force-remove any generated simulation data so the rebase can happen
-          git checkout performance_audit.md || true
-          git clean -fd data/testing-input-output/
+          # 2. FORCE CLEANUP (The Nuclear Option)
+          # Discard all local changes to tracked files and remove untracked files
+          git reset --hard HEAD
+          git clean -ffdx
 
           # 3. Initial Sync
           git pull origin HEAD --rebase
@@ -235,7 +235,7 @@ jobs:
           
           if [ -n "$(git status --porcelain performance_audit.md)" ]; then
             git commit -m "📊 audit: [${{ job.status }}] update performance ledger"
-            # Final safety pull before push
+            # In case someone pushed to the repo in the last 10 seconds:
             git pull origin HEAD --rebase
             git push origin HEAD
           else
