@@ -400,3 +400,34 @@ def test_external_force_manager_to_dict_success():
     
     result = force_mgr.to_dict()
     assert result == {"force_vector": [0.0, -9.81, 0.0]}
+
+def test_validate_physical_readiness_fails_without_foundation():
+    """
+    Validates Lines 605-607: Ensures RuntimeError is raised if 
+    fields buffer is missing during physical readiness check.
+    """
+
+    # 1. Setup an empty state
+    state = SolverState()
+    
+    # 2. Ensure _fields is None (default in __init__)
+    # We bypass the property setter to keep it None for the test
+    state._fields = None 
+
+    # 3. Trigger validation via the time loop guard
+    # Note: verify_foundation_integrity (Line 623) also has a similar check,
+    # but since they share the same message/error type, this covers the logic.
+    with pytest.raises(RuntimeError, match="CRITICAL: Foundation buffer is missing."):
+        state.validate_physical_readiness()
+
+def test_validate_physical_readiness_fails_with_none_data():
+    """
+    Validates Lines 605: Ensures RuntimeError if FieldManager exists 
+    but its internal .data buffer is None.
+    """
+
+    state = SolverState()
+    state.fields = FieldManager() # _fields is not None, but _fields._data is None
+    
+    with pytest.raises(RuntimeError, match="CRITICAL: Foundation buffer is missing."):
+        state.validate_physical_readiness()
