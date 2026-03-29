@@ -145,23 +145,23 @@ jobs:
       - name: 📦 Install Dependencies
         run: pip install -r requirements.txt
 
-      # - name: 📥 Synchronize Input (Dropbox)
-      #   run: |
-      #     chmod +x ./download_from_dropbox.sh
-      #     ./download_from_dropbox.sh
-      #     echo "--- Post-Download Repository State ---"
-      #     ls -R
+      - name: 📥 Synchronize Input (Dropbox)
+        run: |
+          chmod +x ./download_from_dropbox.sh
+          ./download_from_dropbox.sh
+          echo "--- Post-Download Repository State ---"
+          ls -R
 
-      # - name: 🌊 Execute Navier-Stokes Solver
-      #   run: python3 main_solver.py
+      - name: 🌊 Execute Navier-Stokes Solver
+        run: python3 main_solver.py
 
-      # - name: 📤 Synchronize Results (Dropbox)
-      #   if: success()
-      #   run: |
-      #     chmod +x ./upload_to_dropbox.sh
-      #     ./upload_to_dropbox.sh
-      #     echo "--- Post-Upload Repository State ---"
-      #     ls -R
+      - name: 📤 Synchronize Results (Dropbox)
+        if: success()
+        run: |
+          chmod +x ./upload_to_dropbox.sh
+          ./upload_to_dropbox.sh
+          echo "--- Post-Upload Repository State ---"
+          ls -R
 
       - name: 📊 Audit Performance Ledger & Sync
         if: always()
