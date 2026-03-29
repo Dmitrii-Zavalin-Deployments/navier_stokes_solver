@@ -145,6 +145,10 @@ jobs:
       - name: 📦 Install Dependencies
         run: pip install -r requirements.txt
 
+      - name: 🗂️ Pre-Download Repository State
+        run: |
+          ls -R
+
       - name: 📥 Synchronize Input (Dropbox)
         run: |
           chmod +x ./download_from_dropbox.sh
