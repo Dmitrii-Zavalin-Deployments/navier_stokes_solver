@@ -351,8 +351,9 @@ def test_validate_readiness_fails_without_foundation():
     Validates Lines 605-607: Ensures setting ready_for_time_loop = True raises 
     RuntimeError if the fields buffer is missing.
     """
-    from src.common.solver_state import SolverState, FieldManager
     import pytest
+
+    from src.common.solver_state import FieldManager, SolverState
 
     # 1. Test case: fields manager is None
     state = SolverState()
