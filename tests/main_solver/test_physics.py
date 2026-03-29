@@ -2,15 +2,12 @@
 
 import logging
 from unittest.mock import MagicMock, patch
-
+import json
 import pytest
 
 from src.common.solver_config import SolverConfig
 from src.main_solver import run_solver
-from tests.helpers.solver_input_schema_dummy import (
-    create_validated_input,
-    get_explicit_solver_config,
-)
+from tests.helpers.solver_input_schema_dummy import create_validated_input
 from tests.helpers.solver_step4_output_dummy import make_step4_output_dummy
 
 
@@ -179,56 +176,43 @@ def test_run_solver_value_error_contract_violation(caplog):
 
 def test_ppe_iteration_convergence_break(tmp_path):
     """
-    Validates Lines 116-118: Ensures the PPE loop breaks early
-    when max_delta falls below the ppe_tolerance.
-    Uses explicit dummy config to satisfy schema validation.
+    Validates Lines 116-118: PPE loop breaks early on convergence.
     """
-    # 1. Setup mock paths and minimal config
+
     input_file = tmp_path / "input.json"
-    # We write a valid config using your helper
-    import json
-    dummy_config = get_explicit_solver_config(nx=2, ny=2, nz=2)
-    input_file.write_text(json.dumps(dummy_config))
+    dummy_input = create_validated_input(nx=2, ny=2, nz=2)
+    input_file.write_text(json.dumps(dummy_input.to_dict()))
     
     with patch("src.main_solver._load_simulation_context") as mock_load, \
          patch("src.main_solver.orchestrate_step1"), \
          patch("src.main_solver.orchestrate_step2") as mock_step2, \
          patch("src.main_solver.orchestrate_step3") as mock_step3, \
          patch("src.main_solver.orchestrate_step4"), \
-         patch("src.main_solver.ElasticManager"), \
+         patch("src.main_solver.ElasticManager") as mock_elastic_cls, \
          patch("src.main_solver.archive_simulation_artifacts"):
 
-        # 2. Setup Context with a REAL dict for input_data
         mock_context = MagicMock()
         mock_context.config.ppe_max_iter = 10
         mock_context.config.ppe_tolerance = 1e-5
-        
-        # Hydrate the mock with your dummy helper data
-        # This prevents the jsonschema.ValidationError
-        mock_context.input_data.to_dict.return_value = dummy_config
+        # FIX 2: Attach the REAL dummy input to the context
+        mock_context.input_data = dummy_input 
         mock_load.return_value = mock_context
         
-        # 3. Setup State
         mock_state = MagicMock()
         mock_state.ready_for_time_loop = True
         mock_state.stencil_matrix = [MagicMock()]
+        # FIX 3: Set time to a real float to support comparison
         mock_state.iteration = 0
-        mock_state.time = 0.0
+        mock_state.time = 0.0 
         mock_step2.return_value = mock_state
 
-        # Define Step3 behavior: Return delta = 1e-6 (Converged!)
         mock_step3.return_value = (None, 1e-6)
 
-        # Safety: Break the while loop after one iteration
         def side_effect(*args, **kwargs):
             mock_state.ready_for_time_loop = False
             return mock_state
         mock_state.capture_stable_state.side_effect = side_effect
         
-        # 4. Run the solver
         run_solver(str(input_file))
 
-        # 5. Verification
-        # Call 1: Predictor Pass
-        # Call 2: PPE Pass (Hits break because 1e-6 < 1e-5)
         assert mock_step3.call_count == 2
