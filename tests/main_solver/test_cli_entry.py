@@ -1,9 +1,12 @@
 # tests/main_solver/test_cli_entry.py
 
 import sys
-import pytest
 from unittest.mock import patch
+
+import pytest
+
 from src.main_solver import main
+
 
 def test_main_entry_point_missing_args():
     """Validates Line 156-158: Proper exit when no args provided."""
