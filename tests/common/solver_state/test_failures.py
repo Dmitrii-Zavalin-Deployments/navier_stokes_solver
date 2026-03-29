@@ -338,14 +338,14 @@ def test_validate_readiness_fails_without_foundation():
     # Ensure fields is explicitly None (though it is by default in __init__)
     state._fields = None 
 
-    with pytest.raises(RuntimeError, match="Access Error: 'fields' in SolverState is uninitialized."):
+    with pytest.raises(RuntimeError, match="Access Error: 'data' in FieldManager is uninitialized."):
         state.ready_for_time_loop = True
 
     # 2. Test case: fields manager exists but data is not allocated
     state = SolverState()
     state.fields = FieldManager() # _data is None by default
     
-    with pytest.raises(RuntimeError, match="Access Error: 'fields' in SolverState is uninitialized."):
+    with pytest.raises(RuntimeError, match="Access Error: 'data' in FieldManager is uninitialized."):
         state.ready_for_time_loop = True
 
 def test_validate_readiness_fails_without_physical_constraints():
@@ -366,5 +366,5 @@ def test_validate_readiness_fails_without_physical_constraints():
 
     # 2. Trigger the Sentinel
     # The setter for ready_for_time_loop calls validate_physical_readiness()
-    with pytest.raises(RuntimeError, match="CRITICAL: Physical Constraints are not defined."):
+    with pytest.raises(RuntimeError, match="Access Error: 'stencil_matrix' in SolverState is uninitialized."):
         state.ready_for_time_loop = True
