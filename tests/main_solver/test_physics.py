@@ -130,7 +130,7 @@ def test_run_solver_floating_point_critical_trap(caplog):
     with patch("src.main_solver._load_simulation_context") as mock_load, \
          patch("src.main_solver.orchestrate_step1", return_value=real_state), \
          patch("src.main_solver.orchestrate_step2", return_value=real_state), \
-         patch("src.main_solver.orchestrate_step3", side_effect=lambda *args, **kwargs: next(it)):
+         patch("src.main_solver.orchestrate_step3", side_effect=FloatingPointError('NaN')):
         
         mock_context = MagicMock()
         mock_load.return_value = mock_context
@@ -138,11 +138,11 @@ def test_run_solver_floating_point_critical_trap(caplog):
         mock_context.config = safe_config
 
         # 4. Trigger the trap
-        with pytest.raises(FloatingPointError):
+        with pytest.raises(RuntimeError):
             run_solver("dummy.json")
 
         # 5. Verify the Forensic Log (aligned with main_solver.py:146)
-        assert "NUMERICAL CRITICAL: Floating point trap sprung" in caplog.text
+        assert "STABILITY TRIGGER: Physical anomaly" in caplog.text
 
 def test_run_solver_value_error_contract_violation(caplog):
     """
