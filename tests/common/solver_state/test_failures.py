@@ -173,3 +173,27 @@ def test_mask_validation_logic():
     # 6. Test None (Should pass bypass check)
     mm.mask = None
     assert mm._mask is None
+
+def test_external_force_serialization_enforcement():
+    """
+    Validates Lines 345-347: Ensures force_vector is initialized before serialization.
+    """
+
+    efm = ExternalForceManager()
+
+    # 1. Test Attribute Error on uninitialized serialization
+    # Trigger: self.force_vector is None
+    with pytest.raises(AttributeError, match="ExternalForceManager: force_vector must be initialized."):
+        efm.to_dict()
+
+    # 2. Test validation logic in the setter (Asset Integrity)
+    with pytest.raises(ValueError, match="force_vector must be a 3D NumPy array."):
+        efm.force_vector = np.array([0.0, -9.81]) # Only 2D
+
+    # 3. Success Case: Valid serialization
+    gravity = np.array([0.0, 0.0, -9.81])
+    efm.force_vector = gravity
+    
+    serialized = efm.to_dict()
+    assert serialized["force_vector"] == [0.0, 0.0, -9.81]
+    assert isinstance(serialized["force_vector"], list)
