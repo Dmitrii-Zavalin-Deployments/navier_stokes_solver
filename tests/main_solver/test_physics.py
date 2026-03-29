@@ -90,7 +90,7 @@ def test_run_solver_elastic_success_signal():
             return state_in
 
         # 4. Patch the ElasticManager and Orchestrators
-        with patch("src.main_solver.ElasticManager") as mock_elastic_cls, \
+        with patch("src.main_solver.ElasticManager"), \
              patch("src.main_solver.orchestrate_step1", return_value=real_state), \
              patch("src.main_solver.orchestrate_step2", return_value=real_state), \
              patch("src.main_solver.orchestrate_step3", return_value=(None, 0.000001)), \
@@ -189,7 +189,7 @@ def test_ppe_iteration_convergence_break(tmp_path):
          patch("src.main_solver.orchestrate_step2") as mock_step2, \
          patch("src.main_solver.orchestrate_step3") as mock_step3, \
          patch("src.main_solver.orchestrate_step4"), \
-         patch("src.main_solver.ElasticManager") as mock_elastic_cls, \
+         patch("src.main_solver.ElasticManager"), \
          patch("src.main_solver.archive_simulation_artifacts"):
 
         mock_context = MagicMock()
