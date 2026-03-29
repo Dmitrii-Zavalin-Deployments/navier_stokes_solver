@@ -368,3 +368,33 @@ def test_validate_readiness_fails_without_physical_constraints():
     # The setter for ready_for_time_loop calls validate_physical_readiness()
     with pytest.raises(RuntimeError, match="Access Error: 'stencil_matrix' in SolverState is uninitialized."):
         state.ready_for_time_loop = True
+
+def test_external_force_manager_to_dict_fails_uninitialized():
+    """
+    Validates Lines 345-347: Ensures ExternalForceManager.to_dict() raises 
+    AttributeError if force_vector is None.
+    """
+    from src.common.solver_state import ExternalForceManager
+    import pytest
+
+    # 1. Initialize manager but leave force_vector as None (default)
+    force_mgr = ExternalForceManager()
+    
+    # 2. Verify that serialization triggers the guard
+    expected_error = "ExternalForceManager: force_vector must be initialized."
+    with pytest.raises(AttributeError, match=expected_error):
+        force_mgr.to_dict()
+
+def test_external_force_manager_to_dict_success():
+    """
+    Baseline check for ExternalForceManager.to_dict() success path.
+    """
+    from src.common.solver_state import ExternalForceManager
+    import numpy as np
+    
+    force_mgr = ExternalForceManager()
+    gravity = np.array([0.0, -9.81, 0.0])
+    force_mgr.force_vector = gravity
+    
+    result = force_mgr.to_dict()
+    assert result == {"force_vector": [0.0, -9.81, 0.0]}
