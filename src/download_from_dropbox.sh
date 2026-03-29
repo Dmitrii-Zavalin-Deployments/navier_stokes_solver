@@ -32,14 +32,28 @@ import os
 tm = TokenManager(client_id=os.environ['APP_KEY'], client_secret=os.environ['APP_SECRET'])
 ingestor = CloudIngestor(tm, os.environ['REFRESH_TOKEN'], Path(os.environ['LOG_FILE']))
 
-# Execution
-ingestor.sync(os.environ['DROPBOX_FOLDER'], Path(os.environ['LOCAL_FOLDER']), ['.h5', '.npy'])
+# Execution: Added '.json' to allowed_ext to ensure config files are synced.
+# The sync method now supports recursive discovery and folder reconstruction.
+ingestor.sync(
+    os.environ['DROPBOX_FOLDER'], 
+    Path(os.environ['LOCAL_FOLDER']), 
+    ['.h5', '.npy', '.json']
+)
 "
 
 # 5. Result Verification
 if [ $? -eq 0 ]; then
-    echo "✅ SUCCESS: Inputs synchronized."
+    # Audit check: Count how many files actually landed in the target directory
+    FILE_COUNT=$(find "$LOCAL_FOLDER" -type f | wc -l)
+    
+    if [ "$FILE_COUNT" -gt 0 ]; then
+        echo "✅ SUCCESS: $FILE_COUNT files synchronized to $LOCAL_FOLDER"
+    else
+        echo "⚠️  WARNING: Sync reported success but 0 files were downloaded."
+        echo "   Check if files in Dropbox match the extensions: .h5, .npy, .json"
+        exit 1
+    fi
 else
-    echo "❌ ERROR: Ingestion failed."
+    echo "❌ ERROR: Ingestion failed during Python execution."
     exit 1
 fi
