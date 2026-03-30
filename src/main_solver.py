@@ -139,12 +139,9 @@ def run_solver(input_path: str) -> str:
             # Reduce dt and loop back to try again with clean memory
             elasticity.stabilization(is_needed=True)
 
-        except FloatingPointError:
-            logger.error(f"❌ NUMERICAL CRITICAL: Floating point trap sprung at iteration {state.iteration}.")
-            raise 
-
-        except ValueError as e:
-            logger.error(f"🚫 CONTRACT VIOLATION: {str(e)}")
+        except Exception as e:
+            # Catch-all for Terminal errors (ValueError, FloatingPointError, etc.)
+            logger.error(f"❌ CRITICAL TERMINATION [{type(e).__name__}]: {str(e)}")
             raise
 
     return archive_simulation_artifacts(state)

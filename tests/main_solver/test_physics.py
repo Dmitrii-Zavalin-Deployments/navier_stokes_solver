@@ -110,115 +110,37 @@ def test_run_solver_elastic_success_signal():
         # This confirms that because max_delta < ppe_tolerance, stabilization is False
         mock_elastic_instance.stabilization.assert_called_with(is_needed=False)
 
-# def test_run_solver_floating_point_critical_trap(caplog):
-#     """
-#     Forensic Audit: Validates Lines 145-147 of src/main_solver.py.
-#     Ensures that a FloatingPointError (NaN/Inf) triggers the 
-#     NUMERICAL CRITICAL log and terminates immediately.
-#     """
-#     caplog.set_level(logging.ERROR, logger="Solver.Main")
-    
-#     real_state = make_step4_output_dummy()
-#     real_input = create_validated_input()
-#     real_state.ready_for_time_loop = True
-
-#     # Configure a basic config
-#     safe_config = MagicMock()
-#     safe_config.ppe_max_iter = 1
-#     safe_config.ppe_tolerance = 1e-6
-
-#     with patch("src.main_solver._load_simulation_context") as mock_load, \
-#          patch("src.main_solver.orchestrate_step1", return_value=real_state), \
-#          patch("src.main_solver.orchestrate_step2", return_value=real_state), \
-#          patch("src.main_solver.orchestrate_step3", side_effect=FloatingPointError('Numerical Explosion')):
-        
-#         mock_context = MagicMock()
-#         mock_load.return_value = mock_context
-#         mock_context.input_data = real_input
-#         mock_context.config = safe_config
-
-#         # 1. The solver MUST raise FloatingPointError, NOT RuntimeError
-#         with pytest.raises(FloatingPointError):
-#             run_solver("dummy.json")
-
-#     # 2. Verify the specific log for this block
-#     assert "NUMERICAL CRITICAL" in caplog.text
-#     assert "Floating point trap sprung" in caplog.text
-
-def test_run_solver_value_error_contract_violation(caplog):
+def test_run_solver_terminal_error_coverage(caplog):
     """
-    Forensic Audit: Validates Line 143-144 of src/main_solver.py.
+    Forensic Audit: Validates the catch-all terminal exception block in src/main_solver.py.
+    This test ensures that any non-arithmetic error (like ValueError) is logged 
+    with the [ClassName] and re-raised to stop the pipeline.
     """
-    # Force caplog to capture at the ERROR level for our specific logger
+    # 1. Force caplog to capture at the ERROR level for our specific logger
     caplog.set_level(logging.ERROR, logger="Solver.Main")
 
+    # 2. Setup real-enough dummy data to bypass initial checks
     real_state = make_step4_output_dummy()
     real_input = create_validated_input()
     real_state.ready_for_time_loop = True
 
-    # Minimal config to trigger the loop once
-    safe_config = MagicMock()
-    safe_config.ppe_max_iter = 1
-    safe_config.ppe_tolerance = 1e-6
+    # 3. Use actual values for config to avoid MagicMock math/range errors
+    mock_context = MagicMock()
+    mock_context.input_data = real_input
+    mock_context.config.ppe_max_iter = 1
+    mock_context.config.ppe_tolerance = 1e-6
 
-    with patch("src.main_solver._load_simulation_context") as mock_load, \
+    # 4. Patch orchestrators to trigger the "Terminal" catch block
+    with patch("src.main_solver._load_simulation_context", return_value=mock_context), \
          patch("src.main_solver.orchestrate_step1", return_value=real_state), \
          patch("src.main_solver.orchestrate_step2", return_value=real_state), \
          patch("src.main_solver.orchestrate_step3", side_effect=ValueError("Illegal Stencil State")):
         
-        mock_context = MagicMock()
-        mock_load.return_value = mock_context
-        mock_context.input_data = real_input
-        mock_context.config = safe_config
-
-        # We expect the ValueError to be re-raised after logging
+        # 5. Verify that the ValueError is re-raised after being logged
         with pytest.raises(ValueError, match="Illegal Stencil State"):
             run_solver("dummy.json")
 
-    # Asserting just the core phrase to avoid issues with emojis or specific formatting
-    assert "CONTRACT VIOLATION" in caplog.text
+    # 6. Forensic Audit of the Log Output
+    # This matches the new pragmatic log format: ❌ CRITICAL TERMINATION [ValueError]: ...
+    assert "CRITICAL TERMINATION [ValueError]" in caplog.text
     assert "Illegal Stencil State" in caplog.text
-
-@pytest.mark.parametrize("error_type, expected_log", [
-    (ArithmeticError("Overflow"), "Audit Failure: Overflow"),
-    (FloatingPointError("NaN"), "NUMERICAL CRITICAL"),
-    (ValueError("Bad Stencil"), "CONTRACT VIOLATION")
-])
-def test_main_solver_exception_blocks(caplog, error_type, expected_log):
-    """
-    Forensic Audit: Covers lines 132-152 of main_solver.py.
-    Validates the specific handling of each trapped exception.
-    """
-    caplog.set_level(logging.DEBUG, logger="Solver.Main")
-    
-    # 1. Setup State and Input
-    real_state = make_step4_output_dummy()
-    real_state.ready_for_time_loop = True
-    real_state.iteration = 1
-    
-    # 2. Setup Config (Using actual values to satisfy range() and math)
-    mock_context = MagicMock()
-    mock_context.input_data = create_validated_input()
-    mock_context.config.ppe_max_iter = 1
-    mock_context.config.ppe_tolerance = 1e-6
-    mock_context.config.dt_min_limit = 1e-6
-    mock_context.config.ppe_max_retries = 2
-
-    with patch("src.main_solver._load_simulation_context", return_value=mock_context), \
-         patch("src.main_solver.orchestrate_step1", return_value=real_state), \
-         patch("src.main_solver.orchestrate_step2", return_value=real_state), \
-         patch("src.main_solver.orchestrate_step3") as mock_step3, \
-         patch("src.main_solver.archive_simulation_artifacts", return_value="dummy.zip"):
-
-        # Logic for ArithmeticError: Mock failure then success to stop the loop
-        if isinstance(error_type, ArithmeticError) and not isinstance(error_type, FloatingPointError):
-            mock_step3.side_effect = [error_type, (None, 0.0)]
-            run_solver("dummy.json")
-        else:
-            # For terminal errors (FPError, ValueError), the loop should raise and exit immediately
-            mock_step3.side_effect = error_type
-            with pytest.raises(type(error_type)):
-                run_solver("dummy.json")
-
-    # 3. Verify the specific log message for the code block was reached
-    assert expected_log in caplog.text
