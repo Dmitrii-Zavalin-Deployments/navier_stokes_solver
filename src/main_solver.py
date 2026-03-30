@@ -122,9 +122,6 @@ def run_solver(input_path: str) -> str:
             # Finalize Step (Iteration incremented here)
             state = orchestrate_step4(state, context)
 
-            if state.iteration % 10 == 0:
-                logger.debug(f"Step {state.iteration} | Time {state.time:.4f} | dt {elasticity.dt:.2e}")
-
             if state.time >= context.input_data.simulation_parameters.total_time:
                 state.ready_for_time_loop = False
 
