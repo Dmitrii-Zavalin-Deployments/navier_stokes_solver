@@ -110,43 +110,40 @@ def test_run_solver_elastic_success_signal():
         # This confirms that because max_delta < ppe_tolerance, stabilization is False
         mock_elastic_instance.stabilization.assert_called_with(is_needed=False)
 
-# def test_run_solver_floating_point_critical_trap(caplog):
-#     """
-#     Forensic Audit: Validates Line 145-147 of src/main_solver.py.
-#     Ensures that a FloatingPointError (NaN/Inf) triggers the NUMERICAL CRITICAL
-#     log and terminates the process immediately.
-#     """
-#     # 1. Setup real state/input to pass ValidatedContainer checks
-#     real_state = make_step4_output_dummy()
-#     real_input = create_validated_input()
-#     real_state.ready_for_time_loop = True
+def test_run_solver_floating_point_critical_trap(caplog):
+    """
+    Forensic Audit: Validates Lines 145-147 of src/main_solver.py.
+    Ensures that a FloatingPointError (NaN/Inf) triggers the 
+    NUMERICAL CRITICAL log and terminates immediately.
+    """
+    caplog.set_level(logging.ERROR, logger="Solver.Main")
+    
+    real_state = make_step4_output_dummy()
+    real_input = create_validated_input()
+    real_state.ready_for_time_loop = True
 
-#     # 2. Configure the Safety Ladder (src/common/elasticity.py:30)
-#     # These values ensure the linear interpolation in __init__ doesn't fail.
-#     safe_config = SolverConfig(
-#         ppe_max_iter=1,
-#         ppe_tolerance=1e-6,
-#         dt_min_limit=1e-6,      # Sets the ladder floor
-#         ppe_max_retries=1       # Sets the ladder steps
-#     )
+    # Configure a basic config
+    safe_config = MagicMock()
+    safe_config.ppe_max_iter = 1
+    safe_config.ppe_tolerance = 1e-6
 
-#     # 3. Mock the loader and orchestrator
-#     with patch("src.main_solver._load_simulation_context") as mock_load, \
-#          patch("src.main_solver.orchestrate_step1", return_value=real_state), \
-#          patch("src.main_solver.orchestrate_step2", return_value=real_state), \
-#          patch("src.main_solver.orchestrate_step3", side_effect=FloatingPointError('NaN')):
+    with patch("src.main_solver._load_simulation_context") as mock_load, \
+         patch("src.main_solver.orchestrate_step1", return_value=real_state), \
+         patch("src.main_solver.orchestrate_step2", return_value=real_state), \
+         patch("src.main_solver.orchestrate_step3", side_effect=FloatingPointError('Numerical Explosion')):
         
-#         mock_context = MagicMock()
-#         mock_load.return_value = mock_context
-#         mock_context.input_data = real_input
-#         mock_context.config = safe_config
+        mock_context = MagicMock()
+        mock_load.return_value = mock_context
+        mock_context.input_data = real_input
+        mock_context.config = safe_config
 
-#         # 4. Trigger the trap
-#         with pytest.raises(RuntimeError):
-#             run_solver("dummy.json")
+        # 1. The solver MUST raise FloatingPointError, NOT RuntimeError
+        with pytest.raises(FloatingPointError):
+            run_solver("dummy.json")
 
-#         # 5. Verify the Forensic Log (aligned with main_solver.py:146)
-#         assert "STABILITY TRIGGER: Physical anomaly" in caplog.text
+    # 2. Verify the specific log for this block
+    assert "NUMERICAL CRITICAL" in caplog.text
+    assert "Floating point trap sprung" in caplog.text
 
 def test_run_solver_value_error_contract_violation(caplog):
     """
