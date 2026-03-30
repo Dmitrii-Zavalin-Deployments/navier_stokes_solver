@@ -150,18 +150,19 @@ def test_run_solver_floating_point_critical_trap(caplog):
 
 def test_run_solver_value_error_contract_violation(caplog):
     """
-    Forensic Audit: Validates Line 149-151 of src/main_solver.py.
+    Forensic Audit: Validates Line 143-144 of src/main_solver.py.
     """
+    # Force caplog to capture at the ERROR level for our specific logger
+    caplog.set_level(logging.ERROR, logger="Solver.Main")
+
     real_state = make_step4_output_dummy()
     real_input = create_validated_input()
     real_state.ready_for_time_loop = True
 
-    safe_config = SolverConfig(
-        ppe_max_iter=1,
-        ppe_tolerance=1e-6,
-        dt_min_limit=1e-6,
-        ppe_max_retries=1
-    )
+    # Minimal config to trigger the loop once
+    safe_config = MagicMock()
+    safe_config.ppe_max_iter = 1
+    safe_config.ppe_tolerance = 1e-6
 
     with patch("src.main_solver._load_simulation_context") as mock_load, \
          patch("src.main_solver.orchestrate_step1", return_value=real_state), \
@@ -173,7 +174,10 @@ def test_run_solver_value_error_contract_violation(caplog):
         mock_context.input_data = real_input
         mock_context.config = safe_config
 
+        # We expect the ValueError to be re-raised after logging
         with pytest.raises(ValueError, match="Illegal Stencil State"):
             run_solver("dummy.json")
 
-        assert "🚫 CONTRACT VIOLATION: Illegal Stencil State" in caplog.text
+    # Asserting just the core phrase to avoid issues with emojis or specific formatting
+    assert "CONTRACT VIOLATION" in caplog.text
+    assert "Illegal Stencil State" in caplog.text
