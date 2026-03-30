@@ -1,10 +1,10 @@
 {
-    "dt": 0.0005,
+    "dt": 0.0001,
     "dt_min_limit": 0.00001,
-    "ppe_tolerance": 1e-4,
-    "ppe_atol": 1e-6,
-    "ppe_max_iter": 500,
-    "ppe_omega": 1.2,
-    "ppe_max_retries": 10,
+    "ppe_tolerance": 1e-5,
+    "ppe_atol": 1e-7,
+    "ppe_max_iter": 1000,
+    "ppe_omega": 1.0,
+    "ppe_max_retries": 5,
     "divergence_threshold": 200000.0
 }
