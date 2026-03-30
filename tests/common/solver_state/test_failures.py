@@ -266,7 +266,7 @@ def test_audit_fails_without_pressure_reference():
 
     # 3. Trigger the Sentinel (Rule 7)
     # This should fail because 'ref_bc' will be None
-    expected_msg = "No pressure reference boundary found \(Required for Rule 7\)."
+    expected_msg = r"No pressure reference boundary found \(Required for Rule 7\)."
     with pytest.raises(RuntimeError, match=expected_msg):
         state.audit_physical_bounds()
 
