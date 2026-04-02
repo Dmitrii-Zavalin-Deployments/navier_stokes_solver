@@ -6,7 +6,7 @@ on:
       - "**"
   workflow_dispatch:
   repository_dispatch:
-    types: [worker_trigger]
+    types: [artifact_driven_simulation_engine]
 
 jobs:
   pre_flight_tests:
