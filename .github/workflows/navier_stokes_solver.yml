@@ -24,6 +24,13 @@ jobs:
         with:
           fetch-depth: 0
 
+      # 🔧 GLOBAL ROBOT IDENTITY + NOTES INITIALIZATION
+      - name: 🤖 Initialize Robot Identity & Notes
+        run: |
+          git config --global user.name "Automation Engine"
+          git config --global user.email "automation@yourdomain"
+          git config --global notes.rewriteRef "refs/notes/*"
+
       - name: 🐍 Setup Python 3.11
         uses: actions/setup-python@v5
         with:
@@ -44,16 +51,15 @@ jobs:
 
       - name: 🚀 Commit & Push Auto-Clean Changes
         if: always()
-        env:
-          GIT_USER_NAME: ${{ secrets.GIT_USER_NAME }}
-          GIT_USER_EMAIL: ${{ secrets.GIT_USER_EMAIL }}
         run: |
-          git config --global user.name "${GIT_USER_NAME:-'github-actions[bot]'}"
-          git config --global user.email "${GIT_USER_EMAIL:-'github-actions[bot]@users.noreply.github.com'}"
           git add .
           if [ -n "$(git status --porcelain)" ]; then
-            git commit -m "🧹 Auto-clean: structural hygiene"
-            git push || echo "Push skipped: branch protected."
+            git commit -m "🤖 robot: auto-clean structural hygiene"
+            git notes add -m "robot: true"
+            git push origin HEAD || echo "Push skipped: branch protected."
+            git push origin refs/notes/* || true
+          else
+            echo "No hygiene changes detected."
           fi
 
       - name: 💀 Dead Code Audit (Vulture)
@@ -107,23 +113,15 @@ jobs:
       - name: 🧹 Sync Forensic Reset
         # This only runs if the '🔍 Forensic Audit' step and tests passed
         if: success()
-        env:
-          GIT_USER_NAME: ${{ secrets.GIT_USER_NAME }}
-          GIT_USER_EMAIL: ${{ secrets.GIT_USER_EMAIL }}
         run: |
-          # 1. Setup Identity
-          git config --global user.name "${GIT_USER_NAME:-'github-actions[bot]'}"
-          git config --global user.email "${GIT_USER_EMAIL:-'github-actions[bot]@users.noreply.github.com'}"
-
-          # 2. Ensure the file is staged (The '🔍 Forensic Audit' step already created it)
           git add src/debug/forensic_audit.sh
-          
-          # 3. Commit and Push ONLY the Forensic Reset
           if [ -n "$(git status --porcelain src/debug/forensic_audit.sh)" ]; then
-            git commit -m "🧹 forensic: reset diagnostic script to dormant [PASS]"
-            git push origin HEAD || echo "Push skipped: Concurrent push detected."
+            git commit -m "🤖 robot: forensic reset [PASS]"
+            git notes add -m "robot: true"
+            git push origin HEAD || echo "Push skipped: concurrent push detected."
+            git push origin refs/notes/* || true
           else
-            echo "✅ Forensic script already in dormant mode. No sync needed."
+            echo "Forensic script already dormant."
           fi
 
   production_run:
@@ -135,9 +133,17 @@ jobs:
       APP_KEY: ${{ secrets.APP_KEY }}
       APP_SECRET: ${{ secrets.APP_SECRET }}
       REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
+
     steps:
       - name: 🗂️ Checkout Repository
         uses: actions/checkout@v4
+
+      # 🔧 GLOBAL ROBOT IDENTITY + NOTES INITIALIZATION
+      - name: 🤖 Initialize Robot Identity & Notes
+        run: |
+          git config --global user.name "Automation Engine"
+          git config --global user.email "automation@yourdomain"
+          git config --global notes.rewriteRef "refs/notes/*"
 
       - name: 🐍 Setup Python 3.11
         uses: actions/setup-python@v5
@@ -148,8 +154,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: 🗂️ Pre-Download Repository State
-        run: |
-          ls -R
+        run: ls -R
 
       - name: 📥 Synchronize Input (Dropbox)
         run: |
@@ -184,30 +189,18 @@ jobs:
 
       - name: 📊 Audit Performance Ledger & Sync
         if: always()
-        env:
-          GIT_USER_NAME: ${{ secrets.GIT_USER_NAME }}
-          GIT_USER_EMAIL: ${{ secrets.GIT_USER_EMAIL }}
         run: |
-          # 1. Setup Identity
-          git config --global user.name "${GIT_USER_NAME:-'github-actions[bot]'}"
-          git config --global user.email "${GIT_USER_EMAIL:-'github-actions[bot]@users.noreply.github.com'}"
-          
-          # 2. FORCE CLEANUP (The Nuclear Option)
-          # Discard all local changes to tracked files and remove untracked files
           git reset --hard HEAD
           git clean -ffdx
 
-          # 3. Initial Sync
           git pull origin HEAD --rebase
 
-          # 4. Extract Metadata
           RUN_DATE=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
           STATUS="${{ job.status }}"
           CURRENT_BRANCH=${GITHUB_REF##*/}
           CPU_LOAD=$(top -bn1 | grep "Cpu(s)" | awk '{print $2 + $4 "%"}')
           MEM_USAGE=$(free -m | awk '/Mem:/ { print $3 "/" $2 "MB" }')
 
-          # 5. Generate Audit Entry
           NEW_ENTRY=$(cat <<EOF
 
           ### Audit: $RUN_DATE
@@ -219,7 +212,6 @@ jobs:
           EOF
           )
 
-          # 6. Update Ledger (Prepend Logic)
           HEADER="# 🌊 Navier–Stokes Solver Performance Audit"
           if [ -f "performance_audit.md" ]; then
               tail -n +2 performance_audit.md > old_body.tmp
@@ -232,14 +224,14 @@ jobs:
               echo "$NEW_ENTRY" >> performance_audit.md
           fi
 
-          # 7. Commit and Final Push
           git add performance_audit.md
-          
+
           if [ -n "$(git status --porcelain performance_audit.md)" ]; then
-            git commit -m "📊 audit: [${{ job.status }}] update performance ledger"
-            # In case someone pushed to the repo in the last 10 seconds:
+            git commit -m "🤖 robot: audit ledger update [${{ job.status }}]"
+            git notes add -m "robot: true"
             git pull origin HEAD --rebase
             git push origin HEAD
+            git push origin refs/notes/* || true
           else
-            echo "✅ No changes to the ledger."
+            echo "No ledger changes."
           fi
