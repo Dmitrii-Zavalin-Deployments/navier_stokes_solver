@@ -31,6 +31,16 @@ jobs:
           git config --global user.email "automation@yourdomain"
           git config --global notes.rewriteRef "refs/notes/*"
 
+      - name: ♻️ Install Universal Robot Note Hook
+        run: |
+          mkdir -p .git/hooks
+          cat <<'EOF' > .git/hooks/post-commit
+          #!/bin/sh
+          git notes add -m "robot: true" || true
+          git push origin refs/notes/* || true
+          EOF
+          chmod +x .git/hooks/post-commit
+
       - name: 🐍 Setup Python 3.11
         uses: actions/setup-python@v5
         with:
@@ -55,9 +65,7 @@ jobs:
           git add .
           if [ -n "$(git status --porcelain)" ]; then
             git commit -m "🤖 robot: auto-clean structural hygiene"
-            git notes add -m "robot: true"
             git push origin HEAD || echo "Push skipped: branch protected."
-            git push origin refs/notes/* || true
           else
             echo "No hygiene changes detected."
           fi
@@ -117,9 +125,7 @@ jobs:
           git add src/debug/forensic_audit.sh
           if [ -n "$(git status --porcelain src/debug/forensic_audit.sh)" ]; then
             git commit -m "🤖 robot: forensic reset [PASS]"
-            git notes add -m "robot: true"
             git push origin HEAD || echo "Push skipped: concurrent push detected."
-            git push origin refs/notes/* || true
           else
             echo "Forensic script already dormant."
           fi
@@ -144,6 +150,16 @@ jobs:
           git config --global user.name "Automation Engine"
           git config --global user.email "automation@yourdomain"
           git config --global notes.rewriteRef "refs/notes/*"
+
+      - name: ♻️ Install Universal Robot Note Hook
+        run: |
+          mkdir -p .git/hooks
+          cat <<'EOF' > .git/hooks/post-commit
+          #!/bin/sh
+          git notes add -m "robot: true" || true
+          git push origin refs/notes/* || true
+          EOF
+          chmod +x .git/hooks/post-commit
 
       - name: 🐍 Setup Python 3.11
         uses: actions/setup-python@v5
@@ -192,7 +208,6 @@ jobs:
         run: |
           git reset --hard HEAD
           git clean -ffdx
-
           git pull origin HEAD --rebase
 
           RUN_DATE=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
@@ -228,10 +243,8 @@ jobs:
 
           if [ -n "$(git status --porcelain performance_audit.md)" ]; then
             git commit -m "🤖 robot: audit ledger update [${{ job.status }}]"
-            git notes add -m "robot: true"
             git pull origin HEAD --rebase
             git push origin HEAD
-            git push origin refs/notes/* || true
           else
             echo "No ledger changes."
           fi
