@@ -27,7 +27,7 @@ def test_cloud_uploader_success(mock_dbx_class):
     
     # 3. Execute Atomic Upload
     # We test with a "dirty" folder string to verify the path normalization logic
-    dirty_folder_input = "//engineering_simulations_pipeline//"
+    dirty_folder_input = "//simulators//"
     
     with patch.object(Path, "exists", return_value=True):
         with patch("builtins.open", mock_open(read_data=binary_data)):
@@ -43,7 +43,7 @@ def test_cloud_uploader_success(mock_dbx_class):
     
     # args[1] is the remote path. 
     # Verification: Logic should have stripped the // and normalized it.
-    assert args[1] == "/engineering_simulations_pipeline/navier_stokes_output.zip"
+    assert args[1] == "/simulators/navier_stokes_output.zip"
     
     # Verify Rule 8: Explicit overwrite mode was used
     assert kwargs['mode'] == dropbox.files.WriteMode.overwrite

@@ -40,7 +40,7 @@ uploader = CloudUploader(tm, os.environ['REFRESH_TOKEN'])
 # Execute
 uploader.upload(
     Path(os.environ['LOCAL_ZIP_PATH']), 
-    '/engineering_simulations_pipeline'
+    '/simulators'
 )
 "
 
