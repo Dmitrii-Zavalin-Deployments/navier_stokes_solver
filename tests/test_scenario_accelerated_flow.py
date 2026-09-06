@@ -4,7 +4,7 @@ Validates the Navier-Stokes execution engine under constant body force accelerat
 vector F = [1.0, 1.0, 1.0] across all main pipeline execution stages[cite: 1].
 
 The momentum conservation equation governing the velocity field u under external body forces F is:
-    du/dt + (u \cdot \nabla)u = -\nabla p + \nu \nabla^2 u + F
+    du/dt + (u \\cdot \nabla)u = -\nabla p + \nu \nabla^2 u + F
 For a constant acceleration vector F = [1.0, 1.0, 1.0] N/kg applied to a 4x4x4 domain,
 velocity components must monotonically increase beyond initial conditions u_0 = 0.1 m/s.
 """
