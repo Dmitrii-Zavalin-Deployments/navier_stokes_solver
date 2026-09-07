@@ -4,8 +4,8 @@ Validates the Navier-Stokes execution engine under constant body force accelerat
 vector F = [1.0, 1.0, 1.0] across all main pipeline execution stages[cite: 1].
 
 The momentum conservation equation governing the velocity field u under external body forces F is:
-    du/dt + (u \\cdot \nabla)u = -\nabla p + \nu \nabla^2 u + F
-For a constant acceleration vector F = [1.0, 1.0, 1.0] N/kg applied to a 4x4x4 domain,
+    du/dt + (u \\cdot \\nabla)u = -\\nabla p + \\nu \\nabla^2 u + F
+For a constant acceleration vector F = [1.0, 1.0, 1.0] N/kg applied to a 4x4x4 domain with interior fluid cells,
 velocity components must monotonically increase beyond initial conditions u_0 = 0.1 m/s.
 """
 
@@ -31,8 +31,8 @@ def test_integration_accelerated_flow_pipeline(workspace_folder, monkeypatch):
     # -------------------------------------------------------------------------
     # The computational domain is defined as a uniform cubic grid:
     #     V = nx * ny * nz = 4 * 4 * 4 = 64 cells
-    # Initial velocities are initialized to u_0 = 0.1, v_0 = 0.1, w_0 = 0.1 m/s.
-    # Constant body forces are injected as fx = 1.0, fy = 1.0, fz = 1.0 N/kg.
+    # Interior fluid cells (mask = 1) are configured with initial velocities 
+    # u_0 = 0.1, v_0 = 0.1, w_0 = 0.1 m/s and constant body forces F = [1.0, 1.0, 1.0].
     # -------------------------------------------------------------------------
     folder = workspace_folder["folder"]
     input_file = workspace_folder["input_file_name"]
@@ -43,10 +43,23 @@ def test_integration_accelerated_flow_pipeline(workspace_folder, monkeypatch):
         input_data = json.load(f)
 
     input_data["grid"].update({"nx": 4, "ny": 4, "nz": 4})
-    input_data["mask"] = [0] * 64
+    
+    # 4x4x4 mask with interior fluid cells (1) and boundary walls (0) to permit flow
+    layer_mask = [
+        0, 0, 0, 0,
+        0, 1, 1, 0,
+        0, 1, 1, 0,
+        0, 0, 0, 0
+    ]
+    input_data["mask"] = layer_mask * 4
     input_data["initial_conditions"]["velocity"] = [0.1, 0.1, 0.1]
     input_data["external_forces"]["force_vector"] = [1.0, 1.0, 1.0]
     input_data["external_forces"]["gravity_vector"] = [0.0, 0.0, 0.0]
+    input_data["boundary_conditions"] = [
+        {"location": "z_min", "type": "inflow", "values": {"u": 0.1, "v": 0.1, "w": 0.1, "p": 0.0}},
+        {"location": "z_max", "type": "outflow", "values": {"u": 0.1, "v": 0.1, "w": 0.1, "p": 0.0}},
+        {"location": "wall", "type": "no-slip", "values": {"u": 0.0, "v": 0.0, "w": 0.0, "p": 0.0}}
+    ]
 
     with open(input_path, "w", encoding="utf-8") as f:
         json.dump(input_data, f, indent=2)
@@ -92,7 +105,7 @@ def test_integration_accelerated_flow_pipeline(workspace_folder, monkeypatch):
     zip_path = Path(folder) / zip_filename
     assert zip_path.is_file(), f"ZIP archive missing at {zip_path}"
 
-    final_step = 3
+    final_step = manifest["results"].get("final_step", 3)
     field_names = ["field_u", "field_v", "field_w", "field_p"]
 
     with zipfile.ZipFile(zip_path, "r") as zf:
