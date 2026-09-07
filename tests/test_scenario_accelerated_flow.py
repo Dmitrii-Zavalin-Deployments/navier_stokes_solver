@@ -42,6 +42,8 @@ def test_integration_accelerated_flow_pipeline(workspace_folder, monkeypatch):
     with open(input_path, "r", encoding="utf-8") as f:
         input_data = json.load(f)
 
+    input_data["simulation_parameters"] = {"time_step": 0.001, "total_time": 0.003, "output_interval": 1}
+    input_data["simulation_parameters"] = {"time_step": 0.001, "total_time": 0.003, "output_interval": 1}
     input_data["grid"].update({"nx": 4, "ny": 4, "nz": 4})
     
     # 4x4x4 mask with interior fluid cells (1) and boundary walls (0) to permit flow
