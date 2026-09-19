@@ -23,66 +23,123 @@ logger = logging.getLogger("Solver.CppGate")
 
 
 def _dict_to_boundary_condition(bc_dict: dict) -> Any:
-    """Instantiates and populates a C++ BoundaryCondition object from a Python dict."""
+    """Instantiates and populates a C++ BoundaryCondition object from a Python dict, mapping nested and flat fields."""
+    if not isinstance(bc_dict, dict):
+        raise TypeError("Boundary condition configuration must be a dictionary.")
+
+    if "location" not in bc_dict:
+        raise KeyError("Boundary condition configuration missing required field 'location'. Defaults are strictly prohibited.")
+    if "type" not in bc_dict:
+        raise KeyError("Boundary condition configuration missing required field 'type'. Defaults are strictly prohibited.")
+
     bc_obj = navier_stokes_cpp.BoundaryCondition()
 
-    if "location" in bc_dict and hasattr(bc_obj, "location"):
-        bc_obj.location = str(bc_dict["location"])
-    if "type" in bc_dict and hasattr(bc_obj, "type"):
-        bc_obj.type = str(bc_dict["type"])
+    if hasattr(bc_obj, "location"):
+        try:
+            setattr(bc_obj, "location", str(bc_dict["location"]))
+        except (AttributeError, TypeError) as err:
+            logger.debug(f"Could not set 'location' attribute on BoundaryCondition: {err}")
 
-    vals = bc_dict.get("values", {})
-    if not isinstance(vals, dict):
-        vals = {}
+    if hasattr(bc_obj, "type"):
+        try:
+            setattr(bc_obj, "type", str(bc_dict["type"]))
+        except (AttributeError, TypeError) as err:
+            logger.debug(f"Could not set 'type' attribute on BoundaryCondition: {err}")
 
-    u_val = float(vals.get("u", bc_dict.get("u", 0.0)))
-    v_val = float(vals.get("v", bc_dict.get("v", 0.0)))
-    w_val = float(vals.get("w", bc_dict.get("w", 0.0)))
-    p_val = float(vals.get("p", bc_dict.get("p", 0.0)))
+    # Extract values dictionary strictly without fallback defaults
+    vals = bc_dict.get("values")
+    if vals is None:
+        vals = bc_dict
 
-    # Set attributes across all potential C++ binding field naming conventions
-    for attr in ["u_val", "u"]:
+    missing_fields = [k for k in ["u", "v", "w", "p"] if k not in vals]
+    if missing_fields:
+        raise KeyError(
+            f"Boundary condition for '{bc_dict['location']}' missing required numerical value field(s): {missing_fields}. "
+            "No default values allowed."
+        )
+
+    u_val = float(vals["u"])
+    v_val = float(vals["v"])
+    w_val = float(vals["w"])
+    p_val = float(vals["p"])
+
+    # 1. Populate nested 'values' C++ sub-object if bound by Pybind11
+    if hasattr(bc_obj, "values"):
+        val_obj = getattr(bc_obj, "values")
+        if val_obj is not None:
+            for k, val in [("u", u_val), ("v", v_val), ("w", w_val), ("p", p_val)]:
+                if hasattr(val_obj, k):
+                    try:
+                        setattr(val_obj, k, val)
+                    except (AttributeError, TypeError) as err:
+                        logger.debug(f"Skipping read-only or type-incompatible Pybind11 nested attribute 'values.{k}': {err}")
+
+    # 2. Fallback/direct attribute mappings on the BoundaryCondition object itself
+    field_map = {
+        "u": u_val, "u_val": u_val,
+        "v": v_val, "v_val": v_val,
+        "w": w_val, "w_val": w_val,
+        "p": p_val, "p_val": p_val, "scalar_p": p_val
+    }
+    for attr, val in field_map.items():
         if hasattr(bc_obj, attr):
-            setattr(bc_obj, attr, u_val)
-    for attr in ["v_val", "v"]:
-        if hasattr(bc_obj, attr):
-            setattr(bc_obj, attr, v_val)
-    for attr in ["w_val", "w"]:
-        if hasattr(bc_obj, attr):
-            setattr(bc_obj, attr, w_val)
-    for attr in ["scalar_p", "p", "p_val"]:
-        if hasattr(bc_obj, attr):
-            setattr(bc_obj, attr, p_val)
+            try:
+                setattr(bc_obj, attr, val)
+            except (AttributeError, TypeError) as err:
+                logger.debug(
+                    f"Skipping read-only or incompatible Pybind11 attribute '{attr}' on BoundaryCondition: {err}"
+                )
 
     return bc_obj
 
 
 def _apply_initial_boundary_conditions(state: SolverState) -> None:
-    """Enforces initial boundary condition values (e.g., inflow velocity = 0.1) onto array boundaries."""
-    raw_bcs = getattr(state, "input_data", {}).get("boundary_conditions", [])
+    """Enforces initial boundary condition values (e.g., inflow velocity = 0.1) onto array boundary faces."""
+    raw_bcs = getattr(state, "boundary_conditions", None)
+    if not raw_bcs and hasattr(state, "input_data") and isinstance(state.input_data, dict):
+        raw_bcs = state.input_data.get("boundary_conditions")
+
     if not raw_bcs:
-        raw_bcs = getattr(state, "boundary_conditions", [])
+        raise KeyError("FATAL ERROR: Boundary conditions missing from state and input_data. Defaults are strictly prohibited.")
 
     for bc in raw_bcs:
         if isinstance(bc, dict):
-            loc = bc.get("location", "")
-            bc_type = bc.get("type", "")
-            vals = bc.get("values", {})
+            if "location" not in bc or "type" not in bc:
+                raise KeyError("Boundary condition configuration item missing required 'location' or 'type' key.")
+            loc = bc["location"]
+            bc_type = bc["type"]
+            vals = bc.get("values", bc)
         else:
-            loc = getattr(bc, "location", "")
-            bc_type = getattr(bc, "type", "")
-            vals = {
-                "u": getattr(bc, "u_val", getattr(bc, "u", 0.0)),
-                "v": getattr(bc, "v_val", getattr(bc, "v", 0.0)),
-                "w": getattr(bc, "w_val", getattr(bc, "w", 0.0)),
-                "p": getattr(bc, "scalar_p", getattr(bc, "p", 0.0)),
-            }
+            loc = getattr(bc, "location", None)
+            bc_type = getattr(bc, "type", None)
+            if loc is None or bc_type is None:
+                raise KeyError("BoundaryCondition object missing required 'location' or 'type' attribute.")
+
+            vals = {}
+            for k, attr_names in [("u", ["u", "u_val"]), ("v", ["v", "v_val"]), ("w", ["w", "w_val"]), ("p", ["p", "p_val", "scalar_p"])]:
+                val = None
+                if hasattr(bc, "values") and getattr(bc, "values") is not None:
+                    val_sub = getattr(bc, "values")
+                    if hasattr(val_sub, k):
+                        val = getattr(val_sub, k)
+                if val is None:
+                    for name in attr_names:
+                        if hasattr(bc, name):
+                            val = getattr(bc, name)
+                            break
+                if val is None:
+                    raise KeyError(f"Boundary condition object for '{loc}' missing required attribute '{k}'. No defaults allowed.")
+                vals[k] = val
 
         if bc_type in ["inflow", "prescribed"]:
-            u_val = float(vals.get("u", 0.0))
-            v_val = float(vals.get("v", 0.0))
-            w_val = float(vals.get("w", 0.0))
-            p_val = float(vals.get("p", 0.0))
+            missing_vals = [k for k in ["u", "v", "w", "p"] if k not in vals]
+            if missing_vals:
+                raise KeyError(f"Inflow boundary condition '{loc}' missing required values {missing_vals}. Defaults are strictly prohibited.")
+
+            u_val = float(vals["u"])
+            v_val = float(vals["v"])
+            w_val = float(vals["w"])
+            p_val = float(vals["p"])
 
             if loc == "x_min":
                 state.u[0, :, :] = u_val
@@ -120,13 +177,15 @@ def _convert_boundary_conditions(state: SolverState) -> None:
     """Converts boundary conditions to C++ BoundaryCondition objects in-place on state.boundary_conditions."""
     raw_bcs = getattr(state, "boundary_conditions", None)
     if not raw_bcs and hasattr(state, "input_data") and isinstance(state.input_data, dict):
-        raw_bcs = state.input_data.get("boundary_conditions", [])
+        raw_bcs = state.input_data.get("boundary_conditions")
 
-    if raw_bcs:
-        state.boundary_conditions = [
-            _dict_to_boundary_condition(bc) if isinstance(bc, dict) else bc
-            for bc in raw_bcs
-        ]
+    if not raw_bcs:
+        raise KeyError("FATAL ERROR: Boundary conditions configuration missing from SolverState or input_data. No defaults allowed.")
+
+    state.boundary_conditions = [
+        _dict_to_boundary_condition(bc) if isinstance(bc, dict) else bc
+        for bc in raw_bcs
+    ]
 
     _apply_initial_boundary_conditions(state)
 
@@ -159,7 +218,7 @@ def step_simulation(state: SolverState) -> None:
     if state is None:
         raise ValueError("FATAL ERROR: state must be explicitly provided (no defaults allowed).")
 
-    # Instance engine retrieval lazily converts BCs and applies initial boundary values
+    # Instance engine retrieval lazily converts BCs and seeds initial values
     solver = _get_or_create_cpp_solver(state)
 
     # 1. Isolated C++ core step execution
