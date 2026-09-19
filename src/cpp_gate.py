@@ -74,7 +74,7 @@ def _dict_to_boundary_condition(bc_dict: dict) -> Any:
                     except (AttributeError, TypeError) as err:
                         logger.debug(f"Skipping read-only or type-incompatible Pybind11 nested attribute 'values.{k}': {err}")
 
-    # 2. Fallback/direct attribute mappings on the BoundaryCondition object itself
+    # 2. Direct attribute mappings on the BoundaryCondition object itself
     field_map = {
         "u": u_val, "u_val": u_val,
         "v": v_val, "v_val": v_val,
@@ -95,9 +95,11 @@ def _dict_to_boundary_condition(bc_dict: dict) -> Any:
 
 def _apply_initial_boundary_conditions(state: SolverState) -> None:
     """Enforces initial boundary condition values (e.g., inflow velocity = 0.1) onto array boundary faces."""
-    raw_bcs = getattr(state, "boundary_conditions", None)
-    if not raw_bcs and hasattr(state, "input_data") and isinstance(state.input_data, dict):
+    raw_bcs = None
+    if hasattr(state, "input_data") and isinstance(state.input_data, dict):
         raw_bcs = state.input_data.get("boundary_conditions")
+    if not raw_bcs:
+        raw_bcs = getattr(state, "boundary_conditions", None)
 
     if not raw_bcs:
         raise KeyError("FATAL ERROR: Boundary conditions missing from state and input_data. Defaults are strictly prohibited.")
@@ -106,13 +108,13 @@ def _apply_initial_boundary_conditions(state: SolverState) -> None:
         if isinstance(bc, dict):
             if "location" not in bc or "type" not in bc:
                 raise KeyError("Boundary condition configuration item missing required 'location' or 'type' key.")
-            loc = bc["location"]
-            bc_type = bc["type"]
+            loc = str(bc["location"])
+            bc_type = str(bc["type"]).lower()
             vals = bc.get("values", bc)
         else:
-            loc = getattr(bc, "location", None)
-            bc_type = getattr(bc, "type", None)
-            if loc is None or bc_type is None:
+            loc = str(getattr(bc, "location", ""))
+            bc_type = str(getattr(bc, "type", "")).lower()
+            if not loc or not bc_type:
                 raise KeyError("BoundaryCondition object missing required 'location' or 'type' attribute.")
 
             vals = {}
@@ -175,6 +177,8 @@ def _apply_initial_boundary_conditions(state: SolverState) -> None:
 
 def _convert_boundary_conditions(state: SolverState) -> None:
     """Converts boundary conditions to C++ BoundaryCondition objects in-place on state.boundary_conditions."""
+    _apply_initial_boundary_conditions(state)
+
     raw_bcs = getattr(state, "boundary_conditions", None)
     if not raw_bcs and hasattr(state, "input_data") and isinstance(state.input_data, dict):
         raw_bcs = state.input_data.get("boundary_conditions")
@@ -186,8 +190,6 @@ def _convert_boundary_conditions(state: SolverState) -> None:
         _dict_to_boundary_condition(bc) if isinstance(bc, dict) else bc
         for bc in raw_bcs
     ]
-
-    _apply_initial_boundary_conditions(state)
 
 
 def _get_or_create_cpp_solver(state: SolverState) -> Any:
@@ -218,7 +220,6 @@ def step_simulation(state: SolverState) -> None:
     if state is None:
         raise ValueError("FATAL ERROR: state must be explicitly provided (no defaults allowed).")
 
-    # Instance engine retrieval lazily converts BCs and seeds initial values
     solver = _get_or_create_cpp_solver(state)
 
     # 1. Isolated C++ core step execution
