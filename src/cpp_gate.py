@@ -23,57 +23,112 @@ logger = logging.getLogger("Solver.CppGate")
 
 
 def _dict_to_boundary_condition(bc_dict: dict) -> Any:
-    """Instantiates and populates a C++ BoundaryCondition object from a Python dict, mapping nested values to C++ fields robustly."""
+    """Instantiates and populates a C++ BoundaryCondition object from a Python dict."""
     bc_obj = navier_stokes_cpp.BoundaryCondition()
-    
-    # Set location and type safely
-    for attr in ["location", "type"]:
-        if attr in bc_dict and hasattr(bc_obj, attr):
-            setattr(bc_obj, attr, bc_dict[attr])
-            
-    # Extract values dictionary
-    values_dict = bc_dict.get("values", {})
-    if not isinstance(values_dict, dict):
-        values_dict = {}
-        for k in ["u", "v", "w", "p"]:
-            if k in bc_dict:
-                values_dict[k] = bc_dict[k]
 
-    # Try setting via nested 'values' attribute on the C++ object if present
-    if hasattr(bc_obj, "values"):
-        for k, v in values_dict.items():
-            if hasattr(bc_obj.values, k):
-                setattr(bc_obj.values, k, float(v))
+    if "location" in bc_dict and hasattr(bc_obj, "location"):
+        setattr(bc_obj, "location", str(bc_dict["location"]))
+    if "type" in bc_dict and hasattr(bc_obj, "type"):
+        setattr(bc_obj, "type", str(bc_dict["type"]))
 
-    # Fallback/direct attribute mappings on the boundary condition object itself matching state.py conventions
-    for k, v in values_dict.items():
-        val_float = float(v)
-        if hasattr(bc_obj, k):
-            setattr(bc_obj, k, val_float)
-        elif k == "p" and hasattr(bc_obj, "scalar_p"):
-            bc_obj.scalar_p = val_float
-        elif k == "u" and hasattr(bc_obj, "u_val"):
-            bc_obj.u_val = val_float
-        elif k == "v" and hasattr(bc_obj, "v_val"):
-            bc_obj.v_val = val_float
-        elif k == "w" and hasattr(bc_obj, "w_val"):
-            bc_obj.w_val = val_float
+    vals = bc_dict.get("values", {})
+    if not isinstance(vals, dict):
+        vals = {}
+
+    u_val = float(vals.get("u", bc_dict.get("u", 0.0)))
+    v_val = float(vals.get("v", bc_dict.get("v", 0.0)))
+    w_val = float(vals.get("w", bc_dict.get("w", 0.0)))
+    p_val = float(vals.get("p", bc_dict.get("p", 0.0)))
+
+    # Set attributes across all potential C++ binding field naming conventions
+    for attr in ["u_val", "u"]:
+        if hasattr(bc_obj, attr):
+            setattr(bc_obj, attr, u_val)
+    for attr in ["v_val", "v"]:
+        if hasattr(bc_obj, attr):
+            setattr(bc_obj, attr, v_val)
+    for attr in ["w_val", "w"]:
+        if hasattr(bc_obj, attr):
+            setattr(bc_obj, attr, w_val)
+    for attr in ["scalar_p", "p", "p_val"]:
+        if hasattr(bc_obj, attr):
+            setattr(bc_obj, attr, p_val)
 
     return bc_obj
 
 
+def _apply_initial_boundary_conditions(state: SolverState) -> None:
+    """Enforces initial boundary condition values (e.g., inflow velocity = 0.1) onto array boundaries."""
+    raw_bcs = getattr(state, "input_data", {}).get("boundary_conditions", [])
+    if not raw_bcs:
+        raw_bcs = getattr(state, "boundary_conditions", [])
+
+    for bc in raw_bcs:
+        if isinstance(bc, dict):
+            loc = bc.get("location", "")
+            bc_type = bc.get("type", "")
+            vals = bc.get("values", {})
+        else:
+            loc = getattr(bc, "location", "")
+            bc_type = getattr(bc, "type", "")
+            vals = {
+                "u": getattr(bc, "u_val", getattr(bc, "u", 0.0)),
+                "v": getattr(bc, "v_val", getattr(bc, "v", 0.0)),
+                "w": getattr(bc, "w_val", getattr(bc, "w", 0.0)),
+                "p": getattr(bc, "scalar_p", getattr(bc, "p", 0.0)),
+            }
+
+        if bc_type in ["inflow", "prescribed"]:
+            u_val = float(vals.get("u", 0.0))
+            v_val = float(vals.get("v", 0.0))
+            w_val = float(vals.get("w", 0.0))
+            p_val = float(vals.get("p", 0.0))
+
+            if loc == "x_min":
+                state.u[0, :, :] = u_val
+                state.v[0, :, :] = v_val
+                state.w[0, :, :] = w_val
+                state.p[0, :, :] = p_val
+            elif loc == "x_max":
+                state.u[-1, :, :] = u_val
+                state.v[-1, :, :] = v_val
+                state.w[-1, :, :] = w_val
+                state.p[-1, :, :] = p_val
+            elif loc == "y_min":
+                state.u[:, 0, :] = u_val
+                state.v[:, 0, :] = v_val
+                state.w[:, 0, :] = w_val
+                state.p[:, 0, :] = p_val
+            elif loc == "y_max":
+                state.u[:, -1, :] = u_val
+                state.v[:, -1, :] = v_val
+                state.w[:, -1, :] = w_val
+                state.p[:, -1, :] = p_val
+            elif loc == "z_min":
+                state.u[:, :, 0] = u_val
+                state.v[:, :, 0] = v_val
+                state.w[:, :, 0] = w_val
+                state.p[:, :, 0] = p_val
+            elif loc == "z_max":
+                state.u[:, :, -1] = u_val
+                state.v[:, :, -1] = v_val
+                state.w[:, :, -1] = w_val
+                state.p[:, :, -1] = p_val
+
+
 def _convert_boundary_conditions(state: SolverState) -> None:
-    """Converts dictionary boundary conditions to C++ BoundaryCondition objects in-place on state only."""
+    """Converts boundary conditions to C++ BoundaryCondition objects in-place on state.boundary_conditions."""
     raw_bcs = getattr(state, "boundary_conditions", None)
     if not raw_bcs and hasattr(state, "input_data") and isinstance(state.input_data, dict):
         raw_bcs = state.input_data.get("boundary_conditions", [])
 
     if raw_bcs:
-        # Convert only state.boundary_conditions to C++ objects; leave state.input_data untouched
         state.boundary_conditions = [
             _dict_to_boundary_condition(bc) if isinstance(bc, dict) else bc
             for bc in raw_bcs
         ]
+
+    _apply_initial_boundary_conditions(state)
 
 
 def _get_or_create_cpp_solver(state: SolverState) -> Any:
@@ -104,7 +159,7 @@ def step_simulation(state: SolverState) -> None:
     if state is None:
         raise ValueError("FATAL ERROR: state must be explicitly provided (no defaults allowed).")
 
-    # Instance engine retrieval lazily converts BCs upon binding
+    # Instance engine retrieval lazily converts BCs and applies initial boundary values
     solver = _get_or_create_cpp_solver(state)
 
     # 1. Isolated C++ core step execution
