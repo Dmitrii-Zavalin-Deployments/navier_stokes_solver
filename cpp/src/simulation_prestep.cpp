@@ -58,6 +58,7 @@ void execute_pre_step(
               << " | Cold Start: " << (cold_start ? "true" : "false") << "\n";
 
     // Uniform free-stream initialization extracted dynamically from inflow boundary conditions on cold start
+    // mask = 1 for fluid, mask = -1 for boundary, mask = 0 for solid
     if (cold_start) {
         double init_u = 0.0;
         double init_v = 0.0;
@@ -79,7 +80,8 @@ void execute_pre_step(
             for (int j = 0; j < ny; ++j) {
                 for (int i = 0; i < nx; ++i) {
                     size_t idx = static_cast<size_t>(get_flat_index(i, j, k, nx, ny));
-                    if (mask[idx] == 1) {
+                    // Seed fluid (1) and boundary (-1) cells, skipping solid obstacles (0)
+                    if (mask[idx] == 1 || mask[idx] == -1) {
                         u[idx] = init_u;
                         v[idx] = init_v;
                         w[idx] = init_w;
@@ -162,14 +164,14 @@ void execute_pre_step(
         }
     };
 
-    // Pass 1: wall BCs only on explicit wall cells (mask == -1 or 0)
+    // Pass 1: wall BCs only on solid or boundary cells (mask == 0 or mask == -1)
     for (const auto& bc : wall_bc_list) {
         #pragma omp parallel for collapse(3) schedule(static)
         for (int k = 0; k < nz; ++k) {
             for (int j = 0; j < ny; ++j) {
                 for (int i = 0; i < nx; ++i) {
                     size_t idx = static_cast<size_t>(get_flat_index(i, j, k, nx, ny));
-                    if (mask[idx] == -1 || mask[idx] == 0) {
+                    if (mask[idx] == 0 || mask[idx] == -1) {
                         apply_bc(bc, i, j, k, idx);
                     }
                 }
@@ -177,7 +179,7 @@ void execute_pre_step(
         }
     }
 
-    // Pass 2: face BCs, but do not overwrite explicit wall cells
+    // Pass 2: face BCs, skipping solid obstacles (mask == 0)
     for (const auto& bc : face_bc_list) {
         #pragma omp parallel for collapse(3) schedule(static)
         for (int k = 0; k < nz; ++k) {
@@ -187,7 +189,7 @@ void execute_pre_step(
                         continue;
                     }
                     size_t idx = static_cast<size_t>(get_flat_index(i, j, k, nx, ny));
-                    if (mask[idx] == -1 || mask[idx] == 0) {
+                    if (mask[idx] == 0) {
                         continue;
                     }
                     apply_bc(bc, i, j, k, idx);

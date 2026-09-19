@@ -46,7 +46,6 @@ def test_integration_accelerated_flow_pipeline(workspace_folder, monkeypatch):
         0, 0, 0, 0
     ]
     input_data["mask"] = layer_mask * 4
-    input_data["initial_conditions"]["velocity"] = [0.1, 0.1, 0.1]
     input_data["external_forces"]["force_vector"] = [1.0, 1.0, 1.0]
     input_data["external_forces"]["gravity_vector"] = [0.0, 0.0, 0.0]
     input_data["boundary_conditions"] = [
