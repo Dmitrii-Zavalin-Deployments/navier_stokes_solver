@@ -43,7 +43,7 @@ void apply_neumann_pressure(
     const double dp_dy = density * gy;
     const double dp_dz = density * gz;
 
-    std::vector<double> p_tmp = p;
+    p_tmp = p;
 
     #pragma omp parallel for collapse(3) schedule(static)
     for (int k = 0; k < nz; ++k) {
@@ -119,7 +119,7 @@ void apply_solid_neumann_pressure_parallel(
     if (nx <= 0 || ny <= 0 || nz <= 0) return;
     if (dx <= 0.0 || dy <= 0.0 || dz <= 0.0) return;
 
-    std::vector<double> p_tmp = p;
+    p_tmp = p;
 
     #pragma omp parallel for collapse(3) schedule(static)
     for (int k = 0; k < nz; ++k) {
@@ -244,6 +244,8 @@ void solve_poisson_red_black_parallel(
     bool has_error = false;
     int err_i = 0, err_j = 0, err_k = 0;
     double err_val = 0.0;
+
+    std::vector<double> p_tmp(total_cells, 0.0);
 
     for (int iter = 0; iter < max_iters; ++iter) {
         
@@ -381,11 +383,11 @@ void solve_poisson_red_black_parallel(
         for (size_t b = 0; b < bc_list.size(); ++b) {
             const auto& bc = bc_list[b];
             if (bc.type != "pressure" && bc.type != "outflow") {
-                apply_neumann_pressure(p, bc.location, dirichlet, nx, ny, nz, dx, dy, dz, density, gravity);
+                apply_neumann_pressure(p, p_tmp, bc.location, dirichlet, nx, ny, nz, dx, dy, dz, density, gravity);
             }
         }
 
-        apply_solid_neumann_pressure_parallel(p, mask, nx, ny, nz, dx, dy, dz);
+        apply_solid_neumann_pressure_parallel(p, p_tmp, mask, nx, ny, nz, dx, dy, dz);
     }
 }
 
