@@ -23,20 +23,42 @@ logger = logging.getLogger("Solver.CppGate")
 
 
 def _dict_to_boundary_condition(bc_dict: dict) -> Any:
-    """Instantiates and populates a C++ BoundaryCondition object from a Python dict, mapping nested values to C++ fields."""
+    """Instantiates and populates a C++ BoundaryCondition object from a Python dict, mapping nested values to C++ fields robustly."""
     bc_obj = navier_stokes_cpp.BoundaryCondition()
-    for key, value in bc_dict.items():
-        if key == "values" and isinstance(value, dict):
-            if "u" in value and hasattr(bc_obj, "u_val"):
-                bc_obj.u_val = float(value["u"])
-            if "v" in value and hasattr(bc_obj, "v_val"):
-                bc_obj.v_val = float(value["v"])
-            if "w" in value and hasattr(bc_obj, "w_val"):
-                bc_obj.w_val = float(value["w"])
-            if "p" in value and hasattr(bc_obj, "scalar_p"):
-                bc_obj.scalar_p = float(value["p"])
-        elif hasattr(bc_obj, key):
-            setattr(bc_obj, key, value)
+    
+    # Set location and type safely
+    for attr in ["location", "type"]:
+        if attr in bc_dict and hasattr(bc_obj, attr):
+            setattr(bc_obj, attr, bc_dict[attr])
+            
+    # Extract values dictionary
+    values_dict = bc_dict.get("values", {})
+    if not isinstance(values_dict, dict):
+        values_dict = {}
+        for k in ["u", "v", "w", "p"]:
+            if k in bc_dict:
+                values_dict[k] = bc_dict[k]
+
+    # Try setting via nested 'values' attribute on the C++ object if present
+    if hasattr(bc_obj, "values"):
+        for k, v in values_dict.items():
+            if hasattr(bc_obj.values, k):
+                setattr(bc_obj.values, k, float(v))
+
+    # Fallback/direct attribute mappings on the boundary condition object itself
+    for k, v in values_dict.items():
+        val_float = float(v)
+        if hasattr(bc_obj, k):
+            setattr(bc_obj, k, val_float)
+        elif k == "p" and hasattr(bc_obj, "scalar_p"):
+            bc_obj.scalar_p = val_float
+        elif k == "u" and hasattr(bc_obj, "u_val"):
+            bc_obj.u_val = val_float
+        elif k == "v" and hasattr(bc_obj, "v_val"):
+            bc_obj.v_val = val_float
+        elif k == "w" and hasattr(bc_obj, "w_val"):
+            bc_obj.w_val = val_float
+
     return bc_obj
 
 
@@ -95,7 +117,7 @@ def step_simulation(state: SolverState) -> None:
         logger.error(f"C++ step execution failed at iteration {getattr(state, 'current_iteration', 0)}: {e}")
         raise RuntimeError(f"C++ execution failure during solver step: {e}") from e
 
-    # 2. Sovereign state tracking metric updates (KeyError/ValueError propagate natively)
+    # 2. Sovereign state tracking metric updates
     try:
         dt = float(state.dt)
     except (AttributeError, TypeError):
