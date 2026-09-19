@@ -36,13 +36,13 @@ def _dict_to_boundary_condition(bc_dict: dict) -> Any:
 
     if hasattr(bc_obj, "location"):
         try:
-            setattr(bc_obj, "location", str(bc_dict["location"]))
+            bc_obj.location = str(bc_dict["location"])
         except (AttributeError, TypeError) as err:
             logger.debug(f"Could not set 'location' attribute on BoundaryCondition: {err}")
 
     if hasattr(bc_obj, "type"):
         try:
-            setattr(bc_obj, "type", str(bc_dict["type"]))
+            bc_obj.type = str(bc_dict["type"])
         except (AttributeError, TypeError) as err:
             logger.debug(f"Could not set 'type' attribute on BoundaryCondition: {err}")
 
@@ -65,7 +65,7 @@ def _dict_to_boundary_condition(bc_dict: dict) -> Any:
 
     # 1. Populate nested 'values' C++ sub-object if bound by Pybind11
     if hasattr(bc_obj, "values"):
-        val_obj = getattr(bc_obj, "values")
+        val_obj = bc_obj.values
         if val_obj is not None:
             for k, val in [("u", u_val), ("v", v_val), ("w", w_val), ("p", p_val)]:
                 if hasattr(val_obj, k):
@@ -118,8 +118,8 @@ def _apply_initial_boundary_conditions(state: SolverState) -> None:
             vals = {}
             for k, attr_names in [("u", ["u", "u_val"]), ("v", ["v", "v_val"]), ("w", ["w", "w_val"]), ("p", ["p", "p_val", "scalar_p"])]:
                 val = None
-                if hasattr(bc, "values") and getattr(bc, "values") is not None:
-                    val_sub = getattr(bc, "values")
+                if hasattr(bc, "values") and bc.values is not None:
+                    val_sub = bc.values
                     if hasattr(val_sub, k):
                         val = getattr(val_sub, k)
                 if val is None:
