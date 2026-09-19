@@ -19,6 +19,7 @@ namespace navier_stokes_solver {
 
 void apply_neumann_pressure(
     std::vector<double>& p,
+    std::vector<double>& p_tmp,
     const std::string& location,
     const DirichletFaces& dirichlet,
     int nx, int ny, int nz,
@@ -111,7 +112,8 @@ void apply_neumann_pressure(
 }
 
 void apply_solid_neumann_pressure_parallel(
-    std::vector<double>& p, 
+    std::vector<double>& p,
+    std::vector<double>& p_tmp, 
     const std::vector<int>& mask, 
     int nx, int ny, int nz,
     double dx, double dy, double dz
