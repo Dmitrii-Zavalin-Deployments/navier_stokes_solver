@@ -83,6 +83,7 @@ void solve_poisson_red_black_parallel(
  */
 void apply_neumann_pressure(
     std::vector<double>& p,
+    std::vector<double>& p_tmp,
     const std::string& location,
     const DirichletFaces& dirichlet,
     int nx, int ny, int nz,
@@ -90,6 +91,19 @@ void apply_neumann_pressure(
     double density,
     const std::vector<double>& gravity
 );
+
+inline void apply_neumann_pressure(
+    std::vector<double>& p,
+    const std::string& location,
+    const DirichletFaces& dirichlet,
+    int nx, int ny, int nz,
+    double dx, double dy, double dz,
+    double density,
+    const std::vector<double>& gravity
+) {
+    std::vector<double> p_tmp(p.size(), 0.0);
+    apply_neumann_pressure(p, p_tmp, location, dirichlet, nx, ny, nz, dx, dy, dz, density, gravity);
+}
 
 /**
  * @brief Applies Neumann pressure extrapolation inside solid regions (mask == 0).
@@ -99,10 +113,21 @@ void apply_neumann_pressure(
  */
 void apply_solid_neumann_pressure_parallel(
     std::vector<double>& p,
+    std::vector<double>& p_tmp,
     const std::vector<int>& mask,
     int nx, int ny, int nz,
     double dx, double dy, double dz
 );
+
+inline void apply_solid_neumann_pressure_parallel(
+    std::vector<double>& p,
+    const std::vector<int>& mask,
+    int nx, int ny, int nz,
+    double dx, double dy, double dz
+) {
+    std::vector<double> p_tmp(p.size(), 0.0);
+    apply_solid_neumann_pressure_parallel(p, p_tmp, mask, nx, ny, nz, dx, dy, dz);
+}
 
 } // namespace navier_stokes_solver
 
