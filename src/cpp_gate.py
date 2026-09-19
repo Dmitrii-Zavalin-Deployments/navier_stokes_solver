@@ -45,7 +45,7 @@ def _dict_to_boundary_condition(bc_dict: dict) -> Any:
             if hasattr(bc_obj.values, k):
                 setattr(bc_obj.values, k, float(v))
 
-    # Fallback/direct attribute mappings on the boundary condition object itself
+    # Fallback/direct attribute mappings on the boundary condition object itself matching state.py conventions
     for k, v in values_dict.items():
         val_float = float(v)
         if hasattr(bc_obj, k):
@@ -63,11 +63,16 @@ def _dict_to_boundary_condition(bc_dict: dict) -> Any:
 
 
 def _convert_boundary_conditions(state: SolverState) -> None:
-    """Converts dictionary boundary conditions to C++ BoundaryCondition objects in-place."""
-    if hasattr(state, "boundary_conditions") and state.boundary_conditions:
+    """Converts dictionary boundary conditions to C++ BoundaryCondition objects in-place on state only."""
+    raw_bcs = getattr(state, "boundary_conditions", None)
+    if not raw_bcs and hasattr(state, "input_data") and isinstance(state.input_data, dict):
+        raw_bcs = state.input_data.get("boundary_conditions", [])
+
+    if raw_bcs:
+        # Convert only state.boundary_conditions to C++ objects; leave state.input_data untouched
         state.boundary_conditions = [
             _dict_to_boundary_condition(bc) if isinstance(bc, dict) else bc
-            for bc in state.boundary_conditions
+            for bc in raw_bcs
         ]
 
 
