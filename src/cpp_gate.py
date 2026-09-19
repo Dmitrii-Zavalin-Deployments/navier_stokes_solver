@@ -27,9 +27,9 @@ def _dict_to_boundary_condition(bc_dict: dict) -> Any:
     bc_obj = navier_stokes_cpp.BoundaryCondition()
 
     if "location" in bc_dict and hasattr(bc_obj, "location"):
-        setattr(bc_obj, "location", str(bc_dict["location"]))
+        bc_obj.location = str(bc_dict["location"])
     if "type" in bc_dict and hasattr(bc_obj, "type"):
-        setattr(bc_obj, "type", str(bc_dict["type"]))
+        bc_obj.type = str(bc_dict["type"])
 
     vals = bc_dict.get("values", {})
     if not isinstance(vals, dict):
