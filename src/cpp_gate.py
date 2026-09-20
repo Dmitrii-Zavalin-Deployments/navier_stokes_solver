@@ -168,31 +168,61 @@ def _apply_initial_boundary_conditions(state: SolverState) -> None:
                 state.v[0, :, :] = v_val
                 state.w[0, :, :] = w_val
                 state.p[0, :, :] = p_val
+                if hasattr(state, "fields") and state.fields is not None:
+                    state.fields[0, 0, :, :] = u_val
+                    state.fields[1, 0, :, :] = v_val
+                    state.fields[2, 0, :, :] = w_val
+                    state.fields[3, 0, :, :] = p_val
             elif "x_max" in loc or "xmax" in loc:
                 state.u[-1, :, :] = u_val
                 state.v[-1, :, :] = v_val
                 state.w[-1, :, :] = w_val
                 state.p[-1, :, :] = p_val
+                if hasattr(state, "fields") and state.fields is not None:
+                    state.fields[0, -1, :, :] = u_val
+                    state.fields[1, -1, :, :] = v_val
+                    state.fields[2, -1, :, :] = w_val
+                    state.fields[3, -1, :, :] = p_val
             elif "y_min" in loc or "ymin" in loc:
                 state.u[:, 0, :] = u_val
                 state.v[:, 0, :] = v_val
                 state.w[:, 0, :] = w_val
                 state.p[:, 0, :] = p_val
+                if hasattr(state, "fields") and state.fields is not None:
+                    state.fields[0, :, 0, :] = u_val
+                    state.fields[1, :, 0, :] = v_val
+                    state.fields[2, :, 0, :] = w_val
+                    state.fields[3, :, 0, :] = p_val
             elif "y_max" in loc or "ymax" in loc:
                 state.u[:, -1, :] = u_val
                 state.v[:, -1, :] = v_val
                 state.w[:, -1, :] = w_val
                 state.p[:, -1, :] = p_val
+                if hasattr(state, "fields") and state.fields is not None:
+                    state.fields[0, :, -1, :] = u_val
+                    state.fields[1, :, -1, :] = v_val
+                    state.fields[2, :, -1, :] = w_val
+                    state.fields[3, :, -1, :] = p_val
             elif "z_min" in loc or "zmin" in loc:
                 state.u[:, :, 0] = u_val
                 state.v[:, :, 0] = v_val
                 state.w[:, :, 0] = w_val
                 state.p[:, :, 0] = p_val
+                if hasattr(state, "fields") and state.fields is not None:
+                    state.fields[0, :, :, 0] = u_val
+                    state.fields[1, :, :, 0] = v_val
+                    state.fields[2, :, :, 0] = w_val
+                    state.fields[3, :, :, 0] = p_val
             elif "z_max" in loc or "zmax" in loc:
                 state.u[:, :, -1] = u_val
                 state.v[:, :, -1] = v_val
                 state.w[:, :, -1] = w_val
                 state.p[:, :, -1] = p_val
+                if hasattr(state, "fields") and state.fields is not None:
+                    state.fields[0, :, :, -1] = u_val
+                    state.fields[1, :, :, -1] = v_val
+                    state.fields[2, :, :, -1] = w_val
+                    state.fields[3, :, :, -1] = p_val
 
             _log_field_max_abs(f"AFTER applying {loc} (Target vals: u={u_val}, v={v_val}, w={w_val}, p={p_val})", state)
         else:
