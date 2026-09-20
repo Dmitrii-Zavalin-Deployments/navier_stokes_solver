@@ -27,12 +27,19 @@ void apply_neumann_pressure(
     double density,
     const std::vector<double>& gravity
 ) {
-    if (nx <= 0 || ny <= 0 || nz <= 0) return;
+    std::cout << "[PRESSURE_POISSON_TRACE] apply_neumann_pressure: start location=" << location 
+              << ", nx=" << nx << ", ny=" << ny << ", nz=" << nz << "\n";
+    if (nx <= 0 || ny <= 0 || nz <= 0) {
+        std::cout << "[PRESSURE_POISSON_TRACE] apply_neumann_pressure: invalid dimensions, returning early.\n";
+        return;
+    }
     if (dx <= 0.0 || dy <= 0.0 || dz <= 0.0) {
+        std::cerr << "[PRESSURE_POISSON_ERROR] Grid spacing must be strictly positive.\n";
         throw std::invalid_argument("GEOMETRY ERROR: Grid spacing must be strictly positive in Neumann application.");
     }
 
     if (gravity.size() != 3) {
+        std::cerr << "[PRESSURE_POISSON_ERROR] Gravity vector size mismatch: " << gravity.size() << "\n";
         throw std::invalid_argument("CONTRACT VIOLATION: gravity vector must contain exactly 3 components [gx, gy, gz].");
     }
 
@@ -43,6 +50,9 @@ void apply_neumann_pressure(
     const double dp_dx = density * gx;
     const double dp_dy = density * gy;
     const double dp_dz = density * gz;
+
+    std::cout << "[PRESSURE_POISSON_TRACE] apply_neumann_pressure gradients computed: dp_dx=" << dp_dx 
+              << ", dp_dy=" << dp_dy << ", dp_dz=" << dp_dz << "\n";
 
     p_tmp = p;
 
@@ -109,6 +119,7 @@ void apply_neumann_pressure(
         }
     }
     p = std::move(p_tmp);
+    std::cout << "[PRESSURE_POISSON_TRACE] apply_neumann_pressure completed successfully for location=" << location << "\n";
 }
 
 void apply_solid_neumann_pressure_parallel(
@@ -118,6 +129,8 @@ void apply_solid_neumann_pressure_parallel(
     int nx, int ny, int nz,
     double dx, double dy, double dz
 ) {
+    std::cout << "[PRESSURE_POISSON_TRACE] apply_solid_neumann_pressure_parallel: start nx=" << nx 
+              << ", ny=" << ny << ", nz=" << nz << "\n";
     if (nx <= 0 || ny <= 0 || nz <= 0) return;
     if (dx <= 0.0 || dy <= 0.0 || dz <= 0.0) return;
 
@@ -187,6 +200,7 @@ void apply_solid_neumann_pressure_parallel(
         }
     }
     p = std::move(p_tmp);
+    std::cout << "[PRESSURE_POISSON_TRACE] apply_solid_neumann_pressure_parallel completed successfully.\n";
 }
 
 void solve_poisson_red_black_parallel(
@@ -200,18 +214,24 @@ void solve_poisson_red_black_parallel(
     double density,
     const std::vector<double>& gravity
 ) {
+    std::cout << "[PRESSURE_POISSON_TRACE] solve_poisson_red_black_parallel called with max_iters=" << max_iters 
+              << ", tol=" << tol << ", density=" << density << "\n";
     if (nx < 3 || ny < 3 || nz < 3) {
+        std::cerr << "[PRESSURE_POISSON_ERROR] Grid dimensions too small: " << nx << "x" << ny << "x" << nz << "\n";
         throw std::invalid_argument("GEOMETRY ERROR: Grid dimensions must be at least 3x3x3 for Poisson solver.");
     }
     if (dx <= 0.0 || dy <= 0.0 || dz <= 0.0) {
+        std::cerr << "[PRESSURE_POISSON_ERROR] Non-positive grid spacing.\n";
         throw std::invalid_argument("GEOMETRY ERROR: Grid spacing must be strictly positive.");
     }
     if (max_iters <= 0 || tol < 0.0) {
+        std::cerr << "[PRESSURE_POISSON_ERROR] Invalid max_iters or tol.\n";
         throw std::invalid_argument("ITERATION ERROR: Invalid max iterations or tolerance.");
     }
 
     const size_t total_cells = static_cast<size_t>(nx) * ny * nz;
     if (p.size() != total_cells || rhs.size() != total_cells || mask.size() != total_cells) {
+        std::cerr << "[PRESSURE_POISSON_ERROR] Vector size mismatch with total_cells=" << total_cells << "\n";
         throw std::invalid_argument("CONTRACT VIOLATION: Pressure, RHS, or mask vector size mismatch.");
     }
 
@@ -237,11 +257,18 @@ void solve_poisson_red_black_parallel(
             if (bc.location == "z_max") dirichlet.z_max = true;
         }
     }
+    std::cout << "[PRESSURE_POISSON_TRACE] Dirichlet faces mapped. x_min=" << dirichlet.x_min 
+              << ", x_max=" << dirichlet.x_max << ", y_min=" << dirichlet.y_min 
+              << ", y_max=" << dirichlet.y_max << ", z_min=" << dirichlet.z_min 
+              << ", z_max=" << dirichlet.z_max << "\n";
 
     const double idx2 = 1.0 / (dx * dx);
     const double idy2 = 1.0 / (dy * dy);
     const double idz2 = 1.0 / (dz * dz);
     const double factor = 0.5 / (idx2 + idy2 + idz2);
+
+    std::cout << "[PRESSURE_POISSON_TRACE] Stencil factors computed: idx2=" << idx2 
+              << ", idy2=" << idy2 << ", idz2=" << idz2 << ", factor=" << factor << "\n";
 
     bool has_error = false;
     int err_i = 0, err_j = 0, err_k = 0;
@@ -250,6 +277,9 @@ void solve_poisson_red_black_parallel(
     std::vector<double> p_tmp(total_cells, 0.0);
 
     for (int iter = 0; iter < max_iters; ++iter) {
+        if (iter % 10 == 0 || iter == max_iters - 1) {
+            std::cout << "[PRESSURE_POISSON_TRACE] Starting Red-Black iteration " << iter << " / " << max_iters << "\n";
+        }
         
         // --- PASS 1: Update RED Interior Fluid Cells ((i + j + k) % 2 == 0) ---
         #pragma omp parallel for collapse(3) schedule(static) if(total_cells >= 1000)
@@ -391,7 +421,7 @@ void solve_poisson_red_black_parallel(
 
         apply_solid_neumann_pressure_parallel(p, p_tmp, mask, nx, ny, nz, dx, dy, dz);
     }
+    std::cout << "[PRESSURE_POISSON_TRACE] solve_poisson_red_black_parallel completed successfully across all iterations.\n";
 }
 
 } // namespace navier_stokes_solver
-
