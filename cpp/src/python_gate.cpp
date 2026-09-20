@@ -3,7 +3,7 @@
  * @brief Pybind11 Python bindings for the 3D Navier-Stokes C++ Orchestrator.
  * Bridges the Python sovereign SolverState container directly with the C++ engine,
  * extracting all physical constraints, domain configurations, boundary conditions, and parameters
- * using the standard SSoT grid indexing standard.
+ * using the standard SSoT grid indexing standard with full telemetry logging.
  */
 
 #include <pybind11/pybind11.h>
@@ -31,6 +31,7 @@ class PythonSolverBridge {
 public:
     PythonSolverBridge(py::object state) {
         if (!state || state.is_none()) {
+            std::cerr << "[TELEMETRY ERROR] PythonSolverBridge constructor: state object is None.\n";
             throw py::value_error("FATAL ERROR: state object cannot be None.");
         }
 
@@ -39,6 +40,8 @@ public:
             int nx = state.attr("nx").cast<int>();
             int ny = state.attr("ny").cast<int>();
             int nz = state.attr("nz").cast<int>();
+
+            std::cout << "[TELEMETRY INIT] Extracted Grid Dimensions: nx=" << nx << ", ny=" << ny << ", nz=" << nz << "\n";
 
             if (nx < 2 || ny < 2 || nz < 2) {
                 throw py::value_error("GEOMETRY ERROR: nx, ny, nz must be at least 2 for node-based spacing.");
@@ -55,6 +58,8 @@ public:
             double dx = (x_max - x_min) / static_cast<double>(nx - 1);
             double dy = (y_max - y_min) / static_cast<double>(ny - 1);
             double dz = (z_max - z_min) / static_cast<double>(nz - 1);
+
+            std::cout << "[TELEMETRY INIT] Computed Spacing: dx=" << dx << ", dy=" << dy << ", dz=" << dz << "\n";
 
             if (dx <= 0.0 || dy <= 0.0 || dz <= 0.0 || !std::isfinite(dx) || !std::isfinite(dy) || !std::isfinite(dz)) {
                 throw py::value_error("GEOMETRY ERROR: Computed grid spacing (dx, dy, dz) must be positive and finite.");
@@ -82,12 +87,17 @@ public:
             w_.resize(total_cells, 0.0);
             p_.resize(total_cells, 0.0);
 
+            std::cout << "[TELEMETRY INIT] Allocated persistent buffers. Total cells: " << total_cells << "\n";
+
             // 3. Initialize C++ Orchestrator Core
             orchestrator_ = std::make_unique<navier_stokes_solver::NavierStokesOrchestrator>(dims_, config_);
+            std::cout << "[TELEMETRY INIT] NavierStokesOrchestrator successfully instantiated.\n";
+
         } catch (const py::cast_error&) {
+            std::cerr << "[TELEMETRY ERROR] Type cast failure during PythonSolverBridge initialization.\n";
             throw py::type_error("TYPE ERROR: Attribute casting failed due to invalid type.");
         } catch (const py::error_already_set&) {
-            // Wrap missing/invalid attribute errors into standard ValueError for test contract compliance
+            std::cerr << "[TELEMETRY ERROR] Python error already set during initialization.\n";
             throw py::value_error("STATE CONTRACT ERROR: Missing or invalid attributes in state container.");
         }
     }
@@ -230,11 +240,15 @@ public:
             }
         }
 
+        std::cout << "[TELEMETRY STEP] Parsed " << bc_list.size() << " boundary conditions. Executing Orchestrator step...\n";
+
         // 9. Execute full time-step inside C++ Orchestrator Core (releasing GIL for OpenMP compute)
         {
             py::gil_scoped_release release;
             orchestrator_->step(dt, mu, gravity, fx_vec, fy_vec, fz_vec, mask_vec, bc_list, u_, v_, w_, p_);
         }
+
+        std::cout << "[TELEMETRY STEP] Orchestrator step completed. Copying back to NumPy memory...\n";
 
         // 10. Copy modified collocated fields back into Python NumPy memory in-place using SSoT get_flat_index
         for (int k = 0; k < nz; ++k) {
@@ -249,6 +263,7 @@ public:
                 }
             }
         }
+        std::cout << "[TELEMETRY STEP] In-place NumPy sync finished successfully.\n";
     }
 
     void sync_fields(py::object state) {
@@ -274,6 +289,7 @@ public:
                 }
             }
         }
+        std::cout << "[TELEMETRY SYNC] Explicit field synchronization completed.\n";
     }
 
 private:
