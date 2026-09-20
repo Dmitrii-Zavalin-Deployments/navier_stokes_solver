@@ -273,10 +273,19 @@ PYBIND11_MODULE(navier_stokes_cpp, m) {
         .def(py::init<>())
         .def_readwrite("location", &navier_stokes_solver::BoundaryCondition::location)
         .def_readwrite("type", &navier_stokes_solver::BoundaryCondition::type)
-        .def_readwrite("scalar_p", &navier_stokes_solver::BoundaryCondition::scalar_p)
-        .def_readwrite("u_val", &navier_stokes_solver::BoundaryCondition::u_val)
-        .def_readwrite("v_val", &navier_stokes_solver::BoundaryCondition::v_val)
-        .def_readwrite("w_val", &navier_stokes_solver::BoundaryCondition::w_val);
+        // Bridge flat Python attributes cleanly into the nested C++ 'values' struct
+        .def_property("scalar_p", 
+            [](const navier_stokes_solver::BoundaryCondition& self) { return self.values.p; },
+            [](navier_stokes_solver::BoundaryCondition& self, double val) { self.values.p = val; })
+        .def_property("u_val", 
+            [](const navier_stokes_solver::BoundaryCondition& self) { return self.values.u; },
+            [](navier_stokes_solver::BoundaryCondition& self, double val) { self.values.u = val; })
+        .def_property("v_val", 
+            [](const navier_stokes_solver::BoundaryCondition& self) { return self.values.v; },
+            [](navier_stokes_solver::BoundaryCondition& self, double val) { self.values.v = val; })
+        .def_property("w_val", 
+            [](const navier_stokes_solver::BoundaryCondition& self) { return self.values.w; },
+            [](navier_stokes_solver::BoundaryCondition& self, double val) { self.values.w = val; });
 
     py::class_<PythonSolverBridge>(m, "NavierStokesSolver")
         .def(py::init<py::object>(), py::arg("state"), "Initialize solver instance directly from sovereign SolverState container.")
