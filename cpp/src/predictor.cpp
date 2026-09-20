@@ -1,6 +1,6 @@
 /**
  * @file predictor.cpp
- * @brief Implementation of Step 1 Predictor Trial Velocity Computation with 3D Gravity Integration and execution tracing.
+ * @brief Implementation of Step 1 Predictor Trial Velocity Computation with 3D Gravity Integration and heavy execution tracing.
  */
 
 #include "predictor.hpp"
@@ -29,31 +29,41 @@ void validate_inputs(
     const std::vector<int>& mask,
     const double* u_star, const double* v_star, const double* w_star
 ) {
+    std::cout << "[PREDICTOR_TRACE] Entering validate_inputs...\n";
     if (!u || !v || !w || !fx || !fy || !fz || !u_star || !v_star || !w_star) {
+        std::cout << "[PREDICTOR_TRACE_ERROR] Null pointer supplied to predictor module.\n";
         throw std::invalid_argument("CONTRACT VIOLATION: Null pointer supplied to predictor module.");
     }
     if (gravity.size() != 3) {
+        std::cout << "[PREDICTOR_TRACE_ERROR] gravity vector size mismatch: " << gravity.size() << "\n";
         throw std::invalid_argument("CONTRACT VIOLATION: gravity vector must contain exactly 3 components [gx, gy, gz].");
     }
     const size_t total_cells = static_cast<size_t>(dims.nx) * dims.ny * dims.nz;
     if (mask.size() != total_cells) {
+        std::cout << "[PREDICTOR_TRACE_ERROR] Mask size mismatch: " << mask.size() << " vs expected " << total_cells << "\n";
         throw std::invalid_argument("CONTRACT VIOLATION: Mask vector size does not match grid dimensions.");
     }
     if (dims.nx < 3 || dims.ny < 3 || dims.nz < 3) {
+        std::cout << "[PREDICTOR_TRACE_ERROR] Grid dimensions too small: " << dims.nx << "x" << dims.ny << "x" << dims.nz << "\n";
         throw std::invalid_argument("GEOMETRY ERROR: Grid dimensions must be at least 3x3x3 for central stencils.");
     }
     if (dims.dx <= 0.0 || dims.dy <= 0.0 || dims.dz <= 0.0) {
+        std::cout << "[PREDICTOR_TRACE_ERROR] Non-positive grid spacing (dx, dy, dz).\n";
         throw std::invalid_argument("GEOMETRY ERROR: Grid spacing (dx, dy, dz) must be strictly positive.");
     }
     if (dt <= 0.0) {
+        std::cout << "[PREDICTOR_TRACE_ERROR] Non-positive time step dt: " << dt << "\n";
         throw std::invalid_argument("TEMPORAL ERROR: Time step dt must be strictly positive.");
     }
     if (fluid.nu < 0.0) {
+        std::cout << "[PREDICTOR_TRACE_ERROR] Negative viscosity nu: " << fluid.nu << "\n";
         throw std::invalid_argument("PHYSICS ERROR: Kinematic viscosity nu cannot be negative.");
     }
     if (fluid.density <= 0.0) {
+        std::cout << "[PREDICTOR_TRACE_ERROR] Non-positive fluid density: " << fluid.density << "\n";
         throw std::invalid_argument("PHYSICS ERROR: Fluid density must be strictly positive.");
     }
+    std::cout << "[PREDICTOR_TRACE] validate_inputs passed successfully.\n";
 }
 
 void compute_trial_velocities(
@@ -66,6 +76,7 @@ void compute_trial_velocities(
     const std::vector<int>& mask,
     double* u_star, double* v_star, double* w_star
 ) {
+    std::cout << "[PREDICTOR_TRACE] Entering compute_trial_velocities...\n";
     validate_inputs(dims, fluid, dt, u, v, w, fx, fy, fz, gravity, mask, u_star, v_star, w_star);
 
     const size_t nx = dims.nx;
@@ -83,6 +94,30 @@ void compute_trial_velocities(
               << " | Grid: " << dims.nx << "x" << dims.ny << "x" << dims.nz 
               << " | Active Threads: " << active_threads << "\n";
 
+    // Helper lambdas for tracking max absolute values across fields
+    auto max_abs = [](const double* ptr, size_t size) {
+        double m = 0.0;
+        for (size_t i = 0; i < size; ++i) {
+            m = std::max(m, std::abs(ptr[i]));
+        }
+        return m;
+    };
+
+    auto vec_max_abs = [](const std::vector<double>& vec) {
+        double m = 0.0;
+        for (double val : vec) {
+            m = std::max(m, std::abs(val));
+        }
+        return m;
+    };
+
+    std::cout << "[PRESTEP_TRACE] Initial input max abs -> u: " << max_abs(u, total_cells)
+              << ", v: " << max_abs(v, total_cells)
+              << ", w: " << max_abs(w, total_cells)
+              << ", fx: " << max_abs(fx, total_cells)
+              << ", fy: " << max_abs(fy, total_cells)
+              << ", fz: " << max_abs(fz, total_cells) << "\n";
+
     const int Nx_int = static_cast<int>(nx);
     const int Ny_int = static_cast<int>(ny);
     const int Nz_int = static_cast<int>(nz);
@@ -94,6 +129,10 @@ void compute_trial_velocities(
     std::copy(v, v + total_cells, v_star);
     std::copy(w, w + total_cells, w_star);
 
+    std::cout << "[PREDICTOR_TRACE] Step 1 Complete: Copied baseline to star fields. Max abs -> u_star: " 
+              << max_abs(u_star, total_cells) << ", v_star: " << max_abs(v_star, total_cells) 
+              << ", w_star: " << max_abs(w_star, total_cells) << "\n";
+
     // 2. Allocate temporary field buffers for advection and Laplacian terms
     std::vector<double> adv_u(total_cells, 0.0);
     std::vector<double> adv_v(total_cells, 0.0);
@@ -103,15 +142,25 @@ void compute_trial_velocities(
     std::vector<double> lap_v(total_cells, 0.0);
     std::vector<double> lap_w(total_cells, 0.0);
 
+    std::cout << "[PREDICTOR_TRACE] Step 2 Complete: Allocated temporary buffers for advection and Laplacian.\n";
+
     // 3. Compute domain-wide advection fields using repository operators
     compute_advection(u, v, w, u, adv_u.data(), Nx_int, Ny_int, Nz_int, dims.dx, dims.dy, dims.dz);
     compute_advection(u, v, w, v, adv_v.data(), Nx_int, Ny_int, Nz_int, dims.dx, dims.dy, dims.dz);
     compute_advection(u, v, w, w, adv_w.data(), Nx_int, Ny_int, Nz_int, dims.dx, dims.dy, dims.dz);
 
+    std::cout << "[PREDICTOR_TRACE] Step 3 Complete: Advection computed. Max abs -> adv_u: " 
+              << vec_max_abs(adv_u) << ", adv_v: " << vec_max_abs(adv_v) 
+              << ", adv_w: " << vec_max_abs(adv_w) << "\n";
+
     // 4. Compute domain-wide Laplacian fields using repository operators
     compute_laplacian(u, lap_u.data(), Nx_int, Ny_int, Nz_int, dims.dx, dims.dy, dims.dz);
     compute_laplacian(v, lap_v.data(), Nx_int, Ny_int, Nz_int, dims.dx, dims.dy, dims.dz);
     compute_laplacian(w, lap_w.data(), Nx_int, Ny_int, Nz_int, dims.dx, dims.dy, dims.dz);
+
+    std::cout << "[PREDICTOR_TRACE] Step 4 Complete: Laplacian computed. Max abs -> lap_u: " 
+              << vec_max_abs(lap_u) << ", lap_v: " << vec_max_abs(lap_v) 
+              << ", lap_w: " << vec_max_abs(lap_w) << "\n";
 
     // 5. Parallel Temporal Integration (Forward-Euler Predictor Step)
     // Executed STRICTLY on active fluid cells (mask == 1) to respect physical constraints.
@@ -119,6 +168,9 @@ void compute_trial_velocities(
     const double gx = gravity[0];
     const double gy = gravity[1];
     const double gz = gravity[2];
+
+    std::cout << "[PREDICTOR_TRACE] Step 5 Starting: Temporal integration with gravity [" 
+              << gx << ", " << gy << ", " << gz << "] and dt = " << dt << "\n";
 
     #pragma omp parallel for collapse(3) schedule(static) if(total_cells > 1000) reduction(||:has_non_finite)
     for (int i = 0; i < Nx_int; ++i) {
@@ -144,8 +196,13 @@ void compute_trial_velocities(
     }
 
     if (has_non_finite) {
+        std::cout << "[PREDICTOR_TRACE_ERROR] Math failure: Non-finite trial velocity calculated in predictor.\n";
         throw std::runtime_error("MATH FAILURE: Non-finite trial velocity calculated in predictor.");
     }
+
+    std::cout << "[PREDICTOR_TRACE] Step 5 Complete: Temporal integration finished successfully. Final star max abs -> u_star: " 
+              << max_abs(u_star, total_cells) << ", v_star: " << max_abs(v_star, total_cells) 
+              << ", w_star: " << max_abs(w_star, total_cells) << "\n";
 }
 
 } // namespace navier_stokes_solver
