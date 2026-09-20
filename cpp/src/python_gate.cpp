@@ -272,7 +272,6 @@ PYBIND11_MODULE(navier_stokes_cpp, m) {
     py::class_<navier_stokes_solver::BoundaryCondition>(m, "BoundaryCondition")
         .def(py::init<>())
         .def_readwrite("location", &navier_stokes_solver::BoundaryCondition::location)
-        .def_readwrite("type", &navier_st_solver_bc_type_dummy_placeholder = &navier_stokes_solver::BoundaryCondition::type) // preserved below correctly
         .def_readwrite("type", &navier_stokes_solver::BoundaryCondition::type)
         .def_readwrite("scalar_p", &navier_stokes_solver::BoundaryCondition::scalar_p)
         .def_readwrite("u_val", &navier_stokes_solver::BoundaryCondition::u_val)
