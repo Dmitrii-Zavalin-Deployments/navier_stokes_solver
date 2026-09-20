@@ -17,6 +17,7 @@
 #include <chrono>
 #include <ctime>
 #include <algorithm>
+#include <cmath>
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -90,6 +91,33 @@ void NavierStokesOrchestrator::step(
               << " | Grid: " << dims_.nx << "x" << dims_.ny << "x" << dims_.nz 
               << " | Active Threads: " << active_threads << "\n";
 
+    // Heavy forensic logging helper lambda to track field states after every execution block
+    auto print_state_trace = [&](const std::string& stage) {
+        double u_m = 0, v_m = 0, w_m = 0, p_m = 0;
+        for (double val : u) u_m = std::max(u_m, std::abs(val));
+        for (double val : v) v_m = std::max(v_m, std::abs(val));
+        for (double val : w) w_m = std::max(w_m, std::abs(val));
+        for (double val : p) p_m = std::max(p_m, std::abs(val));
+        
+        double u_s = 0, v_s = 0, w_s = 0, r_m = 0;
+        for (double val : u_star_) u_s = std::max(u_s, std::abs(val));
+        for (double val : v_star_) v_s = std::max(v_s, std::abs(val));
+        for (double val : w_star_) w_s = std::max(w_s, std::abs(val));
+        for (double val : rhs_) r_m = std::max(r_m, std::abs(val));
+
+        std::cout << "[FORENSIC TRACE] Stage: " << stage 
+                  << " | u_max_abs: " << u_m 
+                  << " | v_max_abs: " << v_m 
+                  << " | w_max_abs: " << w_m 
+                  << " | p_max_abs: " << p_m 
+                  << " | u_star_max: " << u_s 
+                  << " | v_star_max: " << v_s 
+                  << " | w_star_max: " << w_s 
+                  << " | rhs_max: " << r_m << "\n";
+    };
+
+    print_state_trace("Pre-solver.step()");
+
     auto wall_start = std::chrono::high_resolution_clock::now();
     std::clock_t cpu_start = std::clock();
 
@@ -101,6 +129,7 @@ void NavierStokesOrchestrator::step(
     ).count();
 
     capture_debug_snapshot("pre_step", u, v, w, p);
+    print_state_trace("Post-pre_step");
 
     // 1.5. GHOST & BOUNDARY SYNCHRONIZATION
     auto t_sync1 = std::chrono::high_resolution_clock::now();
@@ -114,6 +143,7 @@ void NavierStokesOrchestrator::step(
     ).count();
 
     capture_debug_snapshot("ghost_sync_1", u, v, w, p);
+    print_state_trace("Post-ghost_sync_1");
 
     // 2. PREDICTOR STEP
     auto t_pred = std::chrono::high_resolution_clock::now();
@@ -131,6 +161,7 @@ void NavierStokesOrchestrator::step(
     ).count();
 
     capture_debug_snapshot("predictor", u, v, w, p);
+    print_state_trace("Post-predictor");
 
     // 3. RHIE-CHOW INTERPOLATION & PRESSURE POISSON STEP
     auto t_poisson = std::chrono::high_resolution_clock::now();
@@ -151,6 +182,7 @@ void NavierStokesOrchestrator::step(
     );
 
     capture_debug_snapshot("rhie_chow_interpolation", u, v, w, p);
+    print_state_trace("Post-rhie_chow_interpolation");
 
     const double scale = config_.density / dt;
 
@@ -199,6 +231,7 @@ void NavierStokesOrchestrator::step(
     }
 
     capture_debug_snapshot("rhs_assembly", u, v, w, p);
+    print_state_trace("Post-rhs_assembly");
 
     solve_poisson_red_black_parallel(
         p, rhs_, mask, bc_list,
@@ -211,12 +244,14 @@ void NavierStokesOrchestrator::step(
     );
 
     capture_debug_snapshot("poisson", u, v, w, p);
+    print_state_trace("Post-poisson");
 
     RhieChowInterpolator::interpolateFaceVelocities(
         u_star_, v_star_, w_star_, p, a_p, mask, rc_config, u_face, v_face, w_face
     );
 
     capture_debug_snapshot("rhie_chow_post_poisson", u, v, w, p);
+    print_state_trace("Post-rhie_chow_post_poisson");
 
     auto dur_poisson = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::high_resolution_clock::now() - t_poisson
@@ -237,6 +272,7 @@ void NavierStokesOrchestrator::step(
     ).count();
 
     capture_debug_snapshot("corrector", u, v, w, p);
+    print_state_trace("Post-corrector");
 
     // 5. FINAL BUFFER SYNCHRONIZATION
     auto t_sync2 = std::chrono::high_resolution_clock::now();
@@ -250,6 +286,7 @@ void NavierStokesOrchestrator::step(
     ).count();
 
     capture_debug_snapshot("ghost_sync_2", u, v, w, p);
+    print_state_trace("Post-ghost_sync_2");
 
     // Disable cold start after the first successful step execution
     cold_start_ = false;
