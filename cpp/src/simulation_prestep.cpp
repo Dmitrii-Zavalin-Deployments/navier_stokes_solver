@@ -160,9 +160,13 @@ void execute_pre_step(
 
     auto apply_bc = [&](const BoundaryCondition& bc, int i, int j, int k, size_t idx) {
         size_t int_idx = get_interior_index(i, j, k);
-        std::cout << "[PRESTEP_APPLY_BC] Applying BC type='" << bc.type << "' at (i=" << i << ", j=" << j << ", k=" << k 
-                  << ") [flat idx=" << idx << "], interior ref idx=" << int_idx 
-                  << " | Before -> u=" << u[idx] << ", v=" << v[idx] << ", w=" << w[idx] << ", p=" << p[idx] << "\n";
+        
+        #pragma omp critical
+        {
+            std::cout << "[PRESTEP_APPLY_BC] Applying BC type='" << bc.type << "' at (i=" << i << ", j=" << j << ", k=" << k 
+                      << ") [flat idx=" << idx << "], interior ref idx=" << int_idx 
+                      << " | Before -> u=" << u[idx] << ", v=" << v[idx] << ", w=" << w[idx] << ", p=" << p[idx] << "\n";
+        }
 
         if (bc.type == "no-slip") {
             u[idx] = bc.values.u;
@@ -207,15 +211,18 @@ void execute_pre_step(
         else if (bc.type == "outflow") {
             u[idx] = (bc.values.u != 0.0) ? bc.values.u : u[int_idx];
             v[idx] = (bc.values.v != 0.0) ? bc.values.v : v[int_idx];
-            w[idx] = (bc.values.w != 0.0) ? bc.values.w : w[int_idx]; // Fixed typo: was bc.values.u
+            w[idx] = (bc.values.w != 0.0) ? bc.values.w : w[int_idx];
             p[idx] = bc.values.p;
         }
         else if (bc.type == "pressure") {
             p[idx] = bc.values.p;
         }
 
-        std::cout << "[PRESTEP_APPLY_BC] After application -> u=" << u[idx] << ", v=" << v[idx] 
-                  << ", w=" << w[idx] << ", p=" << p[idx] << "\n";
+        #pragma omp critical
+        {
+            std::cout << "[PRESTEP_APPLY_BC] After application -> u=" << u[idx] << ", v=" << v[idx] 
+                      << ", w=" << w[idx] << ", p=" << p[idx] << "\n";
+        }
     };
 
     // Pass 1: wall BCs only on solid or boundary cells (mask == 0 or mask == -1)
