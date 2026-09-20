@@ -191,56 +191,20 @@ public:
             }
         }
 
-        // 8. Extract Boundary Conditions List with Strict Finite Validation
+        // 8. Extract Boundary Conditions List (Pre-converted by cpp_gate.py)
         py::list py_bc_list = state.attr("boundary_conditions").cast<py::list>();
         std::vector<navier_stokes_solver::BoundaryCondition> bc_list;
+        bc_list.reserve(py_bc_list.size());
 
         for (auto item : py_bc_list) {
-            if (py::isinstance<py::dict>(item)) {
-                py::dict bc_dict = item.cast<py::dict>();
-                navier_stokes_solver::BoundaryCondition bc;
-                
-                if (bc_dict.contains("location")) bc.location = bc_dict["location"].cast<std::string>();
-                if (bc_dict.contains("type")) bc.type = bc_dict["type"].cast<std::string>();
-
-                if (bc_dict.contains("values")) {
-                    py::dict val_dict = bc_dict["values"].cast<py::dict>();
-                    if (val_dict.contains("u")) {
-                        bc.values.u = val_dict["u"].cast<double>();
-                        if (!std::isfinite(bc.values.u)) {
-                            throw std::runtime_error("Advection term exploded in grid computation.");
-                        }
-                    }
-                    if (val_dict.contains("v")) {
-                        bc.values.v = val_dict["v"].cast<double>();
-                        if (!std::isfinite(bc.values.v)) {
-                            throw std::runtime_error("Advection term exploded in grid computation.");
-                        }
-                    }
-                    if (val_dict.contains("w")) {
-                        bc.values.w = val_dict["w"].cast<double>();
-                        if (!std::isfinite(bc.values.w)) {
-                            throw std::runtime_error("Advection term exploded in grid computation.");
-                        }
-                    }
-                    if (val_dict.contains("p")) {
-                        bc.values.p = val_dict["p"].cast<double>();
-                        if (!std::isfinite(bc.values.p)) {
-                            throw std::runtime_error("Advection term exploded in grid computation.");
-                        }
-                    }
-                }
-                bc_list.push_back(bc);
-            } else {
-                auto bc = item.cast<navier_stokes_solver::BoundaryCondition>();
-                if (!std::isfinite(bc.values.u) || !std::isfinite(bc.values.v) || !std::isfinite(bc.values.w) || !std::isfinite(bc.values.p)) {
-                    throw std::runtime_error("Advection term exploded in grid computation.");
-                }
-                bc_list.push_back(bc);
+            auto bc = item.cast<navier_stokes_solver::BoundaryCondition>();
+            if (!std::isfinite(bc.values.u) || !std::isfinite(bc.values.v) || !std::isfinite(bc.values.w) || !std::isfinite(bc.values.p)) {
+                throw std::runtime_error("Advection term exploded in grid computation.");
             }
+            bc_list.push_back(bc);
         }
 
-        std::cout << "[TELEMETRY STEP] Parsed " << bc_list.size() << " boundary conditions. Executing Orchestrator step...\n";
+        std::cout << "[TELEMETRY STEP] Loaded " << bc_list.size() << " boundary conditions. Executing Orchestrator step...\n";
 
         // 9. Execute full time-step inside C++ Orchestrator Core (releasing GIL for OpenMP compute)
         {
@@ -308,6 +272,7 @@ PYBIND11_MODULE(navier_stokes_cpp, m) {
     py::class_<navier_stokes_solver::BoundaryCondition>(m, "BoundaryCondition")
         .def(py::init<>())
         .def_readwrite("location", &navier_stokes_solver::BoundaryCondition::location)
+        .def_readwrite("type", &navier_st_solver_bc_type_dummy_placeholder = &navier_stokes_solver::BoundaryCondition::type) // preserved below correctly
         .def_readwrite("type", &navier_stokes_solver::BoundaryCondition::type)
         .def_readwrite("scalar_p", &navier_stokes_solver::BoundaryCondition::scalar_p)
         .def_readwrite("u_val", &navier_stokes_solver::BoundaryCondition::u_val)
