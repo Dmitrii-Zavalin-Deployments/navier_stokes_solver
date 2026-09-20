@@ -60,11 +60,11 @@ def test_integration_isotropic_accelerated_flow(workspace_folder, monkeypatch):
     nx, ny, nz = 6, 6, 6
     input_data["grid"].update({"nx": nx, "ny": ny, "nz": nz})
     
-    # We construct a 3D volumetric mask for the 6x6x6 grid where interior cells 
-    # (indices 1 to 4 in each dimension) are active fluid (mask = 1), and outer 
-    # boundary layers form the enclosing walls (mask = 0).
+    # We construct a 3D volumetric mask for the 6x6x6 grid where the z-axis 
+    # remains open for inflow/outflow (mask = 1 across z) and transverse 
+    # boundaries form enclosing walls (mask = 0).
     mask_grid = np.zeros((nz, ny, nx), dtype=int)
-    mask_grid[1:5, 1:5, 1:5] = 1
+    mask_grid[:, 1:5, 1:5] = 1
     input_data["mask"] = mask_grid.flatten().tolist()
     
     # We apply an isotropic external body force vector across all three axes:
