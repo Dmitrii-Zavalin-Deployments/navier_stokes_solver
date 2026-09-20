@@ -63,9 +63,9 @@ void execute_pre_step(
     #endif
 
     std::cout << "[THREAD_TRACE] File: simulation_prestep.cpp | Operations (Cells): " << total_cells 
-                << " | Grid: " << nx << "x" << ny << "x" << nz 
-                << " | Active Threads: " << active_threads 
-                << " | Cold Start: " << (cold_start ? "true" : "false") << "\n";
+              << " | Grid: " << nx << "x" << ny << "x" << nz 
+              << " | Active Threads: " << active_threads 
+              << " | Cold Start: " << (cold_start ? "true" : "false") << "\n";
 
     // Track pre-step max absolute values across velocity fields
     double pre_u_max = 0.0, pre_v_max = 0.0, pre_w_max = 0.0;
@@ -84,6 +84,7 @@ void execute_pre_step(
         double init_v = 0.0;
         double init_w = 0.0;
         double init_p = 0.0;
+        bool found_inflow = false;
 
         int bc_idx_scan = 0;
         for (const auto& bc : bc_list) {
@@ -95,26 +96,33 @@ void execute_pre_step(
                 init_v = bc.values.v;
                 init_w = bc.values.w;
                 init_p = bc.values.p;
+                found_inflow = true;
                 std::cout << "[PRESTEP_TRACE] Found inflow BC! Initializing seeds -> init_u=" 
                           << init_u << ", init_v=" << init_v << ", init_w=" << init_w << ", init_p=" << init_p << "\n";
                 break;
             }
         }
 
-        std::cout << "[PRESTEP_TRACE] Executing parallel seeding across fluid (1) and boundary (-1) cells...\n";
-        #pragma omp parallel for collapse(3) schedule(static)
-        for (int k = 0; k < nz; ++k) {
-            for (int j = 0; j < ny; ++j) {
-                for (int i = 0; i < nx; ++i) {
-                    size_t idx = static_cast<size_t>(get_flat_index(i, j, k, nx, ny));
-                    if (mask[idx] == 1 || mask[idx] == -1) {
-                        u[idx] = init_u;
-                        v[idx] = init_v;
-                        w[idx] = init_w;
-                        p[idx] = init_p;
+        // Guard against wiping out pre-initialized fields if inflow values evaluate to zero
+        if (found_inflow && (init_u != 0.0 || init_v != 0.0 || init_w != 0.0 || pre_u_max == 0.0)) {
+            std::cout << "[PRESTEP_TRACE] Executing parallel seeding across fluid (1) and boundary (-1) cells...\n";
+            #pragma omp parallel for collapse(3) schedule(static)
+            for (int k = 0; k < nz; ++k) {
+                for (int j = 0; j < ny; ++j) {
+                    for (int i = 0; i < nx; ++i) {
+                        size_t idx = static_cast<size_t>(get_flat_index(i, j, k, nx, ny));
+                        if (mask[idx] == 1 || mask[idx] == -1) {
+                            u[idx] = init_u;
+                            v[idx] = init_v;
+                            w[idx] = init_w;
+                            p[idx] = init_p;
+                        }
                     }
                 }
             }
+        } else {
+            std::cout << "[PRESTEP_TRACE] Skipping uniform seeding override to preserve pre-initialized field state (init_u=" 
+                      << init_u << ", pre_u_max=" << pre_u_max << ").\n";
         }
 
         double post_seed_u_max = 0.0;
@@ -199,7 +207,7 @@ void execute_pre_step(
         else if (bc.type == "outflow") {
             u[idx] = (bc.values.u != 0.0) ? bc.values.u : u[int_idx];
             v[idx] = (bc.values.v != 0.0) ? bc.values.v : v[int_idx];
-            w[idx] = (bc.values.w != 0.0) ? bc.values.u : w[int_idx]; // Note: keeping user's logic intact
+            w[idx] = (bc.values.w != 0.0) ? bc.values.w : w[int_idx]; // Fixed typo: was bc.values.u
             p[idx] = bc.values.p;
         }
         else if (bc.type == "pressure") {
