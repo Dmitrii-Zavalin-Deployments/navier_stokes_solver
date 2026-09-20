@@ -1,6 +1,6 @@
 """
 src/cpp_gate.py
-C++ Interaction Wrapper Module with Exhaustive Forensic Tracing.
+C++ Interaction Wrapper Module with Exhaustive Forensic Tracing for u, v, w, p fields.
 """
 
 import logging
@@ -92,8 +92,20 @@ def _dict_to_boundary_condition(bc_dict: dict) -> Any:
     return bc_obj
 
 
+def _log_field_max_abs(tag: str, state: SolverState) -> None:
+    """Helper to log maximum absolute values across all primary fields (u, v, w, p)."""
+    u_max = float(np.max(np.abs(state.u))) if hasattr(state, "u") and state.u is not None else 0.0
+    v_max = float(np.max(np.abs(state.v))) if hasattr(state, "v") and state.v is not None else 0.0
+    w_max = float(np.max(np.abs(state.w))) if hasattr(state, "w") and state.w is not None else 0.0
+    p_max = float(np.max(np.abs(state.p))) if hasattr(state, "p") and state.p is not None else 0.0
+    logger.info(
+        f"[FORENSIC TRACE] {tag} -> u max abs: {u_max:.6f} | v max abs: {v_max:.6f} | "
+        f"w max abs: {w_max:.6f} | p max abs: {p_max:.6f}"
+    )
+
+
 def _apply_initial_boundary_conditions(state: SolverState) -> None:
-    """Enforces initial boundary condition values onto array boundary faces with exhaustive logging."""
+    """Enforces initial boundary condition values onto array boundary faces with exhaustive logging for u, v, w, p."""
     logger.info("[FORENSIC TRACE] === Entering _apply_initial_boundary_conditions ===")
     
     raw_bcs = None
@@ -149,8 +161,7 @@ def _apply_initial_boundary_conditions(state: SolverState) -> None:
             w_val = float(vals["w"])
             p_val = float(vals["p"])
 
-            pre_max = float(np.max(np.abs(state.u)))
-            logger.info(f"[FORENSIC TRACE] Before applying {loc}: state.u max abs = {pre_max:.6f}")
+            _log_field_max_abs(f"Before applying {loc}", state)
 
             if "x_min" in loc or "xmin" in loc:
                 state.u[0, :, :] = u_val
@@ -183,8 +194,7 @@ def _apply_initial_boundary_conditions(state: SolverState) -> None:
                 state.w[:, :, -1] = w_val
                 state.p[:, :, -1] = p_val
 
-            post_max = float(np.max(np.abs(state.u)))
-            logger.info(f"[FORENSIC TRACE] AFTER applying {loc}: state.u max abs = {post_max:.6f} (u_val={u_val})")
+            _log_field_max_abs(f"AFTER applying {loc} (Target vals: u={u_val}, v={v_val}, w={w_val}, p={p_val})", state)
         else:
             logger.info(f"[FORENSIC TRACE] BC #{idx} type '{bc_type}' skipped for direct array assignment (not inflow/prescribed).")
 
@@ -212,7 +222,7 @@ def _convert_boundary_conditions(state: SolverState) -> None:
 
 def _get_or_create_cpp_solver(state: SolverState) -> Any:
     """
-    Instance-bound initializer for the underlying C++ NavierStokesSolver engine with forensic tracing.
+    Instance-bound initializer for the underlying C++ NavierStokesSolver engine with comprehensive u, v, w, p tracing.
     """
     logger.info("[FORENSIC TRACE] === Entering _get_or_create_cpp_solver ===")
     if state is None:
@@ -225,20 +235,17 @@ def _get_or_create_cpp_solver(state: SolverState) -> Any:
         logger.info("[FORENSIC TRACE] Initializing C++ solver from scratch...")
         _convert_boundary_conditions(state)
         
-        pre_ctor_max = float(np.max(np.abs(state.u)))
-        logger.info(f"[FORENSIC TRACE] Pre-constructor state.u max abs = {pre_ctor_max:.6f}")
+        _log_field_max_abs("Pre-constructor state", state)
         
         logger.info("Initializing instance-bound C++ NavierStokesSolver engine for SolverState...")
         state._cpp_solver = navier_stokes_cpp.NavierStokesSolver(state)
         
-        post_ctor_max = float(np.max(np.abs(state.u)))
-        logger.info(f"[FORENSIC TRACE] POST-constructor state.u max abs (Did C++ zero it out?) = {post_ctor_max:.6f}")
+        _log_field_max_abs("POST-constructor state (Did C++ zero out fields?)", state)
         
         # Re-apply initial boundary values AFTER C++ constructor initialization
         _apply_initial_boundary_conditions(state)
         
-        post_reapp_max = float(np.max(np.abs(state.u)))
-        logger.info(f"[FORENSIC TRACE] POST-re-application state.u max abs = {post_reapp_max:.6f}")
+        _log_field_max_abs("POST-re-application state", state)
 
     logger.info("[FORENSIC TRACE] === Exiting _get_or_create_cpp_solver ===")
     return state._cpp_solver
@@ -246,7 +253,7 @@ def _get_or_create_cpp_solver(state: SolverState) -> Any:
 
 def step_simulation(state: SolverState) -> None:
     """
-    Executes a single time-integration step through the C++ bridge interface with forensic trace.
+    Executes a single time-integration step through the C++ bridge interface with forensic trace for u, v, w, p.
     """
     logger.info(f"[FORENSIC TRACE] === Entering step_simulation (Iteration: {getattr(state, 'current_iteration', 0)}) ===")
     if state is None:
@@ -254,22 +261,19 @@ def step_simulation(state: SolverState) -> None:
 
     solver = _get_or_create_cpp_solver(state)
 
-    pre_step_max = float(np.max(np.abs(state.u)))
-    logger.info(f"[FORENSIC TRACE] Pre-solver.step() state.u max abs = {pre_step_max:.6f}")
+    _log_field_max_abs("Pre-solver.step() state", state)
 
     try:
         logger.info("[FORENSIC TRACE] Executing solver.step(state)...")
         solver.step(state)
         
-        post_step_max = float(np.max(np.abs(state.u)))
-        logger.info(f"[FORENSIC TRACE] Post-solver.step() state.u max abs = {post_step_max:.6f}")
+        _log_field_max_abs("Post-solver.step() state", state)
 
         if hasattr(solver, "sync_fields") and callable(solver.sync_fields):
             logger.info("[FORENSIC TRACE] Executing solver.sync_fields(state)...")
             solver.sync_fields(state)
             
-            post_sync_max = float(np.max(np.abs(state.u)))
-            logger.info(f"[FORENSIC TRACE] Post-sync_fields state.u max abs = {post_sync_max:.6f}")
+            _log_field_max_abs("Post-sync_fields state", state)
         else:
             raise RuntimeError(
                 "FATAL ERROR: C++ NavierStokesSolver instance is missing required callable 'sync_fields' method."
