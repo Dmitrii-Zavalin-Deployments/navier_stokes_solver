@@ -246,12 +246,7 @@ void NavierStokesOrchestrator::step(
     capture_debug_snapshot("poisson", u, v, w, p);
     print_state_trace("Post-poisson");
 
-    RhieChowInterpolator::interpolateFaceVelocities(
-        u_star_, v_star_, w_star_, p, a_p, mask, rc_config, u_face, v_face, w_face
-    );
-
-    capture_debug_snapshot("rhie_chow_post_poisson", u, v, w, p);
-    print_state_trace("Post-rhie_chow_post_poisson");
+    // Redundant Rhie-Chow interpolation pass removed to avoid unnecessary computation per step
 
     auto dur_poisson = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::high_resolution_clock::now() - t_poisson

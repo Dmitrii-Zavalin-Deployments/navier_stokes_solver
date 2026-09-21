@@ -47,9 +47,13 @@ void apply_neumann_pressure(
     const double dp_dy = density * gy;
     const double dp_dz = density * gz;
 
-    p_tmp = p;
+    if (p_tmp.size() != p.size()) {
+        p_tmp = p;
+    } else {
+        std::copy(p.begin(), p.end(), p_tmp.begin());
+    }
 
-    #pragma omp parallel for collapse(3) schedule(static)
+    #pragma omp parallel for collapse(3) schedule(static) if(nx * ny * nz >= 1000)
     for (int k = 0; k < nz; ++k) {
         for (int j = 0; j < ny; ++j) {
             for (int i = 0; i < nx; ++i) {
@@ -110,7 +114,7 @@ void apply_neumann_pressure(
             }
         }
     }
-    p = std::move(p_tmp);
+    p = p_tmp;
 }
 
 void apply_solid_neumann_pressure_parallel(
@@ -123,9 +127,13 @@ void apply_solid_neumann_pressure_parallel(
     if (nx <= 0 || ny <= 0 || nz <= 0) return;
     if (dx <= 0.0 || dy <= 0.0 || dz <= 0.0) return;
 
-    p_tmp = p;
+    if (p_tmp.size() != p.size()) {
+        p_tmp = p;
+    } else {
+        std::copy(p.begin(), p.end(), p_tmp.begin());
+    }
 
-    #pragma omp parallel for collapse(3) schedule(static)
+    #pragma omp parallel for collapse(3) schedule(static) if(nx * ny * nz >= 1000)
     for (int k = 0; k < nz; ++k) {
         for (int j = 0; j < ny; ++j) {
             for (int i = 0; i < nx; ++i) {
@@ -187,7 +195,7 @@ void apply_solid_neumann_pressure_parallel(
             }
         }
     }
-    p = std::move(p_tmp);
+    p = p_tmp;
 }
 
 void solve_poisson_red_black_parallel(
@@ -296,73 +304,12 @@ void solve_poisson_red_black_parallel(
                     const size_t idx_down  = static_cast<size_t>(d);
                     const size_t idx_up    = static_cast<size_t>(u);
 
-                    const double p_west  = (mask[idx_west] == 1)  ? p[idx_west]  : p[idx];
-                    const double p_east  = (mask[idx_east] == 1)  ? p[idx_east]  : p[idx];
-                    const double p_south = (mask[idx_south] == 1) ? p[idx_south] : p[idx];
-                    const double p_north = (mask[idx_north] == 1) ? p[idx_north] : p[idx];
-                    const double p_down  = (mask[idx_down] == 1)  ? p[idx_down]  : p[idx];
-                    const double p_up    = (mask[idx_up] == 1)    ? p[idx_up]    : p[idx];
-
-                    double p_new = factor * (
-                        (p_east + p_west) * idx2 +
-                        (p_north + p_south) * idy2 +
-                        (p_up + p_down) * idz2 -
-                        rhs[idx]
-                    );
-
-                    if (!std::isfinite(p_new)) {
-                        #pragma omp critical
-                        {
-                            if (!has_error) {
-                                has_error = true;
-                                err_i = i;
-                                err_j = j;
-                                err_k = k;
-                                err_val = p_new;
-                            }
-                        }
-                    }
-
-                    p[idx] = p_new;
-                }
-            }
-        }
-
-        // --- PASS 2: Update BLACK Interior Fluid Cells ((i + j + k) % 2 != 0) ---
-        #pragma omp parallel for collapse(3) schedule(static) if(total_cells >= 1000)
-        for (int k = 1; k < nz - 1; ++k) {
-            for (int j = 1; j < ny - 1; ++j) {
-                for (int i = 1; i < nx - 1; ++i) {
-                    if ((i + j + k) % 2 == 0) continue;
-
-                    const int raw_idx = get_flat_index(i, j, k, nx, ny);
-                    if (raw_idx < 0) continue;
-                    const size_t idx = static_cast<size_t>(raw_idx);
-
-                    if (mask[idx] != 1) continue;
-
-                    const int w = get_flat_index(i - 1, j, k, nx, ny);
-                    const int e = get_flat_index(i + 1, j, k, nx, ny);
-                    const int s = get_flat_index(i, j - 1, k, nx, ny);
-                    const int n = get_flat_index(i, j + 1, k, nx, ny);
-                    const int d = get_flat_index(i, j, k - 1, nx, ny);
-                    const int u = get_flat_index(i, j, k + 1, nx, ny);
-
-                    if (w < 0 || e < 0 || s < 0 || n < 0 || d < 0 || u < 0) continue;
-
-                    const size_t idx_west  = static_cast<size_t>(w);
-                    const size_t idx_east  = static_cast<size_t>(e);
-                    const size_t idx_south = static_cast<size_t>(s);
-                    const size_t idx_north = static_cast<size_t>(n);
-                    const size_t idx_down  = static_cast<size_t>(d);
-                    const size_t idx_up    = static_cast<size_t>(u);
-
-                    const double p_west  = (mask[idx_west] == 1)  ? p[idx_west]  : p[idx];
-                    const double p_east  = (mask[idx_east] == 1)  ? p[idx_east]  : p[idx];
-                    const double p_south = (mask[idx_south] == 1) ? p[idx_south] : p[idx];
-                    const double p_north = (mask[idx_north] == 1) ? p[idx_north] : p[idx];
-                    const double p_down  = (mask[idx_down] == 1)  ? p[idx_down]  : p[idx];
-                    const double p_up    = (mask[idx_up] == 1)    ? p[idx_up]    : p[idx];
+                    const double p_west  = (mask[idx_west]  != 0) ? p[idx_west]  : p[idx];
+                    const double p_east  = (mask[idx_east]  != 0) ? p[idx_east]  : p[idx];
+                    const double p_south = (mask[idx_south] != 0) ? p[idx_south] : p[idx];
+                    const double p_north = (mask[idx_north] != 0) ? p[idx_north] : p[idx];
+                    const double p_down  = (mask[idx_down]  != 0) ? p[idx_down]  : p[idx];
+                    const double p_up    = (mask[idx_up]    != 0) ? p[idx_up]    : p[idx];
 
                     double p_new = factor * (
                         (p_east + p_west) * idx2 +
@@ -395,11 +342,78 @@ void solve_poisson_red_black_parallel(
             throw std::runtime_error("Pressure Poisson solver exploded. Pressure field is non-finite.");
         }
 
-        // --- PASS 3: Synchronize Boundaries & Solids Inside Iteration (Option B Enforcement) ---
+        // --- PASS 2: Update BLACK Interior Fluid Cells ((i + j + k) % 2 != 0) ---
+        #pragma omp parallel for collapse(3) schedule(static) if(total_cells >= 1000)
+        for (int k = 1; k < nz - 1; ++k) {
+            for (int j = 1; j < ny - 1; ++j) {
+                for (int i = 1; i < nx - 1; ++i) {
+                    if ((i + j + k) % 2 == 0) continue;
+
+                    const int raw_idx = get_flat_index(i, j, k, nx, ny);
+                    if (raw_idx < 0) continue;
+                    const size_t idx = static_cast<size_t>(raw_idx);
+
+                    if (mask[idx] != 1) continue;
+
+                    const int w = get_flat_index(i - 1, j, k, nx, ny);
+                    const int e = get_flat_index(i + 1, j, k, nx, ny);
+                    const int s = get_flat_index(i, j - 1, k, nx, ny);
+                    const int n = get_flat_index(i, j + 1, k, nx, ny);
+                    const int d = get_flat_index(i, j, k - 1, nx, ny);
+                    const int u = get_flat_index(i, j, k + 1, nx, ny);
+
+                    if (w < 0 || e < 0 || s < 0 || n < 0 || d < 0 || u < 0) continue;
+
+                    const size_t idx_west  = static_cast<size_t>(w);
+                    const size_t idx_east  = static_cast<size_t>(e);
+                    const size_t idx_south = static_cast<size_t>(s);
+                    const size_t idx_north = static_cast<size_t>(n);
+                    const size_t idx_down  = static_cast<size_t>(d);
+                    const size_t idx_up    = static_cast<size_t>(u);
+
+                    const double p_west  = (mask[idx_west]  != 0) ? p[idx_west]  : p[idx];
+                    const double p_east  = (mask[idx_east]  != 0) ? p[idx_east]  : p[idx];
+                    const double p_south = (mask[idx_south] != 0) ? p[idx_south] : p[idx];
+                    const double p_north = (mask[idx_north] != 0) ? p[idx_north] : p[idx];
+                    const double p_down  = (mask[idx_down]  != 0) ? p[idx_down]  : p[idx];
+                    const double p_up    = (mask[idx_up]    != 0) ? p[idx_up]    : p[idx];
+
+                    double p_new = factor * (
+                        (p_east + p_west) * idx2 +
+                        (p_north + p_south) * idy2 +
+                        (p_up + p_down) * idz2 -
+                        rhs[idx]
+                    );
+
+                    if (!std::isfinite(p_new)) {
+                        #pragma omp critical
+                        {
+                            if (!has_error) {
+                                has_error = true;
+                                err_i = i;
+                                err_j = j;
+                                err_k = k;
+                                err_val = p_new;
+                            }
+                        }
+                    }
+
+                    p[idx] = p_new;
+                }
+            }
+        }
+
+        if (has_error) {
+            std::cerr << "MATH FAILURE [pressure_poisson_solver.cpp]: Non-finite pressure detected at grid index [" 
+                      << err_i << ", " << err_j << ", " << err_k << "] | Result: " << err_val << "\n";
+            throw std::runtime_error("Pressure Poisson solver exploded. Pressure field is non-finite.");
+        }
+
+        // --- PASS 3: Synchronize Boundaries & Solids Inside Iteration ---
         for (size_t b = 0; b < bc_list.size(); ++b) {
             const auto& bc = bc_list[b];
             if (bc.type == "pressure" || bc.type == "outflow") {
-                const double p_val = bc.values.has_p ? bc.values.p : bc.scalar_p; // Use the specified boundary condition value instead of defaulting to 0.0
+                const double p_val = bc.values.has_p ? bc.values.p : bc.scalar_p;
                 if (bc.location == "x_min") {
                     for (int k = 0; k < nz; ++k) {
                         for (int j = 0; j < ny; ++j) {
@@ -455,7 +469,8 @@ void solve_poisson_red_black_parallel(
             double min_p = std::numeric_limits<double>::infinity();
             double max_p = -std::numeric_limits<double>::infinity();
             double max_residual = 0.0;
-            
+
+            #pragma omp parallel for collapse(3) reduction(min:min_p) reduction(max:max_p) reduction(max:max_residual) if(total_cells >= 1000)
             for (int k = 1; k < nz - 1; ++k) {
                 for (int j = 1; j < ny - 1; ++j) {
                     for (int i = 1; i < nx - 1; ++i) {
@@ -464,10 +479,10 @@ void solve_poisson_red_black_parallel(
                         size_t idx = static_cast<size_t>(raw_idx);
 
                         if (mask[idx] == 1) {
-                            if (p[idx] < min_p) min_p = p[idx];
-                            if (p[idx] > max_p) max_p = p[idx];
+                            double val = p[idx];
+                            if (val < min_p) min_p = val;
+                            if (val > max_p) max_p = val;
 
-                            // Compute residual magnitude
                             const int w = get_flat_index(i - 1, j, k, nx, ny);
                             const int e = get_flat_index(i + 1, j, k, nx, ny);
                             const int s = get_flat_index(i, j - 1, k, nx, ny);
@@ -476,12 +491,12 @@ void solve_poisson_red_black_parallel(
                             const int u = get_flat_index(i, j, k + 1, nx, ny);
 
                             if (w >= 0 && e >= 0 && s >= 0 && n >= 0 && d >= 0 && u >= 0) {
-                                double p_w = (mask[w] == 1) ? p[w] : p[idx];
-                                double p_e = (mask[e] == 1) ? p[e] : p[idx];
-                                double p_s = (mask[s] == 1) ? p[s] : p[idx];
-                                double p_n = (mask[n] == 1) ? p[n] : p[idx];
-                                double p_d = (mask[d] == 1) ? p[d] : p[idx];
-                                double p_u = (mask[u] == 1) ? p[u] : p[idx];
+                                double p_w = (mask[static_cast<size_t>(w)] != 0) ? p[static_cast<size_t>(w)] : p[idx];
+                                double p_e = (mask[static_cast<size_t>(e)] != 0) ? p[static_cast<size_t>(e)] : p[idx];
+                                double p_s = (mask[static_cast<size_t>(s)] != 0) ? p[static_cast<size_t>(s)] : p[idx];
+                                double p_n = (mask[static_cast<size_t>(n)] != 0) ? p[static_cast<size_t>(n)] : p[idx];
+                                double p_d = (mask[static_cast<size_t>(d)] != 0) ? p[static_cast<size_t>(d)] : p[idx];
+                                double p_u = (mask[static_cast<size_t>(u)] != 0) ? p[static_cast<size_t>(u)] : p[idx];
 
                                 double laplacian = (p_e - 2.0 * p[idx] + p_w) * idx2 +
                                                    (p_n - 2.0 * p[idx] + p_s) * idy2 +
