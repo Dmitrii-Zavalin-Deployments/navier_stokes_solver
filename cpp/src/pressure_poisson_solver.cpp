@@ -399,7 +399,7 @@ void solve_poisson_red_black_parallel(
         for (size_t b = 0; b < bc_list.size(); ++b) {
             const auto& bc = bc_list[b];
             if (bc.type == "pressure" || bc.type == "outflow") {
-                const double p_val = bc.values; // Use the specified boundary condition value instead of defaulting to 0.0
+                const double p_val = bc.values.has_p ? bc.values.p : bc.scalar_p; // Use the specified boundary condition value instead of defaulting to 0.0
                 if (bc.location == "x_min") {
                     for (int k = 0; k < nz; ++k) {
                         for (int j = 0; j < ny; ++j) {
