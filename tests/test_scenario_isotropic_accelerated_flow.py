@@ -1,23 +1,11 @@
 """
-Literate Integration Test: Scenario - Isotropic Multi-Axis Flow Acceleration.
+Literate Testing Standard — recommended for repositories with complex scientific logic.
+Each test file is written as a narrative: explanatory text appears as commented prose,
+while formulas, numerical computations, and assertions appear as executable code.
 
-This test validates unconstrained multi-axis acceleration within an expanded 
-3D computational domain. When the fluid core volume is increased (e.g., on a 
-6x6x6 grid with a spacious interior fluid region), the applied body force 
-vector [1.0, 1.0, 1.0] drives physical acceleration across all spatial 
-dimensions simultaneously.
-
-Physical Principle:
-    Given an external body force vector:
-        F_ext = [f_x, f_y, f_z] = [1.0, 1.0, 1.0]
-    
-    In a sufficiently resolved interior fluid domain where boundary damping 
-    does not immediately dominate transverse cells, Newton's second law and 
-    the momentum equations dictate that velocity components in all directions 
-    will accumulate momentum over successive time steps (dt):
-        u(t+dt) > u(t)
-        v(t+dt) > v(t)
-        w(t+dt) > w(t)
+Test Name: test_scenario_isotropic_accelerated_flow.py
+Description: Validates unconstrained isotropic multi-axis flow acceleration within 
+an expanded 3D computational domain (6x6x6 grid) under a uniform body force vector.
 """
 
 import io
@@ -44,6 +32,7 @@ def test_integration_isotropic_accelerated_flow(workspace_folder, monkeypatch):
     print("DIAGNOSTIC START: test_integration_isotropic_accelerated_flow")
     print("================================================================================")
 
+    # We retrieve the workspace directory path and target input configuration file.
     folder = workspace_folder["folder"]
     input_file = workspace_folder["input_file_name"]
     input_path = Path(folder) / input_file
@@ -54,21 +43,30 @@ def test_integration_isotropic_accelerated_flow(workspace_folder, monkeypatch):
         input_data = json.load(f)
 
     # We set the simulation time step (dt = 0.001) and total duration across 3 iterations.
-    input_data["simulation_parameters"] = {"time_step": 0.001, "total_time": 0.003, "output_interval": 1}
+    input_data["simulation_parameters"] = {
+        "time_step": 0.001, 
+        "total_time": 0.003, 
+        "output_interval": 1
+    }
     
-    # We expand the grid dimensions to a 6x6x6 cubic domain to provide a larger fluid core.
+    # We configure the grid dimensions to a cubic 6x6x6 domain.
     nx, ny, nz = 6, 6, 6
     input_data["grid"].update({"nx": nx, "ny": ny, "nz": nz})
     
-    # We construct a 3D volumetric mask for the 6x6x6 grid where the z-axis 
-    # remains open for inflow/outflow (mask = 1 across z) and transverse 
-    # boundaries form enclosing walls (mask = 0).
-    mask_grid = np.zeros((nz, ny, nx), dtype=int)
-    mask_grid[:, 1:5, 1:5] = 1
-    input_data["mask"] = mask_grid.flatten().tolist()
+    # We define a localized 6x6 fluid channel layer mask where active fluid cells (mask = 1) 
+    # are encased by stationary no-slip walls (mask = 0) and replicated across all 6 z-planes.
+    layer_mask = [
+        0, 0, 0, 0, 0, 0,
+        0, 1, 1, 1, 1, 0,
+        0, 1, 1, 1, 1, 0,
+        0, 1, 1, 1, 1, 0,
+        0, 1, 1, 1, 1, 0,
+        0, 0, 0, 0, 0, 0
+    ]
+    input_data["mask"] = layer_mask * 6
     
     # We apply an isotropic external body force vector across all three axes:
-    #     F_ext = [1.0, 1.0, 1.0]
+    #     F_ext = [f_x, f_y, f_z] = [1.0, 1.0, 1.0]
     input_data["external_forces"]["force_vector"] = [1.0, 1.0, 1.0]
     input_data["external_forces"]["gravity_vector"] = [0.0, 0.0, 0.0]
     
@@ -79,6 +77,7 @@ def test_integration_isotropic_accelerated_flow(workspace_folder, monkeypatch):
         {"location": "wall", "type": "no-slip", "values": {"u": 0.0, "v": 0.0, "w": 0.0, "p": 0.0}}
     ]
 
+    # We save the updated configuration parameters back to the input file.
     with open(input_path, "w", encoding="utf-8") as f:
         json.dump(input_data, f, indent=2)
     print("[1/5] Input configuration successfully updated with isotropic 6x6x6 test parameters.")
@@ -136,6 +135,7 @@ def test_integration_isotropic_accelerated_flow(workspace_folder, monkeypatch):
                 snapshot_filename = f"{fname}_step_{step_str}.npy"
                 assert snapshot_filename in namelist, f"Snapshot {snapshot_filename} missing from archive."
 
+                # We load the binary array representation from the archived snapshot stream.
                 raw_bytes = zf.read(snapshot_filename)
                 field_data = np.load(io.BytesIO(raw_bytes))
 
