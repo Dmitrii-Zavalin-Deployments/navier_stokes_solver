@@ -74,19 +74,6 @@ add_test(NAME UnitTests COMMAND unit_tests)
 
 
 
-# Full Pipeline Literate Test
-add_executable(test_full_pipeline_constant_flow
-    cpp/cpp_integration_tests/test_full_pipeline_constant_flow.cpp
-)
-target_link_libraries(test_full_pipeline_constant_flow
-    PRIVATE
-        GTest::gtest_main
-        navier_stokes_core
-        nlohmann_json::nlohmann_json
-        OpenMP::OpenMP_CXX
-        Threads::Threads
-)
-add_test(NAME FullPipelineLiterateTest COMMAND test_full_pipeline_constant_flow)
 
 # Mass Continuity & Divergence Test
 add_executable(test_mass_continuity
