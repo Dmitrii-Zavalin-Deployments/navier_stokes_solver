@@ -96,11 +96,17 @@ void solve_corrector_parallel(
                 const double p_down  = p[idx_down];
                 const double p_up    = p[idx_up];
 
+                // --- HEAVY TRACE: BLOCK 1 - Pressure & Neighbors (Sampled at [1,1,1]) ---
+                if (i == 1 && j == 1 && k == 1) {
+                    #pragma omp critical
+                    {
+                        std::cout << "[CORRECTOR_TRACE] Cell [" << i << "," << j << "," << k << "] - Block 1 (Pressure & Neighbors):\n"
+                                  << "  p_center: " << p_center << ", p_west: " << p_west << ", p_east: " << p_east << "\n"
+                                  << "  p_south: " << p_south << ", p_north: " << p_north << ", p_down: " << p_down << ", p_up: " << p_up << "\n";
+                    }
+                }
+
                 // --- ROBUST MASK-AWARE PRESSURE GRADIENT EVALUATION ---
-                // Prevent boundary stencil pollution while supporting valid one-sided 
-                // pressure gradients at fluid-solid and fluid-wall interfaces.
-                
-                // X-Direction Gradient
                 double dp_dx = 0.0;
                 if (mask[idx_east] == 1 && mask[idx_west] == 1) {
                     dp_dx = (p_east - p_west) * idx_2inv; // 2nd-order interior central difference
@@ -112,7 +118,6 @@ void solve_corrector_parallel(
                     dp_dx = 0.0;
                 }
 
-                // Y-Direction Gradient
                 double dp_dy = 0.0;
                 if (mask[idx_north] == 1 && mask[idx_south] == 1) {
                     dp_dy = (p_north - p_south) * idy_2inv; // 2nd-order interior central difference
@@ -124,7 +129,6 @@ void solve_corrector_parallel(
                     dp_dy = 0.0;
                 }
 
-                // Z-Direction Gradient
                 double dp_dz = 0.0;
                 if (mask[idx_up] == 1 && mask[idx_down] == 1) {
                     dp_dz = (p_up - p_down) * idz_2inv; // 2nd-order interior central difference
@@ -136,10 +140,30 @@ void solve_corrector_parallel(
                     dp_dz = 0.0;
                 }
 
+                // --- HEAVY TRACE: BLOCK 2 - Pressure Gradients ---
+                if (i == 1 && j == 1 && k == 1) {
+                    #pragma omp critical
+                    {
+                        std::cout << "[CORRECTOR_TRACE] Cell [" << i << "," << j << "," << k << "] - Block 2 (Gradients):\n"
+                                  << "  dp_dx: " << dp_dx << ", dp_dy: " << dp_dy << ", dp_dz: " << dp_dz << "\n";
+                    }
+                }
+
                 // Project trial velocity onto divergence-free subspace
                 double new_u = u_star[idx_cell] - coeff * dp_dx;
                 double new_v = v_star[idx_cell] - coeff * dp_dy;
                 double new_w = w_star[idx_cell] - coeff * dp_dz;
+
+                // --- HEAVY TRACE: BLOCK 3 - Velocity Projection ---
+                if (i == 1 && j == 1 && k == 1) {
+                    #pragma omp critical
+                    {
+                        std::cout << "[CORRECTOR_TRACE] Cell [" << i << "," << j << "," << k << "] - Block 3 (Velocity Projection):\n"
+                                  << "  u_star: " << u_star[idx_cell] << " -> new_u: " << new_u << "\n"
+                                  << "  v_star: " << v_star[idx_cell] << " -> new_v: " << new_v << "\n"
+                                  << "  w_star: " << w_star[idx_cell] << " -> new_w: " << new_w << "\n";
+                    }
+                }
 
                 // --- FORENSIC NUMERICAL AUDIT ---
                 if (!std::isfinite(new_u) || !std::isfinite(new_v) || !std::isfinite(new_w)) {
@@ -165,7 +189,6 @@ void solve_corrector_parallel(
     }
 
     // --- SOLID VELOCITY CLAMPING PASS ---
-    // Enforce strict zero-velocity across internal solid cells (mask == 0), preserving boundary Dirichlet conditions (mask == -1)
     #pragma omp parallel for schedule(static) if(total_cells > 1000)
     for (int64_t idx = 0; idx < static_cast<int64_t>(total_cells); ++idx) {
         if (mask[idx] == 0) {
@@ -174,6 +197,16 @@ void solve_corrector_parallel(
             w[idx] = 0.0;
         }
     }
+
+    // --- HEAVY TRACE: BLOCK 4 - Final Field Max Absolute Values ---
+    double max_u = 0.0, max_v = 0.0, max_w = 0.0;
+    for (size_t idx = 0; idx < total_cells; ++idx) {
+        if (std::abs(u[idx]) > max_u) max_u = std::abs(u[idx]);
+        if (std::abs(v[idx]) > max_v) max_v = std::abs(v[idx]);
+        if (std::abs(w[idx]) > max_w) max_w = std::abs(w[idx]);
+    }
+    std::cout << "[CORRECTOR_TRACE] Step Complete. Final field max absolute values -> u: " 
+              << max_u << ", v: " << max_v << ", w: " << max_w << "\n";
 
     if (has_error) {
         std::cerr << "MATH FAILURE: Non-finite velocity projected at grid index [" 
