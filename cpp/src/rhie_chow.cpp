@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
+#include <iostream>
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -35,6 +36,9 @@ void RhieChowInterpolator::interpolateFaceVelocities(
     double dy = config.dy;
     double dz = config.dz;
 
+    std::cout << "[RHIE CHOW INIT] RhieChowInterpolator::interpolateFaceVelocities started | nx=" << nx 
+              << ", ny=" << ny << ", nz=" << nz << ", dx=" << dx << ", dy=" << dy << ", dz=" << dz << std::endl;
+
     // Helper lambda for 3D flat indexing using repository standard get_flat_index
     auto get_idx = [nx, ny](int i, int j, int k) {
         return static_cast<size_t>(get_flat_index(i, j, k, nx, ny));
@@ -42,6 +46,8 @@ void RhieChowInterpolator::interpolateFaceVelocities(
 
     const size_t total_cells = static_cast<size_t>(nx) * ny * nz;
     if (!mask.empty() && mask.size() != total_cells) {
+        std::cerr << "[RHIE CHOW ERROR] CONTRACT VIOLATION: Mask vector size mismatch in RhieChowInterpolator. Expected " 
+                  << total_cells << ", got " << mask.size() << std::endl;
         throw std::invalid_argument("CONTRACT VIOLATION: Mask vector size mismatch in RhieChowInterpolator.");
     }
 
@@ -53,6 +59,7 @@ void RhieChowInterpolator::interpolateFaceVelocities(
     const double idz_2inv = 0.5 / dz;
 
     // --- 1. X-Face Velocities ---
+    std::cout << "[RHIE CHOW STEP] Beginning X-Face velocity interpolation loop." << std::endl;
     #pragma omp parallel for collapse(3) schedule(static) if(nx * ny * nz > 1000)
     for (int k = 0; k < nz; ++k) {
         for (int j = 0; j < ny; ++j) {
@@ -122,8 +129,10 @@ void RhieChowInterpolator::interpolateFaceVelocities(
             }
         }
     }
+    std::cout << "[RHIE CHOW SYNC] X-Face velocity interpolation completed successfully." << std::endl;
 
     // --- 2. Y-Face Velocities ---
+    std::cout << "[RHIE CHOW STEP] Beginning Y-Face velocity interpolation loop." << std::endl;
     #pragma omp parallel for collapse(3) schedule(static) if(nx * ny * nz > 1000)
     for (int k = 0; k < nz; ++k) {
         for (int j = 0; j < ny - 1; ++j) {
@@ -188,8 +197,10 @@ void RhieChowInterpolator::interpolateFaceVelocities(
             }
         }
     }
+    std::cout << "[RHIE CHOW SYNC] Y-Face velocity interpolation completed successfully." << std::endl;
 
     // --- 3. Z-Face Velocities ---
+    std::cout << "[RHIE CHOW STEP] Beginning Z-Face velocity interpolation loop." << std::endl;
     #pragma omp parallel for collapse(3) schedule(static) if(nx * ny * nz > 1000)
     for (int k = 0; k < nz - 1; ++k) {
         for (int j = 0; j < ny; ++j) {
@@ -254,6 +265,7 @@ void RhieChowInterpolator::interpolateFaceVelocities(
             }
         }
     }
+    std::cout << "[RHIE CHOW SYNC] Z-Face velocity interpolation completed successfully." << std::endl;
 }
 
 } // namespace navier_stokes_solver
