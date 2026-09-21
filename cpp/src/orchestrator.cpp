@@ -274,6 +274,9 @@ void NavierStokesOrchestrator::step(
     capture_debug_snapshot("corrector", u, v, w, p);
     print_state_trace("Post-corrector");
 
+    // Re-apply boundary conditions to lock edges before final buffer sync
+    execute_pre_step(u, v, w, p, mask, bc_list, dims_.nx, dims_.ny, dims_.nz, false);
+
     // 5. FINAL BUFFER SYNCHRONIZATION
     auto t_sync2 = std::chrono::high_resolution_clock::now();
     sync_ghost_trial_buffers(
