@@ -161,3 +161,4 @@ def test_full_pipeline_accelerated_with_gravity(workspace_folder, monkeypatch):
     print("\n================================================================================")
     print("DIAGNOSTIC SUCCESS: Accelerated flow with gravity validated successfully via Python pipeline!")
     print("================================================================================")
+    
