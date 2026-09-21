@@ -89,9 +89,9 @@ void RhieChowInterpolator::interpolateFaceVelocities(
                 if (west_fluid && east_fluid_P) {
                     dp_dx_P = (p[idx_E] - p[idx_west]) * idx_2inv;
                 } else if (!west_fluid && east_fluid_P) {
-                    dp_dx_P = (p[idx_E] - p[idx_P]) * (2.0 * id_inv);
+                    dp_dx_P = (p[idx_E] - p[idx_P]) * id_inv;
                 } else if (west_fluid && !east_fluid_P) {
-                    dp_dx_P = (p[idx_P] - p[idx_west]) * (2.0 * id_inv);
+                    dp_dx_P = (p[idx_P] - p[idx_west]) * id_inv;
                 } else {
                     dp_dx_P = 0.0;
                 }
@@ -108,9 +108,9 @@ void RhieChowInterpolator::interpolateFaceVelocities(
                 if (west_fluid_E && east_fluid_EE) {
                     dp_dx_E = (p[idx_east_EE] - p[idx_P]) * idx_2inv;
                 } else if (!west_fluid_E && east_fluid_EE) {
-                    dp_dx_E = (p[idx_east_EE] - p[idx_E]) * (2.0 * id_inv);
+                    dp_dx_E = (p[idx_east_EE] - p[idx_E]) * id_inv;
                 } else if (west_fluid_E && !east_fluid_EE) {
-                    dp_dx_E = (p[idx_E] - p[idx_P]) * (2.0 * id_inv);
+                    dp_dx_E = (p[idx_E] - p[idx_P]) * id_inv;
                 } else {
                     dp_dx_E = 0.0;
                 }
@@ -156,9 +156,9 @@ void RhieChowInterpolator::interpolateFaceVelocities(
                 if (south_fluid && north_fluid_P) {
                     dp_dy_P = (p[idx_N] - p[idx_south]) * idy_2inv;
                 } else if (!south_fluid && north_fluid_P) {
-                    dp_dy_P = (p[idx_N] - p[idx_P]) * (2.0 * idy_inv);
+                    dp_dy_P = (p[idx_N] - p[idx_P]) * idy_inv;
                 } else if (south_fluid && !north_fluid_P) {
-                    dp_dy_P = (p[idx_P] - p[idx_south]) * (2.0 * idy_inv);
+                    dp_dy_P = (p[idx_P] - p[idx_south]) * idy_inv;
                 } else {
                     dp_dy_P = 0.0;
                 }
@@ -175,9 +175,9 @@ void RhieChowInterpolator::interpolateFaceVelocities(
                 if (south_fluid_N && north_fluid_NN) {
                     dp_dy_N = (p[idx_north_NN] - p[idx_P]) * idy_2inv;
                 } else if (!south_fluid_N && north_fluid_NN) {
-                    dp_dy_N = (p[idx_north_NN] - p[idx_N]) * (2.0 * idy_inv);
+                    dp_dy_N = (p[idx_north_NN] - p[idx_N]) * idy_inv;
                 } else if (south_fluid_N && !north_fluid_NN) {
-                    dp_dy_N = (p[idx_N] - p[idx_P]) * (2.0 * idy_inv);
+                    dp_dy_N = (p[idx_N] - p[idx_P]) * idy_inv;
                 } else {
                     dp_dy_N = 0.0;
                 }
@@ -222,9 +222,9 @@ void RhieChowInterpolator::interpolateFaceVelocities(
                 if (down_fluid && up_fluid_P) {
                     dp_dz_P = (p[idx_T] - p[idx_down]) * idz_2inv;
                 } else if (!down_fluid && up_fluid_P) {
-                    dp_dz_P = (p[idx_T] - p[idx_P]) * (2.0 * idz_inv);
+                    dp_dz_P = (p[idx_T] - p[idx_P]) * idz_inv;
                 } else if (down_fluid && !up_fluid_P) {
-                    dp_dz_P = (p[idx_P] - p[idx_down]) * (2.0 * idz_inv);
+                    dp_dz_P = (p[idx_P] - p[idx_down]) * idz_inv;
                 } else {
                     dp_dz_P = 0.0;
                 }
@@ -241,9 +241,9 @@ void RhieChowInterpolator::interpolateFaceVelocities(
                 if (down_fluid_T && up_fluid_TT) {
                     dp_dz_T = (p[idx_up_TT] - p[idx_P]) * idz_2inv;
                 } else if (!down_fluid_T && up_fluid_TT) {
-                    dp_dz_T = (p[idx_up_TT] - p[idx_T]) * (2.0 * idz_inv);
+                    dp_dz_T = (p[idx_up_TT] - p[idx_T]) * idz_inv;
                 } else if (down_fluid_T && !up_fluid_TT) {
-                    dp_dz_T = (p[idx_T] - p[idx_P]) * (2.0 * idz_inv);
+                    dp_dz_T = (p[idx_T] - p[idx_P]) * idz_inv;
                 } else {
                     dp_dz_T = 0.0;
                 }

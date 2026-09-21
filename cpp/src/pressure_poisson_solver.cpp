@@ -1,7 +1,7 @@
 /**
  * @file pressure_poisson_solver.cpp
  * @brief Implementation of Step 3 Pressure Poisson Solver (Red-Black GS) with robust safety validation,
- *        hydrostatic pressure / body-force boundary balancing, and lightweight field logging for p.
+ *        hydrostatic pressure / body-force boundary balancing, active tolerance convergence check, and lightweight field logging for p.
  */
 
 #include "pressure_poisson_solver.hpp"
@@ -10,6 +10,7 @@
 #include <stdexcept>
 #include <algorithm>
 #include <iostream>
+#include <limits>
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -222,7 +223,8 @@ void solve_poisson_red_black_parallel(
     #endif
 
     std::cout << "[SOLVER_INFO] Poisson Red-Black GS | Grid: " << nx << "x" << ny << "x" << nz 
-              << " | Cells: " << total_cells << " | Threads: " << active_threads << "\n";
+              << " | Cells: " << total_cells << " | Threads: " << active_threads 
+              << " | Target Tol: " << tol << "\n";
 
     DirichletFaces dirichlet;
     for (const auto& bc : bc_list) {
@@ -386,22 +388,62 @@ void solve_poisson_red_black_parallel(
 
         apply_solid_neumann_pressure_parallel(p, p_tmp, mask, nx, ny, nz, dx, dy, dz);
 
-        // --- LIGHTWEIGHT PRESSURE (p) LOGGING ---
-        // Log min/max pressure statistics every 50 iterations and on the final iteration
-        if (iter % 50 == 0 || iter == max_iters - 1) {
+        // --- ACTIVE CONVERGENCE & MIN/MAX LOGGING ---
+        if (iter % 10 == 0 || iter == max_iters - 1) {
             double min_p = std::numeric_limits<double>::infinity();
             double max_p = -std::numeric_limits<double>::infinity();
+            double max_residual = 0.0;
             
-            for (size_t idx = 0; idx < total_cells; ++idx) {
-                if (mask[idx] == 1) { // Scan active fluid cells
-                    if (p[idx] < min_p) min_p = p[idx];
-                    if (p[idx] > max_p) max_p = p[idx];
+            for (int k = 1; k < nz - 1; ++k) {
+                for (int j = 1; j < ny - 1; ++j) {
+                    for (int i = 1; i < nx - 1; ++i) {
+                        const int raw_idx = get_flat_index(i, j, k, nx, ny);
+                        if (raw_idx < 0) continue;
+                        size_t idx = static_cast<size_t>(raw_idx);
+
+                        if (mask[idx] == 1) {
+                            if (p[idx] < min_p) min_p = p[idx];
+                            if (p[idx] > max_p) max_p = p[idx];
+
+                            // Compute residual magnitude
+                            const int w = get_flat_index(i - 1, j, k, nx, ny);
+                            const int e = get_flat_index(i + 1, j, k, nx, ny);
+                            const int s = get_flat_index(i, j - 1, k, nx, ny);
+                            const int n = get_flat_index(i, j + 1, k, nx, ny);
+                            const int d = get_flat_index(i, j, k - 1, nx, ny);
+                            const int u = get_flat_index(i, j, k + 1, nx, ny);
+
+                            if (w >= 0 && e >= 0 && s >= 0 && n >= 0 && d >= 0 && u >= 0) {
+                                double p_w = (mask[w] == 1) ? p[w] : p[idx];
+                                double p_e = (mask[e] == 1) ? p[e] : p[idx];
+                                double p_s = (mask[s] == 1) ? p[s] : p[idx];
+                                double p_n = (mask[n] == 1) ? p[n] : p[idx];
+                                double p_d = (mask[d] == 1) ? p[d] : p[idx];
+                                double p_u = (mask[u] == 1) ? p[u] : p[idx];
+
+                                double laplacian = (p_e - 2.0 * p[idx] + p_w) * idx2 +
+                                                   (p_n - 2.0 * p[idx] + p_s) * idy2 +
+                                                   (p_u - 2.0 * p[idx] + p_d) * idz2;
+                                double res = std::abs(laplacian - rhs[idx]);
+                                if (res > max_residual) {
+                                    max_residual = res;
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
             if (min_p <= max_p) {
                 std::cout << "[PRESSURE_LOG] Iter " << iter << " / " << max_iters 
-                          << " | min(p) = " << min_p << " | max(p) = " << max_p << "\n";
+                          << " | min(p) = " << min_p << " | max(p) = " << max_p 
+                          << " | max_res = " << max_residual << "\n";
+            }
+
+            if (tol > 0.0 && max_residual < tol) {
+                std::cout << "[SOLVER_INFO] Poisson solver converged at iteration " << iter 
+                          << with " residual " << max_residual << " < target tol " << tol << ".\n";
+                break;
             }
         }
     }

@@ -106,14 +106,14 @@ void solve_corrector_parallel(
                     }
                 }
 
-                // --- ROBUST MASK-AWARE PRESSURE GRADIENT EVALUATION (HALF-SPACING BOUNDARY CORRECTION) ---
+                // --- ROBUST MASK-AWARE PRESSURE GRADIENT EVALUATION ---
                 double dp_dx = 0.0;
                 if (mask[idx_east] == 1 && mask[idx_west] == 1) {
                     dp_dx = (p_east - p_west) * idx_2inv; // 2nd-order interior central difference
                 } else if ((mask[idx_east] == 0 || mask[idx_east] == -1) && mask[idx_west] == 1) {
-                    dp_dx = (p_east - p_center) * (2.0 * id_inv); // Boundary-conforming half-spacing gradient (east wall)
+                    dp_dx = (p_east - p_center) * id_inv; // Boundary-conforming gradient (east wall)
                 } else if (mask[idx_east] == 1 && (mask[idx_west] == 0 || mask[idx_west] == -1)) {
-                    dp_dx = (p_center - p_west) * (2.0 * id_inv); // Boundary-conforming half-spacing gradient (west wall)
+                    dp_dx = (p_center - p_west) * id_inv; // Boundary-conforming gradient (west wall)
                 } else {
                     dp_dx = 0.0;
                 }
@@ -122,9 +122,9 @@ void solve_corrector_parallel(
                 if (mask[idx_north] == 1 && mask[idx_south] == 1) {
                     dp_dy = (p_north - p_south) * idy_2inv; // 2nd-order interior central difference
                 } else if ((mask[idx_north] == 0 || mask[idx_north] == -1) && mask[idx_south] == 1) {
-                    dp_dy = (p_north - p_center) * (2.0 * idy_inv); // Boundary-conforming half-spacing gradient (north wall)
+                    dp_dy = (p_north - p_center) * idy_inv; // Boundary-conforming gradient (north wall)
                 } else if (mask[idx_north] == 1 && (mask[idx_south] == 0 || mask[idx_south] == -1)) {
-                    dp_dy = (p_center - p_south) * (2.0 * idy_inv); // Boundary-conforming half-spacing gradient (south wall)
+                    dp_dy = (p_center - p_south) * idy_inv; // Boundary-conforming gradient (south wall)
                 } else {
                     dp_dy = 0.0;
                 }
@@ -133,9 +133,9 @@ void solve_corrector_parallel(
                 if (mask[idx_up] == 1 && mask[idx_down] == 1) {
                     dp_dz = (p_up - p_down) * idz_2inv; // 2nd-order interior central difference
                 } else if ((mask[idx_up] == 0 || mask[idx_up] == -1) && mask[idx_down] == 1) {
-                    dp_dz = (p_up - p_center) * (2.0 * idz_inv); // Boundary-conforming half-spacing gradient (up wall)
+                    dp_dz = (p_up - p_center) * idz_inv; // Boundary-conforming gradient (up wall)
                 } else if (mask[idx_up] == 1 && (mask[idx_down] == 0 || mask[idx_down] == -1)) {
-                    dp_dz = (p_center - p_down) * (2.0 * idz_inv); // Boundary-conforming half-spacing gradient (down wall)
+                    dp_dz = (p_center - p_down) * idz_inv; // Boundary-conforming gradient (down wall)
                 } else {
                     dp_dz = 0.0;
                 }
