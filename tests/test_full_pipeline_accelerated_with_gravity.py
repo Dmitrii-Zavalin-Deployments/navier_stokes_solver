@@ -15,7 +15,6 @@ import zipfile
 from pathlib import Path
 
 import numpy as np
-import pytest
 
 # Module under test
 from src.main import main
