@@ -106,7 +106,7 @@ void execute_pre_step(
         // Guard against wiping out pre-initialized fields if inflow values evaluate to zero
         if (found_inflow && (init_u != 0.0 || init_v != 0.0 || init_w != 0.0 || pre_u_max == 0.0)) {
             std::cout << "[PRESTEP_TRACE] Executing parallel seeding across fluid (1) and boundary (-1) cells...\n";
-            #pragma omp parallel for collapse(3) schedule(static)
+            #pragma omp parallel for collapse(3) schedule(static) if(total_cells > 1000)
             for (int k = 0; k < nz; ++k) {
                 for (int j = 0; j < ny; ++j) {
                     for (int i = 0; i < nx; ++i) {
@@ -150,12 +150,54 @@ void execute_pre_step(
     std::cout << "[PRESTEP_TRACE] Partitioning complete. wall_bc_list size=" << wall_bc_list.size() 
               << ", face_bc_list size=" << face_bc_list.size() << "\n";
 
+    // Robust mask-aware interior reference lookup
     auto get_interior_index = [&](int i, int j, int k) -> size_t {
-        int ii = (i == 0) ? 1 : (i == nx - 1) ? nx - 2 : i;
-        int jj = (j == 0) ? 1 : (j == ny - 1) ? ny - 2 : j;
-        int kk = (k == 0) ? 1 : (k == nz - 1) ? nz - 2 : k;
-        size_t flat = static_cast<size_t>(get_flat_index(ii, jj, kk, nx, ny));
-        return flat;
+        int ii = i;
+        if (i == 0) {
+            for (int step = 1; step < nx - 1; ++step) {
+                size_t test_idx = static_cast<size_t>(get_flat_index(step, j, k, nx, ny));
+                if (mask[test_idx] == 1) { ii = step; break; }
+            }
+            if (ii == 0) ii = 1;
+        } else if (i == nx - 1) {
+            for (int step = nx - 2; step >= 1; --step) {
+                size_t test_idx = static_cast<size_t>(get_flat_index(step, j, k, nx, ny));
+                if (mask[test_idx] == 1) { ii = step; break; }
+            }
+            if (ii == nx - 1) ii = nx - 2;
+        }
+
+        int jj = j;
+        if (j == 0) {
+            for (int step = 1; step < ny - 1; ++step) {
+                size_t test_idx = static_cast<size_t>(get_flat_index(ii, step, k, nx, ny));
+                if (mask[test_idx] == 1) { jj = step; break; }
+            }
+            if (jj == 0) jj = 1;
+        } else if (j == ny - 1) {
+            for (int step = ny - 2; step >= 1; --step) {
+                size_t test_idx = static_cast<size_t>(get_flat_index(ii, step, k, nx, ny));
+                if (mask[test_idx] == 1) { jj = step; break; }
+            }
+            if (jj == ny - 1) jj = ny - 2;
+        }
+
+        int kk = k;
+        if (k == 0) {
+            for (int step = 1; step < nz - 1; ++step) {
+                size_t test_idx = static_cast<size_t>(get_flat_index(ii, jj, step, nx, ny));
+                if (mask[test_idx] == 1) { kk = step; break; }
+            }
+            if (kk == 0) kk = 1;
+        } else if (k == nz - 1) {
+            for (int step = nz - 2; step >= 1; --step) {
+                size_t test_idx = static_cast<size_t>(get_flat_index(ii, jj, step, nx, ny));
+                if (mask[test_idx] == 1) { kk = step; break; }
+            }
+            if (kk == nz - 1) kk = nz - 2;
+        }
+
+        return static_cast<size_t>(get_flat_index(ii, jj, kk, nx, ny));
     };
 
     auto apply_bc = [&](const BoundaryCondition& bc, int i, int j, int k, size_t idx) {
@@ -231,7 +273,7 @@ void execute_pre_step(
     for (const auto& bc : wall_bc_list) {
         std::cout << "[PRESTEP_TRACE] Processing wall_bc_list item #" << wall_pass_count++ 
                   << " (location='" << bc.location << "', type='" << bc.type << "')\n";
-        #pragma omp parallel for collapse(3) schedule(static)
+        #pragma omp parallel for collapse(3) schedule(static) if(total_cells > 1000)
         for (int k = 0; k < nz; ++k) {
             for (int j = 0; j < ny; ++j) {
                 for (int i = 0; i < nx; ++i) {
@@ -251,7 +293,7 @@ void execute_pre_step(
     for (const auto& bc : face_bc_list) {
         std::cout << "[PRESTEP_TRACE] Processing face_bc_list item #" << face_pass_count++ 
                   << " (location='" << bc.location << "', type='" << bc.type << "')\n";
-        #pragma omp parallel for collapse(3) schedule(static)
+        #pragma omp parallel for collapse(3) schedule(static) if(total_cells > 1000)
         for (int k = 0; k < nz; ++k) {
             for (int j = 0; j < ny; ++j) {
                 for (int i = 0; i < nx; ++i) {
