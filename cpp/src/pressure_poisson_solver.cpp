@@ -216,6 +216,23 @@ void solve_poisson_red_black_parallel(
         throw std::invalid_argument("CONTRACT VIOLATION: Pressure, RHS, or mask vector size mismatch.");
     }
 
+    // --- STRICT VALIDATION GATE: Ensure system is not pure Neumann/singular ---
+    int dirichlet_count = 0;
+    for (const auto& bc : bc_list) {
+        if (bc.type == "pressure" || bc.type == "outflow") {
+            dirichlet_count++;
+        }
+    }
+
+    if (dirichlet_count == 0) {
+        throw std::runtime_error(
+            "[FATAL ERROR] PressurePoissonSolver: Zero Dirichlet (pressure/outflow) "
+            "boundaries detected. The system matrix is pure Neumann and singular. "
+            "Please update your boundary condition configuration to include at least "
+            "one pressure or outflow boundary, or provide a reference datum."
+        );
+    }
+
     #ifdef _OPENMP
     int active_threads = omp_get_max_threads();
     #else
@@ -378,10 +395,55 @@ void solve_poisson_red_black_parallel(
             throw std::runtime_error("Pressure Poisson solver exploded. Pressure field is non-finite.");
         }
 
-        // --- PASS 3: Synchronize Boundaries & Solids Inside Iteration ---
+        // --- PASS 3: Synchronize Boundaries & Solids Inside Iteration (Option B Enforcement) ---
         for (size_t b = 0; b < bc_list.size(); ++b) {
             const auto& bc = bc_list[b];
-            if (bc.type != "pressure" && bc.type != "outflow") {
+            if (bc.type == "pressure" || bc.type == "outflow") {
+                const double p_val = bc.value; // Use the specified boundary condition value instead of defaulting to 0.0
+                if (bc.location == "x_min") {
+                    for (int k = 0; k < nz; ++k) {
+                        for (int j = 0; j < ny; ++j) {
+                            int r_idx = get_flat_index(0, j, k, nx, ny);
+                            if (r_idx >= 0) p[static_cast<size_t>(r_idx)] = p_val;
+                        }
+                    }
+                } else if (bc.location == "x_max") {
+                    for (int k = 0; k < nz; ++k) {
+                        for (int j = 0; j < ny; ++j) {
+                            int r_idx = get_flat_index(nx - 1, j, k, nx, ny);
+                            if (r_idx >= 0) p[static_cast<size_t>(r_idx)] = p_val;
+                        }
+                    }
+                } else if (bc.location == "y_min") {
+                    for (int k = 0; k < nz; ++k) {
+                        for (int i = 0; i < nx; ++i) {
+                            int r_idx = get_flat_index(i, 0, k, nx, ny);
+                            if (r_idx >= 0) p[static_cast<size_t>(r_idx)] = p_val;
+                        }
+                    }
+                } else if (bc.location == "y_max") {
+                    for (int k = 0; k < nz; ++k) {
+                        for (int i = 0; i < nx; ++i) {
+                            int r_idx = get_flat_index(i, ny - 1, k, nx, ny);
+                            if (r_idx >= 0) p[static_cast<size_t>(r_idx)] = p_val;
+                        }
+                    }
+                } else if (bc.location == "z_min") {
+                    for (int j = 0; j < ny; ++j) {
+                        for (int i = 0; i < nx; ++i) {
+                            int r_idx = get_flat_index(i, j, 0, nx, ny);
+                            if (r_idx >= 0) p[static_cast<size_t>(r_idx)] = p_val;
+                        }
+                    }
+                } else if (bc.location == "z_max") {
+                    for (int j = 0; j < ny; ++j) {
+                        for (int i = 0; i < nx; ++i) {
+                            int r_idx = get_flat_index(i, j, nz - 1, nx, ny);
+                            if (r_idx >= 0) p[static_cast<size_t>(r_idx)] = p_val;
+                        }
+                    }
+                }
+            } else {
                 apply_neumann_pressure(p, p_tmp, bc.location, dirichlet, nx, ny, nz, dx, dy, dz, density, gravity);
             }
         }
@@ -442,7 +504,7 @@ void solve_poisson_red_black_parallel(
 
             if (tol > 0.0 && max_residual < tol) {
                 std::cout << "[SOLVER_INFO] Poisson solver converged at iteration " << iter 
-                          << " with" " residual " << max_residual << " < target tol " << tol << ".\n";
+                          << " with residual " << max_residual << " < target tol " << tol << ".\n";
                 break;
             }
         }
