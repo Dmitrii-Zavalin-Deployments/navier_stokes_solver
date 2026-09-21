@@ -442,7 +442,7 @@ void solve_poisson_red_black_parallel(
 
             if (tol > 0.0 && max_residual < tol) {
                 std::cout << "[SOLVER_INFO] Poisson solver converged at iteration " << iter 
-                          << with " residual " << max_residual << " < target tol " << tol << ".\n";
+                          << " with" " residual " << max_residual << " < target tol " << tol << ".\n";
                 break;
             }
         }
