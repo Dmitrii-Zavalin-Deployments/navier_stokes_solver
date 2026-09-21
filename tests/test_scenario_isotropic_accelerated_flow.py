@@ -5,7 +5,8 @@ while formulas, numerical computations, and assertions appear as executable code
 
 Test Name: test_scenario_isotropic_accelerated_flow.py
 Description: Validates unconstrained isotropic multi-axis flow acceleration within 
-an expanded 3D computational domain (6x6x6 grid) under a uniform body force vector.
+an expanded 3D computational domain (6x6x6 grid) under a uniform body force vector, 
+incorporating comprehensive stability and anti-blow-up bounds.
 """
 
 import io
@@ -27,6 +28,7 @@ def test_integration_isotropic_accelerated_flow(workspace_folder, monkeypatch):
     - Applies a uniform 3D body force vector [1.0, 1.0, 1.0].
     - Asserts that all velocity fields (field_u, field_v, field_w) successfully 
       accelerate beyond the initial baseline of 0.1.
+    - Asserts that all fields remain strictly bounded and do not blow up or diverge.
     """
     print("\n================================================================================")
     print("DIAGNOSTIC START: test_integration_isotropic_accelerated_flow")
@@ -126,7 +128,7 @@ def test_integration_isotropic_accelerated_flow(workspace_folder, monkeypatch):
         field_names = ["field_u", "field_v", "field_w", "field_p"]
         expected_steps = [1, 2, 3]
 
-        print("[5/5] Performing deep metric extraction and verifying multi-axis acceleration...")
+        print("[5/5] Performing deep metric extraction, multi-axis acceleration, and anti-blow-up verification...")
         for step in expected_steps:
             step_str = f"{step:06d}"
             print(f"\n--- Diagnostic Inspection: Step {step} (Tag: {step_str}) ---")
@@ -150,15 +152,26 @@ def test_integration_isotropic_accelerated_flow(workspace_folder, monkeypatch):
                     f"max={max_val:.6f} | mean={mean_val:.6f} | abs_max={abs_max:.6f}"
                 )
 
-                # We assert structural and numerical stability (no NaNs or infinite values).
+                # 1. Check for structural corruption (NaNs or infinities)
                 assert not np.isnan(field_data).any(), f"FATAL: NaN detected in {snapshot_filename}"
                 assert not np.isinf(field_data).any(), f"FATAL: Inf detected in {snapshot_filename}"
 
-                # Isotropic Acceleration Verification:
-                # All velocity components (u, v, w) must overcome the initial baseline 
-                # of 0.1 under the influence of the 3D body force vector [1.0, 1.0, 1.0]:
-                #     max(|vel|) > 0.1
-                if fname in ["field_u", "field_v", "field_w"]:
+                # 2. Assert anti-blow-up threshold bounds to guarantee system stability
+                if fname == "field_p":
+                    pressure_blowup_limit = 15.0
+                    assert abs_max < pressure_blowup_limit, (
+                        f"FATAL: Pressure field {snapshot_filename} is blowing up! "
+                        f"abs_max={abs_max:.4f} exceeded limit {pressure_blowup_limit}"
+                    )
+                else:
+                    velocity_blowup_limit = 5.0
+                    assert abs_max < velocity_blowup_limit, (
+                        f"FATAL: Velocity field {snapshot_filename} is blowing up! "
+                        f"abs_max={abs_max:.4f} exceeded limit {velocity_blowup_limit}"
+                    )
+
+                    # 3. Isotropic Acceleration Verification:
+                    # All velocity components must overcome the initial baseline of 0.1
                     print(f"    -> Evaluating isotropic acceleration rule for {fname}: abs_max ({abs_max:.6f}) > 0.1")
                     assert abs_max > 0.1, (
                         f"ASSERTION FAILURE: Velocity field '{fname}' at step {step} failed to accelerate "
@@ -166,5 +179,5 @@ def test_integration_isotropic_accelerated_flow(workspace_folder, monkeypatch):
                     )
 
     print("\n================================================================================")
-    print("DIAGNOSTIC SUCCESS: Isotropic multi-axis flow acceleration validated successfully!")
+    print("DIAGNOSTIC SUCCESS: Isotropic multi-axis acceleration and stability validated!")
     print("================================================================================")
