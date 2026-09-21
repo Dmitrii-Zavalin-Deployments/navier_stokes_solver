@@ -42,7 +42,7 @@ double get_dt_over_rho(double dt, double rho) {
 
     // Forensic Numerical Audit
     if (!std::isfinite(scaling)) {
-        std::cerr << "MATH FAILURE: dt/rho exploded (dt=" << dt << ", rho=" << rho << ").\n";
+        std::cerr << "MATH FAILURE [scaling.cpp]: dt/rho exploded (dt=" << dt << ", rho=" << rho << ").\n";
         throw std::runtime_error("Scaling factor dt/rho is non-finite.");
     }
 
@@ -77,7 +77,7 @@ double get_rho_over_dt(double dt, double rho) {
 
     // Forensic Numerical Audit
     if (!std::isfinite(scaling)) {
-        std::cerr << "MATH FAILURE: rho/dt exploded (rho=" << rho << ", dt=" << dt << ").\n";
+        std::cerr << "MATH FAILURE [scaling.cpp]: rho/dt exploded (rho=" << rho << ", dt=" << dt << ").\n";
         throw std::runtime_error("Scaling factor rho/dt is non-finite.");
     }
 

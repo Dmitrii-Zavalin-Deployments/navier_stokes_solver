@@ -92,7 +92,7 @@ void compute_laplacian(
     }
 
     if (has_error) {
-        std::cerr << "MATH FAILURE: Non-finite Laplacian detected at grid index [" 
+        std::cerr << "MATH FAILURE [laplacian.cpp]: Non-finite Laplacian detected at grid index [" 
                   << err_i << ", " << err_j << ", " << err_k << "] | Result: " << err_val << "\n";
         throw std::runtime_error("Laplacian exploded in grid computation.");
     }

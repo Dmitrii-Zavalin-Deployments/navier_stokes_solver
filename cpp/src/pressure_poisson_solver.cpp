@@ -390,7 +390,7 @@ void solve_poisson_red_black_parallel(
         }
 
         if (has_error) {
-            std::cerr << "MATH FAILURE: Non-finite pressure detected at grid index [" 
+            std::cerr << "MATH FAILURE [pressure_poisson_solver.cpp]: Non-finite pressure detected at grid index [" 
                       << err_i << ", " << err_j << ", " << err_k << "] | Result: " << err_val << "\n";
             throw std::runtime_error("Pressure Poisson solver exploded. Pressure field is non-finite.");
         }

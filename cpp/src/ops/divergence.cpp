@@ -82,7 +82,7 @@ void compute_divergence(
     }
 
     if (has_error) {
-        std::cerr << "MATH FAILURE: Non-finite divergence at grid index [" 
+        std::cerr << "MATH FAILURE [divergence.cpp]: Non-finite divergence at grid index [" 
                   << err_i << ", " << err_j << ", " << err_k << "] | "
                   << "Components [dx:" << err_x << ", dy:" << err_y << ", dz:" << err_z << "] | "
                   << "Result: " << err_val << "\n";

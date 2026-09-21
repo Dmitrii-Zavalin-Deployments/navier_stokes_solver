@@ -83,7 +83,7 @@ void compute_gradient(
     }
 
     if (has_error) {
-        std::cerr << "MATH FAILURE: Gradient exploded at grid index [" 
+        std::cerr << "MATH FAILURE [gradient.cpp]: Gradient exploded at grid index [" 
                   << err_i << ", " << err_j << ", " << err_k << "] | "
                   << "Components: [" << err_gx << ", " << err_gy << ", " << err_gz << "]\n";
         throw std::runtime_error("Pressure gradient is non-finite in grid computation.");

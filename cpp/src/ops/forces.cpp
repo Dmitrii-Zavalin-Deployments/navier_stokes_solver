@@ -36,7 +36,7 @@ std::array<double, 3> validate_and_get_forces(const std::vector<double>& forces)
     // 2. Forensic Numerical Audit
     for (size_t i = 0; i < 3; ++i) {
         if (!std::isfinite(forces[i])) {
-            std::cerr << "MATH FAILURE: Non-finite body force detected at index " << i 
+            std::cerr << "MATH FAILURE [forces.cpp]: Non-finite body force detected at index " << i 
                       << " | Value: " << forces[i] << "\n";
             throw std::runtime_error("Body force is non-finite.");
         }

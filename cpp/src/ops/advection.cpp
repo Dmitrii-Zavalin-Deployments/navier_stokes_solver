@@ -103,9 +103,9 @@ void compute_advection(
     }
 
     if (has_error) {
-        std::cerr << "MATH FAILURE: Non-finite advection at grid index ["
-                  << err_i << ", " << err_j << ", " << err_k
-                  << "] | Value: " << err_val << "\n";
+        std::cerr << "MATH FAILURE [advection.cpp]: Non-finite advection at grid index ["
+                << err_i << ", " << err_j << ", " << err_k
+                << "] | Value: " << err_val << "\n";
         throw std::runtime_error("Advection operator produced non-finite values.");
     }
 }

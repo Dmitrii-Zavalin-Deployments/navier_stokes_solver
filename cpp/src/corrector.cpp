@@ -209,7 +209,7 @@ void solve_corrector_parallel(
               << max_u << ", v: " << max_v << ", w: " << max_w << "\n";
 
     if (has_error) {
-        std::cerr << "MATH FAILURE: Non-finite velocity projected at grid index [" 
+        std::cerr << "MATH FAILURE [corrector.cpp]: Non-finite velocity projected at grid index [" 
                   << err_i << ", " << err_j << ", " << err_k << "] | "
                   << "Vel: [" << err_u << ", " << err_v << ", " << err_w << "]\n";
         throw std::runtime_error("Corrector projection exploded. Velocity field is non-finite.");
