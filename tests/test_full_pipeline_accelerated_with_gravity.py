@@ -129,7 +129,7 @@ def test_full_pipeline_accelerated_with_gravity(workspace_folder, monkeypatch):
         field_names = ["field_u", "field_v", "field_w", "field_p"]
         expected_steps = [1, 2, 3]
 
-        print("[5/5] Performing deep metric extraction and verifying accelerated flow with gravity...")
+        print("[5/5] Performing deep metric extraction and verifying bounded stability across iterations...")
         for step in expected_steps:
             step_str = f"{step:06d}"
             print(f"\n--- Diagnostic Inspection: Step {step} (Tag: {step_str}) ---")
@@ -153,11 +153,26 @@ def test_full_pipeline_accelerated_with_gravity(workspace_folder, monkeypatch):
                     f"max={max_val:.6f} | mean={mean_val:.6f} | abs_max={abs_max:.6f}"
                 )
 
-                # We assert structural and numerical stability (no NaNs or infinite values).
+                # 1. Check for structural corruption (NaNs or infinities)
                 assert not np.isnan(field_data).any(), f"FATAL: NaN detected in {snapshot_filename}"
                 assert not np.isinf(field_data).any(), f"FATAL: Inf detected in {snapshot_filename}"
 
+                # 2. Assert anti-blow-up thresholds to guarantee fields remain physically bounded
+                if fname == "field_p":
+                    # Pressure fields can have higher local peaks near walls/sources
+                    pressure_blowup_limit = 15.0
+                    assert abs_max < pressure_blowup_limit, (
+                        f"FATAL: Pressure field {snapshot_filename} is blowing up! "
+                        f"abs_max={abs_max:.4f} exceeded limit {pressure_blowup_limit}"
+                    )
+                else:
+                    # Velocity components (u, v, w) must remain within controlled physical bounds
+                    velocity_blowup_limit = 5.0
+                    assert abs_max < velocity_blowup_limit, (
+                        f"FATAL: Velocity field {snapshot_filename} is blowing up! "
+                        f"abs_max={abs_max:.4f} exceeded limit {velocity_blowup_limit}"
+                    )
+
     print("\n================================================================================")
-    print("DIAGNOSTIC SUCCESS: Accelerated flow with gravity validated successfully via Python pipeline!")
+    print("DIAGNOSTIC SUCCESS: Bounded stability and gravity flow validated successfully!")
     print("================================================================================")
-    
