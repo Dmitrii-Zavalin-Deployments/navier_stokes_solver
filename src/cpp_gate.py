@@ -263,6 +263,19 @@ def _get_or_create_cpp_solver(state: SolverState) -> Any:
 
     if not has_solver:
         logger.info("[FORENSIC TRACE] Initializing C++ solver from scratch...")
+        
+        # Synchronize input_data dictionaries to direct state attributes 
+        # so Pybind11 C++ attribute lookups succeed reliably.
+        if hasattr(state, "input_data") and isinstance(state.input_data, dict):
+            if "external_forces" in state.input_data and not hasattr(state, "external_forces"):
+                state.external_forces = state.input_data["external_forces"]
+            if "fluid_properties" in state.input_data and not hasattr(state, "fluid_properties"):
+                state.fluid_properties = state.input_data["fluid_properties"]
+            if "simulation_parameters" in state.input_data and not hasattr(state, "simulation_parameters"):
+                state.simulation_parameters = state.input_data["simulation_parameters"]
+                if "time_step" in state.simulation_parameters and not hasattr(state, "dt"):
+                    state.dt = state.simulation_parameters["time_step"]
+
         _convert_boundary_conditions(state)
         
         _log_field_max_abs("Pre-constructor state", state)

@@ -277,13 +277,25 @@ PYBIND11_MODULE(navier_stokes_cpp, m) {
         .def_property("scalar_p", 
             [](const navier_stokes_solver::BoundaryCondition& self) { return self.values.p; },
             [](navier_stokes_solver::BoundaryCondition& self, double val) { self.values.p = val; })
+        .def_property("p", 
+            [](const navier_stokes_solver::BoundaryCondition& self) { return self.values.p; },
+            [](navier_stokes_solver::BoundaryCondition& self, double val) { self.values.p = val; })
         .def_property("u_val", 
+            [](const navier_stokes_solver::BoundaryCondition& self) { return self.values.u; },
+            [](navier_stokes_solver::BoundaryCondition& self, double val) { self.values.u = val; })
+        .def_property("u", 
             [](const navier_stokes_solver::BoundaryCondition& self) { return self.values.u; },
             [](navier_stokes_solver::BoundaryCondition& self, double val) { self.values.u = val; })
         .def_property("v_val", 
             [](const navier_stokes_solver::BoundaryCondition& self) { return self.values.v; },
             [](navier_stokes_solver::BoundaryCondition& self, double val) { self.values.v = val; })
+        .def_property("v", 
+            [](const navier_stokes_solver::BoundaryCondition& self) { return self.values.v; },
+            [](navier_stokes_solver::BoundaryCondition& self, double val) { self.values.v = val; })
         .def_property("w_val", 
+            [](const navier_stokes_solver::BoundaryCondition& self) { return self.values.w; },
+            [](navier_stokes_solver::BoundaryCondition& self, double val) { self.values.w = val; })
+        .def_property("w", 
             [](const navier_stokes_solver::BoundaryCondition& self) { return self.values.w; },
             [](navier_stokes_solver::BoundaryCondition& self, double val) { self.values.w = val; });
 
