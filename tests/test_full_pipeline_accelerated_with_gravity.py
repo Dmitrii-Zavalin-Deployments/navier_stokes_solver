@@ -4,9 +4,10 @@
        under accelerated flow with gravity in Python.
 """
 
-import pytest
-import numpy as np
 import math
+
+import numpy as np
+import pytest
 
 try:
     import navier_stokes_solver as nss
