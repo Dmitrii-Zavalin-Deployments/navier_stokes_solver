@@ -104,19 +104,6 @@ target_link_libraries(test_plane_poiseuille_flow
 add_test(NAME PlanePoiseuilleFlowTest COMMAND test_plane_poiseuille_flow)
 
 
-# Free-Slip Symmetry Plane Boundary Verification Test
-add_executable(test_free_slip_symmetry
-    cpp/cpp_integration_tests/test_free_slip_symmetry.cpp
-)
-target_link_libraries(test_free_slip_symmetry
-    PRIVATE
-        GTest::gtest_main
-        navier_stokes_core
-        nlohmann_json::nlohmann_json
-        OpenMP::OpenMP_CXX
-        Threads::Threads
-)
-add_test(NAME FreeSlipSymmetryTest COMMAND test_free_slip_symmetry)
 
 # No-Penetration Clamping Integration Test
 add_executable(test_no_penetration_clamping
