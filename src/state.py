@@ -51,6 +51,12 @@ class SolverState:
         self.dy: float = (self.y_max - self.y_min) / self.ny
         self.dz: float = (self.z_max - self.z_min) / self.nz
 
+        # Automatically inject derived spacing into input_data["grid"] 
+        # so downstream consumers like cpp_gate never raise a KeyError.
+        grid.setdefault("dx", self.dx)
+        grid.setdefault("dy", self.dy)
+        grid.setdefault("dz", self.dz)
+
         # Sub-schemas with strict presence checks matching the schema
         for sec in [
             "fluid_properties",
