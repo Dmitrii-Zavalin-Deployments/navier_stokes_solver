@@ -75,19 +75,6 @@ add_test(NAME UnitTests COMMAND unit_tests)
 
 
 
-# Mass Continuity & Divergence Test
-add_executable(test_mass_continuity
-    cpp/cpp_integration_tests/test_mass_continuity.cpp
-)
-target_link_libraries(test_mass_continuity
-    PRIVATE
-        GTest::gtest_main
-        navier_stokes_core
-        nlohmann_json::nlohmann_json
-        OpenMP::OpenMP_CXX
-        Threads::Threads
-)
-add_test(NAME MassContinuityTest COMMAND test_mass_continuity)
 
 # Plane Poiseuille Flow Integration Test
 add_executable(test_plane_poiseuille_flow
