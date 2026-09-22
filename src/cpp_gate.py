@@ -298,6 +298,27 @@ def step_simulation(state: SolverState) -> None:
     """
     Executes a single time-integration step through the C++ bridge interface with forensic trace for u, v, w, p.
     """
+    # Enforce strict CFL stability boundary guard (C <= 1.0) under no-default policy
+    dt = float(state.dt)
+    grid = state.input_data["grid"]
+    dx = float(grid["dx"])
+    dy = float(grid["dy"])
+    dz = float(grid["dz"])
+    
+    if state.u is None or state.v is None or state.w is None:
+        raise ValueError("FATAL ERROR: Velocity fields (u, v, w) must be initialized prior to execution.")
+        
+    max_u = float(abs(state.u).max())
+    max_v = float(abs(state.v).max())
+    max_w = float(abs(state.w).max())
+    
+    cfl = dt * (max_u / dx + max_v / dy + max_w / dz)
+    if cfl > 1.0:
+        raise ValueError(f"CFL violation intercepted: C = {cfl:.4f} > 1.0 (dt={dt}, max_u={max_u}, dx={dx})")
+
+    """
+    Executes a single time-integration step through the C++ bridge interface with forensic trace for u, v, w, p.
+    """
     logger.info(f"[FORENSIC TRACE] === Entering step_simulation (Iteration: {getattr(state, 'current_iteration', 0)}) ===")
     if state is None:
         raise ValueError("FATAL ERROR: state must be explicitly provided.")
