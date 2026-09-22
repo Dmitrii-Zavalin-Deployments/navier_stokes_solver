@@ -18,7 +18,7 @@
 #
 # TEST SCENARIO:
 # - Configures a Cartesian grid domain (nx = 6, ny = 8, nz = 6) with a solid wall mask at y_min (j = 0).
-# - Sets up simulation parameters and boundary conditions via the configuration dictionary.
+# - Sets up simulation parameters and boundary conditions (including a pressure reference datum).
 # - Executes the simulation via the unmocked Python application wrapper main().
 # - Extracts velocity field snapshots from the output ZIP container.
 # - Asserts that near-wall velocity decelerates relative to the core flow due to viscous shear.
@@ -95,9 +95,10 @@ def test_no_slip_wall_shear(workspace_folder, monkeypatch):
         "gravity_vector": [0.0, 0.0, 0.0]
     }
 
+    # FIX: Provide a Dirichlet pressure boundary datum to prevent a singular Neumann matrix in PressurePoissonSolver.
     input_data["boundary_conditions"] = [
         {"location": "y_min", "type": "no-slip", "values": {"u": 0.0, "v": 0.0, "w": 0.0, "p": 0.0}},
-        {"location": "wall", "type": "no-slip", "values": {"u": 0.0, "v": 0.0, "w": 0.0, "p": 0.0}}
+        {"location": "z_max", "type": "pressure", "values": {"u": 0.0, "v": 0.0, "w": 0.0, "p": 0.0}}
     ]
 
     with open(input_path, "w", encoding="utf-8") as f:
