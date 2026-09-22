@@ -17,12 +17,11 @@
 #
 # TEST SCENARIO:
 # - Configures a uniform 10x10x10 Cartesian grid with equal spacing dx = dy = dz = 0.1 m.
-# - Establishes solid boundary walls (mask = -1) along outer boundaries and active fluid cells (mask = 1) inside.
+# - Establishes solid boundary walls (mask = -1) along lateral boundaries and bottom, leaving z_max open for outflow.
 # - Applies an outflow/lid boundary condition setup.
 # - Executes the simulation via the unmocked Python application wrapper main().
 # - Extracts archived velocity field snapshots from the output ZIP container.
-# - Computes discrete central-difference velocity divergence across core interior fluid cells 
-#   (excluding immediate boundary-adjacent shear layers to isolate true interior divergence).
+# - Computes discrete central-difference velocity divergence across core interior fluid cells.
 # - Asserts that local maximum divergence and net global mean divergence satisfy strict numerical thresholds.
 
 import io
@@ -78,14 +77,15 @@ def test_mass_continuity_divergence(workspace_folder, monkeypatch):
         "output_interval": 1
     }
 
-    # Setup domain cell mask: solid walls (mask = -1) along outer boundaries, active fluid (1) inside
+    # Setup domain cell mask: solid walls (mask = -1) along lateral bounds and bottom (k=0),
+    # keeping z_max (k = nz - 1) active to align with the outflow boundary condition.
     nx, ny, nz = 10, 10, 10
     total_cells = nx * ny * nz
     mask = [1] * total_cells
     for k in range(nz):
         for j in range(ny):
             for i in range(nx):
-                if i == 0 or i == nx - 1 or j == 0 or j == ny - 1 or k == 0 or k == nz - 1:
+                if i == 0 or i == nx - 1 or j == 0 or j == ny - 1 or k == 0:
                     idx = k * (nx * ny) + j * nx + i
                     mask[idx] = -1
 
@@ -156,9 +156,9 @@ def test_mass_continuity_divergence(workspace_folder, monkeypatch):
         dx = dy = dz = 0.1
 
         # We compute discrete velocity divergence across the core interior fluid domain 
-        # using central differences (div(u) = du/dx + dv/dy + dw/dz), excluding 
-        # boundary-adjacent cells to avoid lid shear gradient contamination:
-        for k in range(1, nz - 2):
+        # using central differences (div(u) = du/dx + dv/dy + dw/dz), spanning 
+        # correctly up to the boundary-adjacent layers:
+        for k in range(1, nz - 1):
             for j in range(1, ny - 1):
                 for i in range(1, nx - 1):
                     if mask_arr[k, j, i] == 1:
