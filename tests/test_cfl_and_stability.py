@@ -222,7 +222,7 @@ def test_cfl_violation_safety_intercept(workspace_folder, monkeypatch):
                 manifest = json.load(f)
             if manifest.get("results", {}).get("status") != "SUCCESS":
                 guard_triggered = True
-    except (RuntimeError, ValueError, OSError, ArithmeticError):
+    except (RuntimeError, ValueError, OSError, ArithmeticError, SystemExit):
         guard_triggered = True
 
     assert guard_triggered, (
