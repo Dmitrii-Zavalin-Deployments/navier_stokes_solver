@@ -42,10 +42,10 @@ def test_full_pipeline_accelerated_with_gravity(workspace_folder, monkeypatch):
     with open(input_path, "r", encoding="utf-8") as f:
         input_data = json.load(f)
 
-    # We set simulation parameters across 3 time steps (dt = 0.1).
+    # We set simulation parameters across 3 time steps with a stable time step (dt = 0.01).
     input_data["simulation_parameters"] = {
-        "time_step": 0.1,
-        "total_time": 0.3,
+        "time_step": 0.01,
+        "total_time": 0.03,
         "output_interval": 1
     }
 
