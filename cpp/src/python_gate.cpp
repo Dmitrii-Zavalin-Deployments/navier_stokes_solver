@@ -293,62 +293,14 @@ PYBIND11_MODULE(navier_stokes_cpp, m) {
         .def_readwrite("location", &navier_stokes_solver::BoundaryCondition::location)
         .def_readwrite("type", &navier_stokes_solver::BoundaryCondition::type)
         .def_readwrite("values", &navier_stokes_solver::BoundaryCondition::values)
-        .def_property("scalar_p",
-            [](const navier_stokes_solver::BoundaryCondition& self) { return self.scalar_p; },
-            [](navier_stokes_solver::BoundaryCondition& self, double val) {
-                self.scalar_p = val;
-                self.values.p = val;
-                self.values.has_p = true;
-            })
-        .def_property("p",
-            [](const navier_stokes_solver::BoundaryCondition& self) { return self.values.p; },
-            [](navier_stokes_solver::BoundaryCondition& self, double val) {
-                self.scalar_p = val;
-                self.values.p = val;
-                self.values.has_p = true;
-            })
-        .def_property("u_val",
-            [](const navier_stokes_solver::BoundaryCondition& self) { return self.u_val; },
-            [](navier_stokes_solver::BoundaryCondition& self, double val) {
-                self.u_val = val;
-                self.values.u = val;
-                self.values.has_u = true;
-            })
-        .def_property("u",
-            [](const navier_stokes_solver::BoundaryCondition& self) { return self.values.u; },
-            [](navier_stokes_solver::BoundaryCondition& self, double val) {
-                self.u_val = val;
-                self.values.u = val;
-                self.values.has_u = true;
-            })
-        .def_property("v_val",
-            [](const navier_stokes_solver::BoundaryCondition& self) { return self.v_val; },
-            [](navier_stokes_solver::BoundaryCondition& self, double val) {
-                self.v_val = val;
-                self.values.v = val;
-                self.values.has_v = true;
-            })
-        .def_property("v",
-            [](const navier_stokes_solver::BoundaryCondition& self) { return self.values.v; },
-            [](navier_stokes_solver::BoundaryCondition& self, double val) {
-                self.v_val = val;
-                self.values.v = val;
-                self.values.has_v = true;
-            })
-        .def_property("w_val",
-            [](const navier_stokes_solver::BoundaryCondition& self) { return self.w_val; },
-            [](navier_stokes_solver::BoundaryCondition& self, double val) {
-                self.w_val = val;
-                self.values.w = val;
-                self.values.has_w = true;
-            })
-        .def_property("w",
-            [](const navier_stokes_solver::BoundaryCondition& self) { return self.values.w; },
-            [](navier_stokes_solver::BoundaryCondition& self, double val) {
-                self.w_val = val;
-                self.values.w = val;
-                self.values.has_w = true;
-            });
+        .def_property("scalar_p", [](const navier_stokes_solver::BoundaryCondition& self) { return self.scalar_p; }, [](navier_stokes_solver::BoundaryCondition& self, double val) { self.scalar_p = val; self.values.p = val; self.values.has_p = true; })
+        .def_property("p", [](const navier_stokes_solver::BoundaryCondition& self) { return self.values.p; }, [](navier_stokes_solver::BoundaryCondition& self, double val) { self.scalar_p = val; self.values.p = val; self.values.has_p = true; })
+        .def_property("u_val", [](const navier_stokes_solver::BoundaryCondition& self) { return self.u_val; }, [](navier_stokes_solver::BoundaryCondition& self, double val) { self.u_val = val; self.values.u = val; self.values.has_u = true; })
+        .def_property("u", [](const navier_stokes_solver::BoundaryCondition& self) { return self.values.u; }, [](navier_stokes_solver::BoundaryCondition& self, double val) { self.u_val = val; self.values.u = val; self.values.has_u = true; })
+        .def_property("v_val", [](const navier_stokes_solver::BoundaryCondition& self) { return self.v_val; }, [](navier_stokes_solver::BoundaryCondition& self, double val) { self.v_val = val; self.values.v = val; self.values.has_v = true; })
+        .def_property("v", [](const navier_stokes_solver::BoundaryCondition& self) { return self.values.v; }, [](navier_stokes_solver::BoundaryCondition& self, double val) { self.v_val = val; self.values.v = val; self.values.has_v = true; })
+        .def_property("w_val", [](const navier_stokes_solver::BoundaryCondition& self) { return self.w_val; }, [](navier_stokes_solver::BoundaryCondition& self, double val) { self.w_val = val; self.values.w = val; self.values.has_w = true; })
+        .def_property("w", [](const navier_stokes_solver::BoundaryCondition& self) { return self.values.w; }, [](navier_stokes_solver::BoundaryCondition& self, double val) { self.w_val = val; self.values.w = val; self.values.has_w = true; });
 
     py::class_(m, "NavierStokesSolver")
         .def(py::init(), py::arg("state"), "Initialize solver instance directly from sovereign SolverState container.")
