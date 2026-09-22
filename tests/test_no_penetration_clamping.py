@@ -96,8 +96,11 @@ def test_no_penetration_clamping(workspace_folder, monkeypatch):
         "gravity_vector": [0.0, 0.0, 0.0]
     }
 
+    # Added an outlet pressure boundary condition alongside the no-slip wall 
+    # to prevent a pure Neumann singular matrix in the PressurePoissonSolver.
     input_data["boundary_conditions"] = [
-        {"location": "wall", "type": "no-slip", "values": {"u": 0.0, "v": 0.0, "w": 0.0, "p": 0.0}}
+        {"location": "wall", "type": "no-slip", "values": {"u": 0.0, "v": 0.0, "w": 0.0, "p": 0.0}},
+        {"location": "outlet", "type": "pressure", "values": {"p": 0.0}}
     ]
 
     with open(input_path, "w", encoding="utf-8") as f:
