@@ -131,7 +131,7 @@ def test_cfl_stable_execution(workspace_folder, monkeypatch):
     print("[2/4] Executing unmocked python wrapper main() under stable CFL (C = 0.5)...")
     try:
         main()
-    except Exception as e:
+    except (RuntimeError, ValueError, OSError, ArithmeticError) as e:
         pytest.fail(
             f"Case A Failed: Pipeline threw unexpected exception under stable CFL: {e}"
         )
@@ -261,7 +261,7 @@ def test_cfl_violation_safety_intercept(workspace_folder, monkeypatch):
                 manifest = json.load(f)
             if manifest.get("results", {}).get("status") != "SUCCESS":
                 guard_triggered = True
-    except Exception:
+    except (RuntimeError, ValueError, OSError, ArithmeticError):
         guard_triggered = True
 
     # Assert that the CFL violation guard or exception intercept was successfully triggered
