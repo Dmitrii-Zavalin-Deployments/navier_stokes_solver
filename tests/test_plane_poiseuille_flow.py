@@ -57,7 +57,7 @@ def test_plane_poiseuille_flow(workspace_folder, monkeypatch):
         input_data = json.load(f)
 
     # Configure spatial grid dimensions and resolution matching the C++ test specification
-    nx, ny, nz = 16, 16, 3
+    nx, ny, nz = 16, 16, 4
     dx, dy, dz = 0.02, 0.01, 0.01
     input_data["grid"] = {
         "x_min": 0.0,
