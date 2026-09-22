@@ -277,21 +277,81 @@ private:
 PYBIND11_MODULE(navier_stokes_cpp, m) {
     m.doc() = "High-performance C++ Navier-Stokes Fractional-Step Solver Module with Rhie-Chow Collocated Grid Stabilization";
 
-    py::class_<navier_stokes_solver::BoundaryCondition>(m, "BoundaryCondition")
+    py::class_(m, "BoundaryValues")
+        .def(py::init<>())
+        .def_readwrite("has_u", &navier_stokes_solver::BoundaryValues::has_u)
+        .def_readwrite("u", &navier_stokes_solver::BoundaryValues::u)
+        .def_readwrite("has_v", &navier_stokes_solver::BoundaryValues::has_v)
+        .def_readwrite("v", &navier_stokes_solver::BoundaryValues::v)
+        .def_readwrite("has_w", &navier_stokes_solver::BoundaryValues::has_w)
+        .def_readwrite("w", &navier_stokes_solver::BoundaryValues::w)
+        .def_readwrite("has_p", &navier_stokes_solver::BoundaryValues::has_p)
+        .def_readwrite("p", &navier_stokes_solver::BoundaryValues::p);
+
+    py::class_(m, "BoundaryCondition")
         .def(py::init<>())
         .def_readwrite("location", &navier_stokes_solver::BoundaryCondition::location)
         .def_readwrite("type", &navier_stokes_solver::BoundaryCondition::type)
-        .def_property("scalar_p", [](const navier_stokes_solver::BoundaryCondition& self) { return self.values.p; }, [](navier_stokes_solver::BoundaryCondition& self, double val) { self.values.p = val; })
-        .def_property("p", [](const navier_stokes_solver::BoundaryCondition& self) { return self.values.p; }, [](navier_stokes_solver::BoundaryCondition& self, double val) { self.values.p = val; })
-        .def_property("u_val", [](const navier_stokes_solver::BoundaryCondition& self) { return self.values.u; }, [](navier_stokes_solver::BoundaryCondition& self, double val) { self.values.u = val; })
-        .def_property("u", [](const navier_stokes_solver::BoundaryCondition& self) { return self.values.u; }, [](navier_stokes_solver::BoundaryCondition& self, double val) { self.values.u = val; })
-        .def_property("v_val", [](const navier_stokes_solver::BoundaryCondition& self) { return self.values.v; }, [](navier_stokes_solver::BoundaryCondition& self, double val) { self.values.v = val; })
-        .def_property("v", [](const navier_stokes_solver::BoundaryCondition& self) { return self.values.v; }, [](navier_stokes_solver::BoundaryCondition& self, double val) { self.values.v = val; })
-        .def_property("w_val", [](const navier_stokes_solver::BoundaryCondition& self) { return self.values.w; }, [](navier_stokes_solver::BoundaryCondition& self, double val) { self.values.w = val; })
-        .def_property("w", [](const navier_stokes_solver::BoundaryCondition& self) { return self.values.w; }, [](navier_stokes_solver::BoundaryCondition& self, double val) { self.values.w = val; });
+        .def_readwrite("values", &navier_stokes_solver::BoundaryCondition::values)
+        .def_property("scalar_p",
+            [](const navier_stokes_solver::BoundaryCondition& self) { return self.scalar_p; },
+            [](navier_stokes_solver::BoundaryCondition& self, double val) {
+                self.scalar_p = val;
+                self.values.p = val;
+                self.values.has_p = true;
+            })
+        .def_property("p",
+            [](const navier_stokes_solver::BoundaryCondition& self) { return self.values.p; },
+            [](navier_stokes_solver::BoundaryCondition& self, double val) {
+                self.scalar_p = val;
+                self.values.p = val;
+                self.values.has_p = true;
+            })
+        .def_property("u_val",
+            [](const navier_stokes_solver::BoundaryCondition& self) { return self.u_val; },
+            [](navier_stokes_solver::BoundaryCondition& self, double val) {
+                self.u_val = val;
+                self.values.u = val;
+                self.values.has_u = true;
+            })
+        .def_property("u",
+            [](const navier_stokes_solver::BoundaryCondition& self) { return self.values.u; },
+            [](navier_stokes_solver::BoundaryCondition& self, double val) {
+                self.u_val = val;
+                self.values.u = val;
+                self.values.has_u = true;
+            })
+        .def_property("v_val",
+            [](const navier_stokes_solver::BoundaryCondition& self) { return self.v_val; },
+            [](navier_stokes_solver::BoundaryCondition& self, double val) {
+                self.v_val = val;
+                self.values.v = val;
+                self.values.has_v = true;
+            })
+        .def_property("v",
+            [](const navier_stokes_solver::BoundaryCondition& self) { return self.values.v; },
+            [](navier_stokes_solver::BoundaryCondition& self, double val) {
+                self.v_val = val;
+                self.values.v = val;
+                self.values.has_v = true;
+            })
+        .def_property("w_val",
+            [](const navier_stokes_solver::BoundaryCondition& self) { return self.w_val; },
+            [](navier_stokes_solver::BoundaryCondition& self, double val) {
+                self.w_val = val;
+                self.values.w = val;
+                self.values.has_w = true;
+            })
+        .def_property("w",
+            [](const navier_stokes_solver::BoundaryCondition& self) { return self.values.w; },
+            [](navier_stokes_solver::BoundaryCondition& self, double val) {
+                self.w_val = val;
+                self.values.w = val;
+                self.values.has_w = true;
+            });
 
-    py::class_<PythonSolverBridge>(m, "NavierStokesSolver")
-        .def(py::init<py::object>(), py::arg("state"), "Initialize solver instance directly from sovereign SolverState container.")
+    py::class_(m, "NavierStokesSolver")
+        .def(py::init(), py::arg("state"), "Initialize solver instance directly from sovereign SolverState container.")
         .def("step", &PythonSolverBridge::step, py::arg("state"), "Advance the Navier-Stokes system by one time-step using state container references.")
         .def("sync_fields", &PythonSolverBridge::sync_fields, py::arg("state"), "Synchronize persistent C++ solution fields directly back into Python state memory.");
 }

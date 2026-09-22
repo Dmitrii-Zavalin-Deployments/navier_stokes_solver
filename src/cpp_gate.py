@@ -322,7 +322,6 @@ def step_simulation(state: SolverState) -> None:
 
     solver = _get_or_create_cpp_solver(state)
 
-
     _log_field_max_abs("Pre-solver.step() state", state)
 
     try:
@@ -335,6 +334,13 @@ def step_simulation(state: SolverState) -> None:
             logger.info("[FORENSIC TRACE] Executing solver.sync_fields(state)...")
             solver.sync_fields(state)
             
+            # Explicitly resynchronize Python state primary attributes from fields array
+            if hasattr(state, "fields") and state.fields is not None:
+                state.u = state.fields[0]
+                state.v = state.fields[1]
+                state.w = state.fields[2]
+                state.p = state.fields[3]
+
             _log_field_max_abs("Post-sync_fields state", state)
         else:
             raise RuntimeError(
