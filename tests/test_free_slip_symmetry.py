@@ -60,6 +60,12 @@ def test_free_slip_symmetry_plane(workspace_folder, monkeypatch):
     # We configure the grid dimensions matching Scenario 3.4:
     #     nx = 6, ny = 8, nz = 6, dx = dy = dz = 0.1 m
     input_data["grid"] = {
+        "x_min": 0.0,
+        "x_max": 0.6,
+        "y_min": 0.0,
+        "y_max": 0.8,
+        "z_min": 0.0,
+        "z_max": 0.6,
         "nx": 6,
         "ny": 8,
         "nz": 6,
