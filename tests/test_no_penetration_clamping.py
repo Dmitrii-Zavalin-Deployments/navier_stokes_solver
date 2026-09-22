@@ -96,11 +96,11 @@ def test_no_penetration_clamping(workspace_folder, monkeypatch):
         "gravity_vector": [0.0, 0.0, 0.0]
     }
 
-    # Added an outlet pressure boundary condition alongside the no-slip wall 
-    # to prevent a pure Neumann singular matrix in the PressurePoissonSolver.
+    # Use a schema-compliant location ('z_max') and type ('pressure') 
+    # to provide a valid Dirichlet reference datum and avoid a singular Neumann system.
     input_data["boundary_conditions"] = [
         {"location": "wall", "type": "no-slip", "values": {"u": 0.0, "v": 0.0, "w": 0.0, "p": 0.0}},
-        {"location": "outlet", "type": "pressure", "values": {"p": 0.0}}
+        {"location": "z_max", "type": "pressure", "values": {"p": 0.0}}
     ]
 
     with open(input_path, "w", encoding="utf-8") as f:
