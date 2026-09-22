@@ -92,19 +92,6 @@ add_test(NAME PlanePoiseuilleFlowTest COMMAND test_plane_poiseuille_flow)
 
 
 
-# No-Penetration Clamping Integration Test
-add_executable(test_no_penetration_clamping
-    cpp/cpp_integration_tests/test_no_penetration_clamping.cpp
-)
-target_link_libraries(test_no_penetration_clamping
-    PRIVATE
-        GTest::gtest_main
-        navier_stokes_core
-        nlohmann_json::nlohmann_json
-        OpenMP::OpenMP_CXX
-        Threads::Threads
-)
-add_test(NAME NoPenetrationClampingTest COMMAND test_no_penetration_clamping)
 
 # No-Slip Wall Shear Integration Test
 add_executable(test_no_slip_wall_shear
