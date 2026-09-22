@@ -1,8 +1,4 @@
 # ==============================================================================
-# Literate Testing Standard — recommended for repositories with complex scientific logic.
-# Each test file is written as a narrative: explanatory text appears as commented prose,
-# while formulas, numerical computations, and assertions appear as executable code.
-#
 # Test Name: test_cfl_and_stability.py
 # Description: End-to-end integration test verifying Courant-Friedrichs-Lewy (CFL) 
 #              condition enforcement, temporal stability bounds, and safety intercept 
