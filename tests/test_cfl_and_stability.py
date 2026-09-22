@@ -63,6 +63,12 @@ def test_cfl_stable_execution(workspace_folder, monkeypatch):
         input_data = json.load(f)
 
     input_data["grid"] = {
+        "x_min": 0.0,
+        "x_max": 0.1,
+        "y_min": 0.0,
+        "y_max": 0.1,
+        "z_min": 0.0,
+        "z_max": 0.1,
         "nx": 10,
         "ny": 10,
         "nz": 10,
@@ -161,6 +167,12 @@ def test_cfl_violation_safety_intercept(workspace_folder, monkeypatch):
         input_data = json.load(f)
 
     input_data["grid"] = {
+        "x_min": 0.0,
+        "x_max": 0.1,
+        "y_min": 0.0,
+        "y_max": 0.1,
+        "z_min": 0.0,
+        "z_max": 0.1,
         "nx": 10,
         "ny": 10,
         "nz": 10,
