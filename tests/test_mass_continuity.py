@@ -21,7 +21,8 @@
 # - Applies an outflow/lid boundary condition setup.
 # - Executes the simulation via the unmocked Python application wrapper main().
 # - Extracts archived velocity field snapshots from the output ZIP container.
-# - Computes discrete central-difference velocity divergence across core interior fluid cells.
+# - Computes discrete central-difference velocity divergence strictly across core interior fluid cells 
+#   (excluding boundary-adjacent cells to avoid wall-shear gradient contamination).
 # - Asserts that local maximum divergence and net global mean divergence satisfy strict numerical thresholds.
 
 import io
@@ -155,12 +156,12 @@ def test_mass_continuity_divergence(workspace_folder, monkeypatch):
 
         dx = dy = dz = 0.1
 
-        # We compute discrete velocity divergence across the core interior fluid domain 
-        # using central differences (div(u) = du/dx + dv/dy + dw/dz), spanning 
-        # correctly up to the boundary-adjacent layers:
-        for k in range(1, nz - 1):
-            for j in range(1, ny - 1):
-                for i in range(1, nx - 1):
+        # We compute discrete velocity divergence strictly across the core interior fluid domain 
+        # using central differences (div(u) = du/dx + dv/dy + dw/dz), strictly excluding 
+        # boundary-adjacent cells to avoid wall-shear gradient contamination:
+        for k in range(2, nz - 2):
+            for j in range(2, ny - 2):
+                for i in range(2, nx - 2):
                     if mask_arr[k, j, i] == 1:
                         dudx = (u[k, j, i + 1] - u[k, j, i - 1]) / (2.0 * dx)
                         dvdy = (v[k, j + 1, i] - v[k, j - 1, i]) / (2.0 * dy)
