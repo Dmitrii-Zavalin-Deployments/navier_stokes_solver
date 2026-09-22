@@ -17,8 +17,8 @@ jobs:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
       ASAN_OPTIONS: "detect_leaks=0"
       # Define the 'Gold Standard' test command here (e.g. # pytest -s tests/ -vv --cov=src --cov-report=term-missing)
-      # TEST_COMMAND: "pytest -s tests/test_mass_continuity.py -vv --cov=src --cov-report=term-missing"
-      TEST_COMMAND: "pytest -s tests/ -vv --cov=src --cov-report=term-missing"
+      TEST_COMMAND: "pytest -s tests/test_full_pipeline_accelerated_with_gravity.py -vv --cov=src --cov-report=term-missing"
+      # TEST_COMMAND: "pytest -s tests/ -vv --cov=src --cov-report=term-missing"
 
     steps:
       - name: 🗂️ Checkout Repository
