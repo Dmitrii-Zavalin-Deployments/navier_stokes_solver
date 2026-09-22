@@ -98,7 +98,7 @@ def test_mass_continuity_divergence(workspace_folder, monkeypatch):
 
     input_data["boundary_conditions"] = [
         {"location": "wall", "type": "no-slip", "values": {"u": 0.0, "v": 0.0, "w": 0.0, "p": 0.0}},
-        {"location": "z_max", "type": "no-slip", "values": {"u": 1.0, "v": 0.0, "w": 0.0, "p": 0.0}}
+        {"location": "z_max", "type": "outflow", "values": {"u": 1.0, "v": 0.0, "w": 0.0, "p": 0.0}}
     ]
 
     with open(input_path, "w", encoding="utf-8") as f:
