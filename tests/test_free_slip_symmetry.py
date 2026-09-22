@@ -95,7 +95,7 @@ def test_free_slip_symmetry_plane(workspace_folder, monkeypatch):
     # We configure boundary conditions including free-slip symmetry at y_max:
     input_data["boundary_conditions"] = [
         {"location": "y_max", "type": "free-slip", "values": {"u": 0.0, "v": 0.0, "w": 0.0, "p": 0.0}},
-        {"location": "y_min", "type": "wall", "values": {"u": 0.0, "v": 0.0, "w": 0.0, "p": 0.0}},
+        {"location": "y_min", "type": "no-slip", "values": {"u": 0.0, "v": 0.0, "w": 0.0, "p": 0.0}},
         {"location": "x_min", "type": "outflow", "values": {"u": 0.0, "v": 0.0, "w": 0.0, "p": 0.0}},
         {"location": "x_max", "type": "outflow", "values": {"u": 0.0, "v": 0.0, "w": 0.0, "p": 0.0}},
         {"location": "z_min", "type": "outflow", "values": {"u": 0.0, "v": 0.0, "w": 0.0, "p": 0.0}},
