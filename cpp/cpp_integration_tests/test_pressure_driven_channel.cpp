@@ -116,7 +116,7 @@ TEST(BoundaryConditionsTest, PressureDrivenChannelFlow) {
             dims, fluid, dt,
             u.data(), v.data(), w.data(),
             fx.data(), fy.data(), fz.data(),
-            gravity, mask,
+            gravity, p, mask,
             u_star.data(), v_star.data(), w_star.data()
         );
 
