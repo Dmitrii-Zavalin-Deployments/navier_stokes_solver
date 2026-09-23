@@ -124,8 +124,11 @@ def test_static_pool_equilibrium(workspace_folder, monkeypatch):
         "p": initial_pressure
     }
 
+    # FIX APPLIED: Separated velocity no-slip constraints from a Dirichlet pressure reference 
+    # at the top boundary to eliminate the pure Neumann matrix null-space singularity.
     input_data["boundary_conditions"] = [
-        {"location": "wall", "type": "no-slip", "values": {"u": 0.0, "v": 0.0, "w": 0.0, "p": 0.0}}
+        {"location": "wall", "type": "no-slip", "values": {"u": 0.0, "v": 0.0, "w": 0.0}},
+        {"location": "top", "type": "dirichlet", "values": {"p": 0.0}}
     ]
 
     with open(input_path, "w", encoding="utf-8") as f:
