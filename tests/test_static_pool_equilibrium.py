@@ -125,7 +125,7 @@ def test_static_pool_equilibrium(workspace_folder, monkeypatch):
     }
 
     input_data["boundary_conditions"] = [
-        {"location": "wall", "type": "velocity", "values": {"u": 0.0, "v": 0.0, "w": 0.0, "p": 0.0}}
+        {"location": "wall", "type": "no-slip", "values": {"u": 0.0, "v": 0.0, "w": 0.0, "p": 0.0}}
     ]
 
     with open(input_path, "w", encoding="utf-8") as f:
