@@ -195,36 +195,36 @@ void compute_trial_velocities(
                 const int u_idx = get_flat_index(i, j, k + 1, Nx_int, Ny_int);
 
                 double dp_dx = 0.0;
-                bool has_west = (w_idx >= 0 && mask[static_cast(w_idx)] == 1);
-                bool has_east = (e_idx >= 0 && mask[static_cast(e_idx)] == 1);
+                bool has_west = (w_idx >= 0 && mask[w_idx] == 1);
+                bool has_east = (e_idx >= 0 && mask[e_idx] == 1);
                 if (has_west && has_east) {
-                    dp_dx = (p[static_cast(e_idx)] - p[static_cast(w_idx)]) / (2.0 * dims.dx);
+                    dp_dx = (p[e_idx] - p[w_idx]) / (2.0 * dims.dx);
                 } else if (has_east) {
-                    dp_dx = (p[static_cast(e_idx)] - p[idx]) / dims.dx;
+                    dp_dx = (p[e_idx] - p[idx]) / dims.dx;
                 } else if (has_west) {
-                    dp_dx = (p[idx] - p[static_cast(w_idx)]) / dims.dx;
+                    dp_dx = (p[idx] - p[w_idx]) / dims.dx;
                 }
 
                 double dp_dy = 0.0;
-                bool has_south = (s_idx >= 0 && mask[static_cast(s_idx)] == 1);
-                bool has_north = (n_idx >= 0 && mask[static_cast(n_idx)] == 1);
+                bool has_south = (s_idx >= 0 && mask[s_idx] == 1);
+                bool has_north = (n_idx >= 0 && mask[n_idx] == 1);
                 if (has_south && has_north) {
-                    dp_dy = (p[static_cast(n_idx)] - p[static_cast(s_idx)]) / (2.0 * dims.dy);
+                    dp_dy = (p[n_idx] - p[s_idx]) / (2.0 * dims.dy);
                 } else if (has_north) {
-                    dp_dy = (p[static_cast(n_idx)] - p[idx]) / dims.dy;
+                    dp_dy = (p[n_idx] - p[idx]) / dims.dy;
                 } else if (has_south) {
-                    dp_dy = (p[idx] - p[static_cast(s_idx)]) / dims.dy;
+                    dp_dy = (p[idx] - p[s_idx]) / dims.dy;
                 }
 
                 double dp_dz = 0.0;
-                bool has_down = (d_idx >= 0 && mask[static_cast(d_idx)] == 1);
-                bool has_up = (u_idx >= 0 && mask[static_cast(u_idx)] == 1);
+                bool has_down = (d_idx >= 0 && mask[d_idx] == 1);
+                bool has_up = (u_idx >= 0 && mask[u_idx] == 1);
                 if (has_down && has_up) {
-                    dp_dz = (p[static_cast(u_idx)] - p[static_cast(d_idx)]) / (2.0 * dims.dz);
+                    dp_dz = (p[u_idx] - p[d_idx]) / (2.0 * dims.dz);
                 } else if (has_up) {
-                    dp_dz = (p[static_cast(u_idx)] - p[idx]) / dims.dz;
+                    dp_dz = (p[u_idx] - p[idx]) / dims.dz;
                 } else if (has_down) {
-                    dp_dz = (p[idx] - p[static_cast(d_idx)]) / dims.dz;
+                    dp_dz = (p[idx] - p[d_idx]) / dims.dz;
                 }
 
                 double u_t = u[idx] + dt * (-adv_u[idx] + fluid.nu * lap_u[idx] + fx[idx] / fluid.density + gx - (1.0 / fluid.density) * dp_dx);
