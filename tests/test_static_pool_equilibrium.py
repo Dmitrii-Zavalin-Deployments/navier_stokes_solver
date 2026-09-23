@@ -126,7 +126,7 @@ def test_static_pool_equilibrium(workspace_folder, monkeypatch):
 
     # Using schema-compliant 'pressure' boundary condition type at the top surface
     input_data["boundary_conditions"] = [
-        {"location": "wall", "type": "no-slip", "values": {"u": 0.0, "v": 0.0, "w": 0.0}},
+        {"location": "wall", "type": "no-slip", "values": {"u": 0.0, "v": 0.0, "w": 0.0, "p": 0.0}},
         {"location": "y_max", "type": "pressure", "values": {"p": 0.0}}
     ]
 
