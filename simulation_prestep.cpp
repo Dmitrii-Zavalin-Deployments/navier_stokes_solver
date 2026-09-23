@@ -1,6 +1,6 @@
 /**
  * @file simulation_prestep.cpp
- * @brief Heavily instrumented implementation of Pre-Step Boundary & Initial Condition Setup
+ * @brief Heavily instrumented implementation of Pre-Step Boundary & Initial Condition Setup 
  *        using layered overwrite precedence, explicit mask-based wall detection, and collocated cell-center field handling.
  */
 
@@ -30,12 +30,12 @@ inline bool matches_location(int i, int j, int k, int nx, int ny, int nz, const 
 }
 
 void execute_pre_step(
-    std::vector& u,
-    std::vector& v,
-    std::vector& w,
-    std::vector& p,
-    const std::vector& mask,
-    const std::vector& bc_list,
+    std::vector<double>& u,
+    std::vector<double>& v,
+    std::vector<double>& w,
+    std::vector<double>& p,
+    const std::vector<int>& mask,
+    const std::vector<BoundaryCondition>& bc_list,
     int nx, int ny, int nz,
     bool cold_start
 ) {
@@ -48,7 +48,7 @@ void execute_pre_step(
         throw std::invalid_argument("GEOMETRY ERROR: Grid dimensions must be at least 3x3x3 in execute_pre_step.");
     }
 
-    const size_t total_cells = static_cast(nx) * ny * nz;
+    const size_t total_cells = static_cast<size_t>(nx) * ny * nz;
     if (u.size() != total_cells || v.size() != total_cells || w.size() != total_cells ||  
         p.size() != total_cells || mask.size() != total_cells) {
         std::cout << "[PRESTEP_ERROR] CONTRACT VIOLATION: Field vector size mismatch! total_cells=" << total_cells 
@@ -83,8 +83,8 @@ void execute_pre_step(
 
         int bc_idx_scan = 0;
         for (const auto& bc : bc_list) {
-            std::cout << "[PRESTEP_TRACE] Scanning BC #" << bc_idx_scan++ << " location='" << bc.location 
-                      << "', type='" << bc.type << "', values: u=" << bc.values.u 
+            std::cout << "[PRESTEP_TRACE] Scanning BC #" << bc_idx_scan++ << " location=\ << bc.location 
+                      << \, type=\ << bc.type << \, values: u=" << bc.values.u 
                       << ", v=" << bc.values.v << ", w=" << bc.values.w << ", p=" << bc.values.p << "\n";
             if (bc.type == "inflow" || bc.type == "pressure") {
                 init_u = bc.values.u;
@@ -100,7 +100,7 @@ void execute_pre_step(
 
         const double rho = 1.0;
         const double gx = 0.0, gy = -9.81, gz = 0.0;
-        const double y_ref = static_cast(ny - 1);
+        const double y_ref = static_cast<double>(ny - 1);
 
         if (found_bc || pre_u_max == 0.0) {
             std::cout << "[PRESTEP_TRACE] Executing parallel seeding with hydrostatic pressure profile...\n";
@@ -108,15 +108,15 @@ void execute_pre_step(
             for (int k = 0; k < nz; ++k) {
                 for (int j = 0; j < ny; ++j) {
                     for (int i = 0; i < nx; ++i) {
-                        size_t idx = static_cast(get_flat_index(i, j, k, nx, ny));
+                        size_t idx = static_cast<size_t>(get_flat_index(i, j, k, nx, ny));
                         if (mask[idx] == 1 || mask[idx] == -1) {
                             u[idx] = init_u;
                             v[idx] = init_v;
                             w[idx] = init_w;
 
-                            double x_coord = static_cast(i);
-                            double y_coord = static_cast(j);
-                            double z_coord = static_cast(k);
+                            double x_coord = static_cast<double>(i);
+                            double y_coord = static_cast<double>(j);
+                            double z_coord = static_cast<double>(k);
 
                             p[idx] = init_p + rho * (gx * x_coord + gy * (y_coord - y_ref) + gz * z_coord);
                         }
@@ -137,8 +137,8 @@ void execute_pre_step(
     }
 
     std::cout << "[PRESTEP_TRACE] Partitioning boundary conditions...\n";
-    std::vector wall_bc_list;
-    std::vector face_bc_list;
+    std::vector<BoundaryCondition> wall_bc_list;
+    std::vector<BoundaryCondition> face_bc_list;
 
     for (const auto& bc : bc_list) {
         if (bc.location == "wall") {
@@ -148,17 +148,17 @@ void execute_pre_step(
         }
     }
 
-    auto get_interior_index = [&](int i, int j, int k) -> size_t {
+    auto get_interior_index = [&](int i, int j, int k) <-> size_t {
         int ii = i;
         if (i == 0) {
             for (int step = 1; step < nx - 1; ++step) {
-                size_t test_idx = static_cast(get_flat_index(step, j, k, nx, ny));
+                size_t test_idx = static_cast<size_t>(get_flat_index(step, j, k, nx, ny));
                 if (mask[test_idx] == 1) { ii = step; break; }
             }
             if (ii == 0) ii = 1;
         } else if (i == nx - 1) {
             for (int step = nx - 2; step >= 1; --step) {
-                size_t test_idx = static_cast(get_flat_index(step, j, k, nx, ny));
+                size_t test_idx = static_cast<size_t>(get_flat_index(step, j, k, nx, ny));
                 if (mask[test_idx] == 1) { ii = step; break; }
             }
             if (ii == nx - 1) ii = nx - 2;
@@ -167,13 +167,13 @@ void execute_pre_step(
         int jj = j;
         if (j == 0) {
             for (int step = 1; step < ny - 1; ++step) {
-                size_t test_idx = static_cast(get_flat_index(ii, step, k, nx, ny));
+                size_t test_idx = static_cast<size_t>(get_flat_index(ii, step, k, nx, ny));
                 if (mask[test_idx] == 1) { jj = step; break; }
             }
             if (jj == 0) jj = 1;
         } else if (j == ny - 1) {
             for (int step = ny - 2; step >= 1; --step) {
-                size_t test_idx = static_cast(get_flat_index(ii, step, k, nx, ny));
+                size_t test_idx = static_cast<size_t>(get_flat_index(ii, step, k, nx, ny));
                 if (mask[test_idx] == 1) { jj = step; break; }
             }
             if (jj == ny - 1) jj = ny - 2;
@@ -182,19 +182,19 @@ void execute_pre_step(
         int kk = k;
         if (k == 0) {
             for (int step = 1; step < nz - 1; ++step) {
-                size_t test_idx = static_cast(get_flat_index(ii, jj, step, nx, ny));
+                size_t test_idx = static_cast<size_t>(get_flat_index(ii, jj, step, nx, ny));
                 if (mask[test_idx] == 1) { kk = step; break; }
             }
             if (kk == 0) kk = 1;
         } else if (k == nz - 1) {
             for (int step = nz - 2; step >= 1; --step) {
-                size_t test_idx = static_cast(get_flat_index(ii, jj, step, nx, ny));
+                size_t test_idx = static_cast<size_t>(get_flat_index(ii, jj, step, nx, ny));
                 if (mask[test_idx] == 1) { kk = step; break; }
             }
             if (kk == nz - 1) kk = nz - 2;
         }
 
-        return static_cast(get_flat_index(ii, jj, kk, nx, ny));
+        return static_cast<size_t>(get_flat_index(ii, jj, kk, nx, ny));
     };
 
     auto apply_bc = [&](const BoundaryCondition& bc, int i, int j, int k, size_t idx) {
@@ -238,7 +238,7 @@ void execute_pre_step(
         for (int k = 0; k < nz; ++k) {
             for (int j = 0; j < ny; ++j) {
                 for (int i = 0; i < nx; ++i) {
-                    size_t idx = static_cast(get_flat_index(i, j, k, nx, ny));
+                    size_t idx = static_cast<size_t>(get_flat_index(i, j, k, nx, ny));
                     if (mask[idx] == 0 || mask[idx] == -1) {
                         apply_bc(bc, i, j, k, idx);
                     }
@@ -253,7 +253,7 @@ void execute_pre_step(
             for (int j = 0; j < ny; ++j) {
                 for (int i = 0; i < nx; ++i) {
                     if (!matches_location(i, j, k, nx, ny, nz, bc.location)) continue;
-                    size_t idx = static_cast(get_flat_index(i, j, k, nx, ny));
+                    size_t idx = static_cast<size_t>(get_flat_index(i, j, k, nx, ny));
                     if (mask[idx] == 0) continue;
                     apply_bc(bc, i, j, k, idx);
                 }
