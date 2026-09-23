@@ -153,6 +153,7 @@ void NavierStokesOrchestrator::step(
         u.data(), v.data(), w.data(),
         fx.data(), fy.data(), fz.data(),
         gravity,
+        p,
         mask,
         u_star_.data(), v_star_.data(), w_star_.data()
     );

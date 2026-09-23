@@ -47,6 +47,7 @@ struct FluidProperties {
  * @param u,v,w    Input velocity fields at time n
  * @param fx,fy,fz External body forces
  * @param gravity  Gravity vector [gx, gy, gz]
+ * @param p        Pressure field at time n
  * @param mask     Domain mask: 1=fluid, 0=solid, -1=wall
  * @param u_star,v_star,w_star Output trial velocities
  */

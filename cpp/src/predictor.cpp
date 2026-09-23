@@ -43,6 +43,10 @@ void validate_inputs(
         std::cout << "[PREDICTOR_TRACE_ERROR] Mask size mismatch: " << mask.size() << " vs expected " << total_cells << "\n";
         throw std::invalid_argument("CONTRACT VIOLATION: Mask vector size does not match grid dimensions.");
     }
+    if (p.size() != total_cells) {
+        std::cout << "[PREDICTOR_TRACE_ERROR] Pressure size mismatch: " << p.size() << " vs expected " << total_cells << "\n";
+        throw std::invalid_argument("CONTRACT VIOLATION: Pressure vector size does not match grid dimensions.");
+    }
     if (dims.nx < 3 || dims.ny < 3 || dims.nz < 3) {
         std::cout << "[PREDICTOR_TRACE_ERROR] Grid dimensions too small: " << dims.nx << "x" << dims.ny << "x" << dims.nz << "\n";
         throw std::invalid_argument("GEOMETRY ERROR: Grid dimensions must be at least 3x3x3 for central stencils.");
@@ -77,7 +81,7 @@ void compute_trial_velocities(
     double* u_star, double* v_star, double* w_star
 ) {
     std::cout << "[PREDICTOR_TRACE] Entering compute_trial_velocities...\n";
-    validate_inputs(dims, fluid, dt, u, v, w, fx, fy, fz, gravity, mask, u_star, v_star, w_star);
+    validate_inputs(dims, fluid, dt, u, v, w, fx, fy, fz, gravity, p, mask, u_star, v_star, w_star);
 
     const size_t nx = dims.nx;
     const size_t ny = dims.ny;
@@ -180,9 +184,50 @@ void compute_trial_velocities(
 
                 if (mask[idx] != 1) continue; // Skip non-fluid cells (boundaries and solids)
 
-                double u_t = u[idx] + dt * (-adv_u[idx] + fluid.nu * lap_u[idx] + fx[idx] / fluid.density + gx);
-                double v_t = v[idx] + dt * (-adv_v[idx] + fluid.nu * lap_v[idx] + fy[idx] / fluid.density + gy);
-                double w_t = w[idx] + dt * (-adv_w[idx] + fluid.nu * lap_w[idx] + fz[idx] / fluid.density + gz);
+                // Mask-aware neighbor lookups for robust pressure gradient computation
+                const int w_idx = get_flat_index(i - 1, j, k, Nx_int, Ny_int);
+                const int e_idx = get_flat_index(i + 1, j, k, Nx_int, Ny_int);
+                const int s_idx = get_flat_index(i, j - 1, k, Nx_int, Ny_int);
+                const int n_idx = get_flat_index(i, j + 1, k, Nx_int, Ny_int);
+                const int d_idx = get_flat_index(i, j, k - 1, Nx_int, Ny_int);
+                const int u_idx = get_flat_index(i, j, k + 1, Nx_int, Ny_int);
+
+                double dp_dx = 0.0;
+                bool has_west = (w_idx >= 0 && mask[static_cast(w_idx)] == 1);
+                bool has_east = (e_idx >= 0 && mask[static_cast(e_idx)] == 1);
+                if (has_west && has_east) {
+                    dp_dx = (p[static_cast(e_idx)] - p[static_cast(w_idx)]) / (2.0 * dims.dx);
+                } else if (has_east) {
+                    dp_dx = (p[static_cast(e_idx)] - p[idx]) / dims.dx;
+                } else if (has_west) {
+                    dp_dx = (p[idx] - p[static_cast(w_idx)]) / dims.dx;
+                }
+
+                double dp_dy = 0.0;
+                bool has_south = (s_idx >= 0 && mask[static_cast(s_idx)] == 1);
+                bool has_north = (n_idx >= 0 && mask[static_cast(n_idx)] == 1);
+                if (has_south && has_north) {
+                    dp_dy = (p[static_cast(n_idx)] - p[static_cast(s_idx)]) / (2.0 * dims.dy);
+                } else if (has_north) {
+                    dp_dy = (p[static_cast(n_idx)] - p[idx]) / dims.dy;
+                } else if (has_south) {
+                    dp_dy = (p[idx] - p[static_cast(s_idx)]) / dims.dy;
+                }
+
+                double dp_dz = 0.0;
+                bool has_down = (d_idx >= 0 && mask[static_cast(d_idx)] == 1);
+                bool has_up = (u_idx >= 0 && mask[static_cast(u_idx)] == 1);
+                if (has_down && has_up) {
+                    dp_dz = (p[static_cast(u_idx)] - p[static_cast(d_idx)]) / (2.0 * dims.dz);
+                } else if (has_up) {
+                    dp_dz = (p[static_cast(u_idx)] - p[idx]) / dims.dz;
+                } else if (has_down) {
+                    dp_dz = (p[idx] - p[static_cast(d_idx)]) / dims.dz;
+                }
+
+                double u_t = u[idx] + dt * (-adv_u[idx] + fluid.nu * lap_u[idx] + fx[idx] / fluid.density + gx - (1.0 / fluid.density) * dp_dx);
+                double v_t = v[idx] + dt * (-adv_v[idx] + fluid.nu * lap_v[idx] + fy[idx] / fluid.density + gy - (1.0 / fluid.density) * dp_dy);
+                double w_t = w[idx] + dt * (-adv_w[idx] + fluid.nu * lap_w[idx] + fz[idx] / fluid.density + gz - (1.0 / fluid.density) * dp_dz);
 
                 if (!std::isfinite(u_t) || !std::isfinite(v_t) || !std::isfinite(w_t)) {
                     has_non_finite = true;
