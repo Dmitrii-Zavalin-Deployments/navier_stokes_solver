@@ -76,7 +76,7 @@ def test_plane_poiseuille_flow(workspace_folder, monkeypatch):
 
     input_data["simulation_parameters"] = {
         "time_step": 0.0005,
-        "total_time": 0.002,
+        "total_time": 0.05,
         "output_interval": 1
     }
 
