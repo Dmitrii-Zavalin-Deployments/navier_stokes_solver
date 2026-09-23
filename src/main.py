@@ -7,7 +7,6 @@ intermediate snapshot exports, and archival packaging under strict non-default p
 
 import argparse
 import logging
-import sys
 from pathlib import Path
 
 from src.archivist import archive_simulation_results, export_step_snapshot
