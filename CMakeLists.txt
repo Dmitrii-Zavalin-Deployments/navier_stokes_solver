@@ -76,6 +76,19 @@ add_test(NAME UnitTests COMMAND unit_tests)
 
 
 
+# Plane Poiseuille Flow Integration Test
+add_executable(test_plane_poiseuille_flow
+    cpp/cpp_integration_tests/test_plane_poiseuille_flow.cpp
+)
+target_link_libraries(test_plane_poiseuille_flow
+    PRIVATE
+        GTest::gtest_main
+        navier_stokes_core
+        nlohmann_json::nlohmann_json
+        OpenMP::OpenMP_CXX
+        Threads::Threads
+)
+add_test(NAME PlanePoiseuilleFlowTest COMMAND test_plane_poiseuille_flow)
 
 
 
