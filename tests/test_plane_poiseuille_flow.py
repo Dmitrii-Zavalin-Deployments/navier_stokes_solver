@@ -77,7 +77,7 @@ def test_plane_poiseuille_flow(workspace_folder, monkeypatch):
     input_data["simulation_parameters"] = {
         "time_step": 0.0005,
         "total_time": 0.05,
-        "output_interval": 1
+        "output_interval": 100
     }
 
     # Active fluid mask across the entire domain
