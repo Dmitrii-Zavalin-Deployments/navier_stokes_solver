@@ -26,6 +26,7 @@ void validate_inputs(
     const double* u, const double* v, const double* w,
     const double* fx, const double* fy, const double* fz,
     const std::vector<double>& gravity,
+    const std::vector& p,
     const std::vector<int>& mask,
     const double* u_star, const double* v_star, const double* w_star
 ) {
@@ -77,6 +78,7 @@ void compute_trial_velocities(
     const double* u, const double* v, const double* w,
     const double* fx, const double* fy, const double* fz,
     const std::vector<double>& gravity,
+    const std::vector& p,
     const std::vector<int>& mask,
     double* u_star, double* v_star, double* w_star
 ) {
