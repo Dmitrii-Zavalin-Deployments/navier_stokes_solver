@@ -8,7 +8,6 @@ intermediate snapshot exports, and archival packaging under strict non-default p
 import argparse
 import logging
 import sys
-import traceback
 from pathlib import Path
 
 from src.archivist import archive_simulation_results, export_step_snapshot
@@ -128,9 +127,9 @@ def main() -> None:
         TypeError,
         AttributeError,
     ) as e:
-        print(f"FATAL PIPELINE ERROR: {e!s}", file=sys.stderr)
-        traceback.print_exc()
-        sys.exit(1)
+        # Log the full exception with stack trace for production monitoring and re-raise universally
+        logger.exception(f"FATAL PIPELINE ERROR: {e!s}")
+        raise
 
 
 if __name__ == "__main__":  # pragma: no cover
