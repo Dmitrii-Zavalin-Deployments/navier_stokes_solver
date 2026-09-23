@@ -63,7 +63,7 @@ TEST(PredictorCoverageTest, NegativeViscosityThrows) {
             dims, fluid, dt,
             u.data(), v.data(), w.data(),
             fx.data(), fy.data(), fz.data(),
-            gravity, mask,
+            gravity, p, mask,
             u_star.data(), v_star.data(), w_star.data()
         ),
         std::invalid_argument
@@ -102,7 +102,7 @@ TEST(PredictorCoverageTest, NonFiniteVelocityThrows) {
             dims, fluid, dt,
             u.data(), v.data(), w.data(),
             fx.data(), fy.data(), fz.data(),
-            gravity, mask,
+            gravity, p, mask,
             u_star.data(), v_star.data(), w_star.data()
         ),
         std::runtime_error
@@ -139,7 +139,7 @@ TEST(PredictorCoverageTest, NonFiniteForceThrows) {
             dims, fluid, dt,
             u.data(), v.data(), w.data(),
             fx.data(), fy.data(), fz.data(),
-            gravity, mask,
+            gravity, p, mask,
             u_star.data(), v_star.data(), w_star.data()
         ),
         std::runtime_error

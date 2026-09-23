@@ -45,7 +45,7 @@ TEST_F(PredictorTest, NullPointerThrowsException) {
     EXPECT_THROW(
         navier_stokes_solver::compute_trial_velocities(
             dims, fluid, dt, nullptr, v.data(), w.data(),
-            fx.data(), fy.data(), fz.data(), gravity, mask,
+            fx.data(), fy.data(), fz.data(), gravity, p, mask,
             u_star.data(), v_star.data(), w_star.data()
         ),
         std::invalid_argument
@@ -58,7 +58,7 @@ TEST_F(PredictorTest, InvalidGravitySizeThrowsException) {
     EXPECT_THROW(
         navier_stokes_solver::compute_trial_velocities(
             dims, fluid, dt, u.data(), v.data(), w.data(),
-            fx.data(), fy.data(), fz.data(), invalid_gravity, mask,
+            fx.data(), fy.data(), fz.data(), invalid_gravity, p, mask,
             u_star.data(), v_star.data(), w_star.data()
         ),
         std::invalid_argument
@@ -99,7 +99,7 @@ TEST_F(PredictorTest, NonPositiveGridSpacingThrowsException) {
     EXPECT_THROW(
         navier_stokes_solver::compute_trial_velocities(
             bad_dims, fluid, dt, u.data(), v.data(), w.data(),
-            fx.data(), fy.data(), fz.data(), gravity, mask,
+            fx.data(), fy.data(), fz.data(), gravity, p, mask,
             u_star.data(), v_star.data(), w_star.data()
         ),
         std::invalid_argument
@@ -111,7 +111,7 @@ TEST_F(PredictorTest, NonPositiveDtThrowsException) {
     EXPECT_THROW(
         navier_stokes_solver::compute_trial_velocities(
             dims, fluid, 0.0, u.data(), v.data(), w.data(),
-            fx.data(), fy.data(), fz.data(), gravity, mask,
+            fx.data(), fy.data(), fz.data(), gravity, p, mask,
             u_star.data(), v_star.data(), w_star.data()
         ),
         std::invalid_argument
@@ -124,7 +124,7 @@ TEST_F(PredictorTest, NegativeViscosityThrowsException) {
     EXPECT_THROW(
         navier_stokes_solver::compute_trial_velocities(
             dims, bad_fluid, dt, u.data(), v.data(), w.data(),
-            fx.data(), fy.data(), fz.data(), gravity, mask,
+            fx.data(), fy.data(), fz.data(), gravity, p, mask,
             u_star.data(), v_star.data(), w_star.data()
         ),
         std::invalid_argument
@@ -139,7 +139,7 @@ TEST_F(PredictorTest, NonPositiveDensityThrowsException) {
     EXPECT_THROW(
         navier_stokes_solver::compute_trial_velocities(
             dims, bad_fluid, dt, u.data(), v.data(), w.data(),
-            fx.data(), fy.data(), fz.data(), gravity, mask,
+            fx.data(), fy.data(), fz.data(), gravity, p, mask,
             u_star.data(), v_star.data(), w_star.data()
         ),
         std::invalid_argument
@@ -158,7 +158,7 @@ TEST_F(PredictorTest, NonFiniteVelocityThrowsRuntimeError) {
     EXPECT_THROW(
         navier_stokes_solver::compute_trial_velocities(
             dims, fluid, dt, poisoned_u.data(), v.data(), w.data(),
-            fx.data(), fy.data(), fz.data(), gravity, mask,
+            fx.data(), fy.data(), fz.data(), gravity, p, mask,
             u_star.data(), v_star.data(), w_star.data()
         ),
         std::runtime_error
