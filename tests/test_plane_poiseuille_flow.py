@@ -140,7 +140,7 @@ def test_plane_poiseuille_flow(workspace_folder, monkeypatch):
     with zipfile.ZipFile(zip_path, "r") as zf:
         namelist = zf.namelist()
         # Inspect final step snapshot dynamically based on simulation parameters
-        total_steps = round(input_data["simulation_parameters"]["total_time"] / input_data["simulation_parameters"]["time_step"]))
+        total_steps = round(input_data["simulation_parameters"]["total_time"] / input_data["simulation_parameters"]["time_step"])
         step_str = f"{total_steps:06d}"
         u_name = f"field_u_step_{step_str}.npy"
 
