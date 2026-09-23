@@ -125,9 +125,9 @@ def main() -> None:
         RuntimeError,
         TypeError,
         AttributeError,
-    ) as e:
+    ):
         # Log the full exception with stack trace for production monitoring and re-raise universally
-        logger.exception(f"FATAL PIPELINE ERROR: {e!s}")
+        logger.exception("FATAL PIPELINE ERROR")
         raise
 
 
