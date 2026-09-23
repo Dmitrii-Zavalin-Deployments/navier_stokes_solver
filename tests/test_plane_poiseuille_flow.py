@@ -139,8 +139,9 @@ def test_plane_poiseuille_flow(workspace_folder, monkeypatch):
     print("[4/4] Inspecting velocity field snapshots and evaluating analytical L2 norm error...")
     with zipfile.ZipFile(zip_path, "r") as zf:
         namelist = zf.namelist()
-        # Inspect final step snapshot (step 4 based on total_time / time_step = 0.002 / 0.0005 = 4)
-        step_str = "000004"
+        # Inspect final step snapshot dynamically based on simulation parameters
+        total_steps = int(round(input_data["simulation_parameters"]["total_time"] / input_data["simulation_parameters"]["time_step"]))
+        step_str = f"{total_steps:06d}"
         u_name = f"field_u_step_{step_str}.npy"
 
         assert u_name in namelist, f"Missing snapshot {u_name} in archive."
