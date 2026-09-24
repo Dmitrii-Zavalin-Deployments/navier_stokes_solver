@@ -3,7 +3,7 @@ name: Navier–Stokes Solver
 on:
   push:
     branches:
-      - "**"
+      - "main"
   workflow_dispatch:
   repository_dispatch:
     types: [artifact_driven_simulation_engine]
