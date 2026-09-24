@@ -51,7 +51,7 @@ void execute_pre_step(
     const std::vector<BoundaryCondition>& bc_list,
     int nx, int ny, int nz,
     double dx, double dy, double dz,
-    const std::vector& gravity,
+    const std::vector<double>& gravity,
     double density,
     bool cold_start
 );
