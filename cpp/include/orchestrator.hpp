@@ -57,7 +57,6 @@ public:
     void step(
         double dt,
         double mu,
-        const std::vector<double>& gravity,
         const std::vector<double>& fx,
         const std::vector<double>& fy,
         const std::vector<double>& fz,

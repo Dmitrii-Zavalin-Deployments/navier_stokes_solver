@@ -1,6 +1,6 @@
 /**
  * @file predictor.cpp
- * @brief Implementation of Step 1 Predictor Trial Velocity Computation with 3D Gravity Integration and heavy execution tracing.
+ * @brief Implementation of Step 1 Predictor Trial Velocity Computation with Volumetric Force Integration and heavy execution tracing.
  */
 
 #include "predictor.hpp"
@@ -25,7 +25,6 @@ void validate_inputs(
     double dt,
     const double* u, const double* v, const double* w,
     const double* fx, const double* fy, const double* fz,
-    const std::vector<double>& gravity,
     const std::vector<int>& mask,
     const double* u_star, const double* v_star, const double* w_star
 ) {
@@ -33,10 +32,6 @@ void validate_inputs(
     if (!u || !v || !w || !fx || !fy || !fz || !u_star || !v_star || !w_star) {
         std::cout << "[PREDICTOR_TRACE_ERROR] Null pointer supplied to predictor module.\n";
         throw std::invalid_argument("CONTRACT VIOLATION: Null pointer supplied to predictor module.");
-    }
-    if (gravity.size() != 3) {
-        std::cout << "[PREDICTOR_TRACE_ERROR] gravity vector size mismatch: " << gravity.size() << "\n";
-        throw std::invalid_argument("CONTRACT VIOLATION: gravity vector must contain exactly 3 components [gx, gy, gz].");
     }
     const size_t total_cells = static_cast<size_t>(dims.nx) * dims.ny * dims.nz;
     if (mask.size() != total_cells) {
@@ -72,12 +67,11 @@ void compute_trial_velocities(
     double dt,
     const double* u, const double* v, const double* w,
     const double* fx, const double* fy, const double* fz,
-    const std::vector<double>& gravity,
     const std::vector<int>& mask,
     double* u_star, double* v_star, double* w_star
 ) {
     std::cout << "[PREDICTOR_TRACE] Entering compute_trial_velocities...\n";
-    validate_inputs(dims, fluid, dt, u, v, w, fx, fy, fz, gravity, mask, u_star, v_star, w_star);
+    validate_inputs(dims, fluid, dt, u, v, w, fx, fy, fz, mask, u_star, v_star, w_star);
 
     const size_t nx = dims.nx;
     const size_t ny = dims.ny;
@@ -165,12 +159,8 @@ void compute_trial_velocities(
     // 5. Parallel Temporal Integration (Forward-Euler Predictor Step)
     // Executed STRICTLY on active fluid cells (mask == 1) to respect physical constraints.
     bool has_non_finite = false;
-    const double gx = gravity[0];
-    const double gy = gravity[1];
-    const double gz = gravity[2];
 
-    std::cout << "[PREDICTOR_TRACE] Step 5 Starting: Temporal integration with gravity [" 
-              << gx << ", " << gy << ", " << gz << "] and dt = " << dt << "\n";
+    std::cout << "[PREDICTOR_TRACE] Step 5 Starting: Temporal integration with dt = " << dt << "\n";
 
     #pragma omp parallel for collapse(3) schedule(static) if(total_cells > 1000) reduction(||:has_non_finite)
     for (int i = 0; i < Nx_int; ++i) {
@@ -180,9 +170,9 @@ void compute_trial_velocities(
 
                 if (mask[idx] != 1) continue; // Skip non-fluid cells (boundaries and solids)
 
-                double u_t = u[idx] + dt * (-adv_u[idx] + fluid.nu * lap_u[idx] + fx[idx] / fluid.density + gx);
-                double v_t = v[idx] + dt * (-adv_v[idx] + fluid.nu * lap_v[idx] + fy[idx] / fluid.density + gy);
-                double w_t = w[idx] + dt * (-adv_w[idx] + fluid.nu * lap_w[idx] + fz[idx] / fluid.density + gz);
+                double u_t = u[idx] + dt * (-adv_u[idx] + fluid.nu * lap_u[idx] + fx[idx] / fluid.density);
+                double v_t = v[idx] + dt * (-adv_v[idx] + fluid.nu * lap_v[idx] + fy[idx] / fluid.density);
+                double w_t = w[idx] + dt * (-adv_w[idx] + fluid.nu * lap_w[idx] + fz[idx] / fluid.density);
 
                 if (!std::isfinite(u_t) || !std::isfinite(v_t) || !std::isfinite(w_t)) {
                     has_non_finite = true;

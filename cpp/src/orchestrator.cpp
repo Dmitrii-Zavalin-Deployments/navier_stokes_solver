@@ -68,7 +68,6 @@ NavierStokesOrchestrator::NavierStokesOrchestrator(const GridDimensions& dims, c
 void NavierStokesOrchestrator::step(
     double dt,
     double mu,
-    const std::vector<double>& gravity,
     const std::vector<double>& fx,
     const std::vector<double>& fy,
     const std::vector<double>& fz,
@@ -152,7 +151,6 @@ void NavierStokesOrchestrator::step(
         dims_, fluid, dt,
         u.data(), v.data(), w.data(),
         fx.data(), fy.data(), fz.data(),
-        gravity,
         mask,
         u_star_.data(), v_star_.data(), w_star_.data()
     );
@@ -239,8 +237,7 @@ void NavierStokesOrchestrator::step(
         dims_.dx, dims_.dy, dims_.dz,
         static_cast<int>(config_.max_poisson_iterations),
         config_.poisson_tolerance,
-        config_.density,
-        gravity
+        config_.density
     );
 
     capture_debug_snapshot("poisson", u, v, w, p);

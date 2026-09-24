@@ -1,7 +1,7 @@
 /**
  * @file pressure_poisson_solver.cpp
  * @brief Implementation of Step 3 Pressure Poisson Solver (Red-Black GS) with robust safety validation,
- *        hydrostatic pressure / body-force boundary balancing, active tolerance convergence check, and lightweight field logging for p.
+ *        homogeneous Neumann boundary handling, active tolerance convergence check, and lightweight field logging for p.
  */
 
 #include "pressure_poisson_solver.hpp"
@@ -25,8 +25,7 @@ void apply_neumann_pressure(
     const DirichletFaces& dirichlet,
     int nx, int ny, int nz,
     double dx, double dy, double dz,
-    double density,
-    const std::vector<double>& gravity
+    double density
 ) {
     if (nx <= 0 || ny <= 0 || nz <= 0) {
         return;
@@ -34,18 +33,6 @@ void apply_neumann_pressure(
     if (dx <= 0.0 || dy <= 0.0 || dz <= 0.0) {
         throw std::invalid_argument("GEOMETRY ERROR: Grid spacing must be strictly positive in Neumann application.");
     }
-
-    if (gravity.size() != 3) {
-        throw std::invalid_argument("CONTRACT VIOLATION: gravity vector must contain exactly 3 components [gx, gy, gz].");
-    }
-
-    const double gx = gravity[0];
-    const double gy = gravity[1];
-    const double gz = gravity[2];
-
-    const double dp_dx = density * gx;
-    const double dp_dy = density * gy;
-    const double dp_dz = density * gz;
 
     if (p_tmp.size() != p.size()) {
         p_tmp = p;
@@ -206,8 +193,7 @@ void solve_poisson_red_black_parallel(
     int nx, int ny, int nz,
     double dx, double dy, double dz,
     int max_iters, double tol,
-    double density,
-    const std::vector<double>& gravity
+    double density
 ) {
     if (nx < 3 || ny < 3 || nz < 3) {
         throw std::invalid_argument("GEOMETRY ERROR: Grid dimensions must be at least 3x3x3 for Poisson solver.");
@@ -458,7 +444,7 @@ void solve_poisson_red_black_parallel(
                     }
                 }
             } else {
-                apply_neumann_pressure(p, p_tmp, bc.location, dirichlet, nx, ny, nz, dx, dy, dz, density, gravity);
+                apply_neumann_pressure(p, p_tmp, bc.location, dirichlet, nx, ny, nz, dx, dy, dz, density);
             }
         }
 
