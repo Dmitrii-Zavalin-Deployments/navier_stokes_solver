@@ -47,7 +47,6 @@ struct FluidProperties {
  * @param u,v,w    Input velocity fields at time n
  * @param fx,fy,fz External body forces
  * @param gravity  Gravity vector [gx, gy, gz]
- * @param p        Pressure field at time n
  * @param mask     Domain mask: 1=fluid, 0=solid, -1=wall
  * @param u_star,v_star,w_star Output trial velocities
  */
@@ -58,7 +57,6 @@ void compute_trial_velocities(
     const double* u, const double* v, const double* w,
     const double* fx, const double* fy, const double* fz,
     const std::vector<double>& gravity,
-    const std::vector<double>& p,
     const std::vector<int>& mask,
     double* u_star, double* v_star, double* w_star
 );

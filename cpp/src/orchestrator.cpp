@@ -123,12 +123,7 @@ void NavierStokesOrchestrator::step(
 
     // 1. PRE-STEP / BOUNDARY CONDITIONS
     auto t_pre = std::chrono::high_resolution_clock::now();
-    execute_pre_step(
-        u, v, w, p, mask, bc_list, 
-        dims_.nx, dims_.ny, dims_.nz, 
-        dims_.dx, dims_.dy, dims_.dz, 
-        gravity, config_.density, cold_start_
-    );
+    execute_pre_step(u, v, w, p, mask, bc_list, dims_.nx, dims_.ny, dims_.nz, cold_start_);
     auto dur_pre = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::high_resolution_clock::now() - t_pre
     ).count();
@@ -158,7 +153,6 @@ void NavierStokesOrchestrator::step(
         u.data(), v.data(), w.data(),
         fx.data(), fy.data(), fz.data(),
         gravity,
-        p,
         mask,
         u_star_.data(), v_star_.data(), w_star_.data()
     );
@@ -276,12 +270,7 @@ void NavierStokesOrchestrator::step(
     print_state_trace("Post-corrector");
 
     // Re-apply boundary conditions to lock edges before final buffer sync
-    execute_pre_step(
-        u, v, w, p, mask, bc_list, 
-        dims_.nx, dims_.ny, dims_.nz, 
-        dims_.dx, dims_.dy, dims_.dz, 
-        gravity, config_.density, false
-    );
+    execute_pre_step(u, v, w, p, mask, bc_list, dims_.nx, dims_.ny, dims_.nz, false);
 
     // 5. FINAL BUFFER SYNCHRONIZATION
     auto t_sync2 = std::chrono::high_resolution_clock::now();
