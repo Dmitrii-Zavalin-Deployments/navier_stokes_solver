@@ -70,7 +70,6 @@ def test_integration_isotropic_accelerated_flow(workspace_folder, monkeypatch):
     # We apply an isotropic external body force vector across all three axes:
     #     F_ext = [f_x, f_y, f_z] = [1.0, 1.0, 1.0]
     input_data["external_forces"]["force_vector"] = [1.0, 1.0, 1.0]
-    input_data["external_forces"]["gravity_vector"] = [0.0, 0.0, 0.0]
     
     # We set uniform initial inflow/outflow velocity seeds of 0.1 across all components.
     input_data["boundary_conditions"] = [

@@ -91,8 +91,7 @@ def test_no_slip_wall_shear(workspace_folder, monkeypatch):
     input_data["mask"] = mask
 
     input_data["external_forces"] = {
-        "force_vector": [1.0, 0.0, 0.0],  # Driving force in x-direction to establish shear flow
-        "gravity_vector": [0.0, 0.0, 0.0]
+        "force_vector": [1.0, 0.0, 0.0]  # Driving force in x-direction to establish shear flow
     }
 
     # FIX: Provide a Dirichlet pressure boundary datum to prevent a singular Neumann matrix in PressurePoissonSolver.

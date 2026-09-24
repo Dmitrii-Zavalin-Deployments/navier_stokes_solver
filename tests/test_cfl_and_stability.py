@@ -87,8 +87,7 @@ def test_cfl_stable_execution(workspace_folder, monkeypatch):
     input_data["mask"] = [1] * total_cells
 
     input_data["external_forces"] = {
-        "force_vector": [0.0, 0.0, 0.0],
-        "gravity_vector": [0.0, 0.0, 0.0]
+        "force_vector": [0.0, 0.0, 0.0]
     }
 
     input_data["boundary_conditions"] = [
@@ -191,8 +190,7 @@ def test_cfl_violation_safety_intercept(workspace_folder, monkeypatch):
     input_data["mask"] = [1] * total_cells
 
     input_data["external_forces"] = {
-        "force_vector": [0.0, 0.0, 0.0],
-        "gravity_vector": [0.0, 0.0, 0.0]
+        "force_vector": [0.0, 0.0, 0.0]
     }
 
     input_data["boundary_conditions"] = [

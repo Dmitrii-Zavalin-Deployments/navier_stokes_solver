@@ -64,8 +64,7 @@ def valid_input_data():
         ],
         "mask": [0] * (nx * ny * nz),
         "external_forces": {
-            "force_vector": [0.0, 0.0, 0.0],
-            "gravity_vector": [0.0, -9.81, 0.0],
+            "force_vector": [0.0, 0.0, 0.0]
         },
     }
 

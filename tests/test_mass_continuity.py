@@ -93,8 +93,7 @@ def test_mass_continuity_divergence(workspace_folder, monkeypatch):
     input_data["mask"] = mask
 
     input_data["external_forces"] = {
-        "force_vector": [0.0, 0.0, 0.0],
-        "gravity_vector": [0.0, 0.0, 0.0]
+        "force_vector": [0.0, 0.0, 0.0]
     }
 
     input_data["boundary_conditions"] = [

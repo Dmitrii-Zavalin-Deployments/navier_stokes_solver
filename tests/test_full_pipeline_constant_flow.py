@@ -67,9 +67,8 @@ def test_full_pipeline_constant_flow(workspace_folder, monkeypatch):
     ]
     input_data["mask"] = single_layer_mask * nz
 
-    # We configure external forces and gravity to zero for pure constant flow.
+    # We configure external forces to zero for pure constant flow.
     input_data["external_forces"]["force_vector"] = [0.0, 0.0, 0.0]
-    input_data["external_forces"]["gravity_vector"] = [0.0, 0.0, 0.0]
 
     # We set boundary conditions with inflow at z_min (w = 1.0), outflow at z_max, and no-slip walls.
     input_data["boundary_conditions"] = [

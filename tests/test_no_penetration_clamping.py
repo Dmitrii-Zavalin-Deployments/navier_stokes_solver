@@ -92,8 +92,7 @@ def test_no_penetration_clamping(workspace_folder, monkeypatch):
     input_data["mask"] = mask
 
     input_data["external_forces"] = {
-        "force_vector": [0.0, 0.0, 0.0],
-        "gravity_vector": [0.0, 0.0, 0.0]
+        "force_vector": [0.0, 0.0, 0.0]
     }
 
     # Provide all required value fields [u, v, w, p] for the z_max pressure BC 

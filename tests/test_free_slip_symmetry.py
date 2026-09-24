@@ -86,10 +86,9 @@ def test_free_slip_symmetry_plane(workspace_folder, monkeypatch):
     total_cells = 6 * 8 * 6
     input_data["mask"] = [1] * total_cells
 
-    # Zero external forces and gravity
+    # Zero external forces
     input_data["external_forces"] = {
-        "force_vector": [0.0, 0.0, 0.0],
-        "gravity_vector": [0.0, 0.0, 0.0]
+        "force_vector": [0.0, 0.0, 0.0]
     }
 
     # We configure boundary conditions including free-slip symmetry at y_max:
