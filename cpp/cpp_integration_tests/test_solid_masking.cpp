@@ -118,7 +118,7 @@ TEST(SolidMaskingTest, InternalSolidObjectMasking) {
     NavierStokesOrchestrator orchestrator(dims, config);
 
     for (int step = 0; step < 10; ++step) {
-        orchestrator.step(dt, mu, gravity, fx, fy, fz, mask, bc_list, u, v, w, p);
+        orchestrator.step(dt, mu, fx, fy, fz, mask, bc_list, u, v, w, p);
     }
 
     // Assertion 1: Verify internal solid cells are properly clamped to zero velocity

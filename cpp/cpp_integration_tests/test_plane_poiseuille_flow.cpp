@@ -228,7 +228,7 @@ TEST_F(PlanePoiseuilleTest, PlanePoiseuilleFlowRe10) {
         std::vector<double> u_old = u;
         std::vector<double> v_old = v;
 
-        orchestrator.step(dt, mu, gravity, fx, fy, fz, mask, bc_list, u, v, w, p);
+        orchestrator.step(dt, mu, fx, fy, fz, mask, bc_list, u, v, w, p);
 
         double current_div = ComputeMaxDivergence(u, v, w, nx, ny, nz, dx, dy, dz);
         ASSERT_TRUE(std::isfinite(current_div));
