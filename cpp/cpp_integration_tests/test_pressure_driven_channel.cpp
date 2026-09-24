@@ -100,7 +100,6 @@ TEST(BoundaryConditionsTest, PressureDrivenChannelFlow) {
     config.density = density;
     config.max_poisson_iterations = 500;
     config.poisson_tolerance = 1e-12;
-    std::vector<double> gravity = {0.0, 0.0, 0.0};
     FluidProperties fluid{mu / density, density};
 
     // We run a multi-step time integration loop to allow pressure gradient acceleration from rest:
@@ -116,7 +115,7 @@ TEST(BoundaryConditionsTest, PressureDrivenChannelFlow) {
             dims, fluid, dt,
             u.data(), v.data(), w.data(),
             fx.data(), fy.data(), fz.data(),
-            gravity, mask,
+            mask,
             u_star.data(), v_star.data(), w_star.data()
         );
 
@@ -146,7 +145,7 @@ TEST(BoundaryConditionsTest, PressureDrivenChannelFlow) {
             p, rhs, mask, bc_list,
             nx, ny, nz, dx, dy, dz,
             config.max_poisson_iterations, config.poisson_tolerance,
-            config.density, gravity
+            config.density
         );
 
         solve_corrector_parallel(

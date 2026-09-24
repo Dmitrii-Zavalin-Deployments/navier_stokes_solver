@@ -103,7 +103,6 @@ TEST(SolidMaskingTest, InternalSolidObjectMasking) {
     std::vector<double> fx(total_cells, 0.0);
     std::vector<double> fy(total_cells, 0.0);
     std::vector<double> fz(total_cells, 0.0);
-    std::vector<double> gravity = {0.0, -9.81, 0.0};
 
     std::vector<BoundaryCondition> bc_list;
     BoundaryCondition bc_wall;

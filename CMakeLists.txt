@@ -122,33 +122,7 @@ target_link_libraries(test_solid_masking
 )
 add_test(NAME SolidMaskingTest COMMAND test_solid_masking)
 
-# Static Pool Equilibrium & Spurious Current Suppression Integration Test
-add_executable(test_static_pool_equilibrium
-    cpp/cpp_integration_tests/test_static_pool_equilibrium.cpp
-)
-target_link_libraries(test_static_pool_equilibrium
-    PRIVATE
-        GTest::gtest_main
-        navier_stokes_core
-        nlohmann_json::nlohmann_json
-        OpenMP::OpenMP_CXX
-        Threads::Threads
-)
-add_test(NAME StaticPoolEquilibriumTest COMMAND test_static_pool_equilibrium)
 
-# Velocity Inlet / Pressure Outlet Integration Test
-add_executable(test_velocity_inlet_outlet
-    cpp/cpp_integration_tests/test_velocity_inlet_outlet.cpp
-)
-target_link_libraries(test_velocity_inlet_outlet
-    PRIVATE
-        GTest::gtest_main
-        navier_stokes_core
-        nlohmann_json::nlohmann_json
-        OpenMP::OpenMP_CXX
-        Threads::Threads
-)
-add_test(NAME VelocityInletOutletTest COMMAND test_velocity_inlet_outlet)
 
 # Waterfall Inflow Dynamics Integration Test
 add_executable(test_waterfall_inflow

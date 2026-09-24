@@ -5,16 +5,16 @@
  *
  * ## Physical Background & Governing Equations
  * Plane Poiseuille flow describes the motion of an incompressible viscous fluid driven by a pressure 
- * gradient or body force between two infinite stationary parallel plates separated by height $H$. 
+ * gradient or body force between two infinite stationary parallel plates separated by height H. 
  * 
  * Under steady, fully developed conditions, the Navier-Stokes momentum equations reduce to the 
  * exact balance between viscous diffusion and the driving force:
- * $$ \nu \frac{d^2 u}{dy^2} + f_x = 0 $$
+ *      nu * (d^2 u / dy^2) + f_x = 0
  * 
- * The exact analytical velocity profile $u(y)$ across the channel coordinate $y \in [0, H]$ is given by:
- * $$ u(y) = 4 u_{\text{max}} \frac{y}{H} \left(1 - \frac{y}{H}\right) $$
- * where $u_{\text{max}}$ is the centerline velocity. This test initializes the fluid domain with this 
- * exact parabolic profile, applies the matching analytical driving body force $f_x$, and verifies 
+ * The exact analytical velocity profile u(y) across the channel coordinate y in [0, H] is given by:
+ *      u(y) = 4 * u_max * (y / H) * (1 - (y / H))
+ * where u_max is the centerline velocity. This test initializes the fluid domain with this 
+ * exact parabolic profile, applies the matching analytical driving body force f_x, and verifies 
  * that the numerical orchestrator maintains stability, mass continuity, and accuracy within dynamic 
  * truncation bounds over transient solver steps.
  */
@@ -53,7 +53,7 @@ protected:
 
     /* 
      * To verify mass conservation at every grid node, we compute the discrete velocity divergence:
-     *      \nabla \cdot \mathbf{u} = \frac{\partial u}{\partial x} + \frac{\partial v}{\partial y} + \frac{\partial w}{\partial z}
+     *      div(u) = du/dx + dv/dy + dw/dz
      * Using second-order central differences across interior cells, we extract the maximum divergence magnitude.
      */
     double ComputeMaxDivergence(
@@ -141,7 +141,6 @@ TEST_F(PlanePoiseuilleTest, PlanePoiseuilleFlowRe10) {
 
     const double mu = 0.001; // Kinematic viscosity nu
     const double u_max = 0.1;
-    const std::vector<double> gravity = {0.0, 0.0, 0.0};
 
     std::vector<int> mask(total_cells, 1);
     
@@ -208,7 +207,7 @@ TEST_F(PlanePoiseuilleTest, PlanePoiseuilleFlowRe10) {
 
     /* 
      * We initialize the velocity field directly with the exact parabolic Poiseuille profile:
-     *      u(y) = 4 u_{\text{max}} \frac{y}{H} \left(1 - \frac{y}{H}\right)
+     *      u(y) = 4 * u_max * (y / H) * (1 - (y / H))
      */
     for (int k = 0; k < nz; ++k) {
         for (int j = 0; j < ny; ++j) {
@@ -276,4 +275,3 @@ TEST_F(PlanePoiseuilleTest, PlanePoiseuilleFlowRe10) {
 
     ASSERT_LE(relative_l2_error, dynamic_l2_bound);
 }
-
