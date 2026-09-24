@@ -5,7 +5,6 @@
  *
  *        This module provides:
  *          - Red–Black Gauss–Seidel PPE solver
- *          - Hydrostatic / gravity-balanced Neumann BCs
  *          - Solid-boundary Neumann extrapolation
  *          - Dirichlet face tracking (pressure / outflow)
  *
@@ -46,19 +45,18 @@ struct DirichletFaces {
  * Responsibilities:
  *   - Operates strictly on interior fluid cells (mask == 1)
  *   - Applies Dirichlet pressure anchors (pressure / outflow BCs)
- *   - Applies gravity-balanced Neumann BCs on non-Dirichlet faces
+ *   - Applies homogeneous Neumann BCs on non-Dirichlet faces
  *   - Applies solid-boundary Neumann extrapolation (mask == 0)
  *
- * @param p        Pressure field (updated in-place)
- * @param rhs      Divergence-based source term
- * @param mask     Domain mask (fluid / solid / wall)
- * @param bc_list  Boundary condition list
- * @param nx,ny,nz Grid dimensions
- * @param dx,dy,dz Grid spacing
+ * @param p         Pressure field (updated in-place)
+ * @param rhs       Divergence-based source term
+ * @param mask      Domain mask (fluid / solid / wall)
+ * @param bc_list   Boundary condition list
+ * @param nx,ny,nz  Grid dimensions
+ * @param dx,dy,dz  Grid spacing
  * @param max_iters Maximum GS iterations
  * @param tol       Convergence tolerance
  * @param density   Fluid density
- * @param gravity   Gravity vector [gx, gy, gz]
  */
 void solve_poisson_red_black_parallel(
     std::vector<double>& p,
@@ -68,18 +66,12 @@ void solve_poisson_red_black_parallel(
     int nx, int ny, int nz,
     double dx, double dy, double dz,
     int max_iters, double tol,
-    double density,
-    const std::vector<double>& gravity
+    double density
 );
 
 /**
- * @brief Applies hydrostatic Neumann pressure boundary conditions
+ * @brief Applies homogeneous Neumann pressure boundary conditions
  *        on domain faces that are NOT Dirichlet-anchored.
- *
- * This enforces:
- *      ∂p/∂n = ρ g_n
- *
- * where g_n is the gravity component normal to the face.
  */
 void apply_neumann_pressure(
     std::vector<double>& p,
@@ -88,8 +80,7 @@ void apply_neumann_pressure(
     const DirichletFaces& dirichlet,
     int nx, int ny, int nz,
     double dx, double dy, double dz,
-    double density,
-    const std::vector<double>& gravity
+    double density
 );
 
 inline void apply_neumann_pressure(
@@ -98,11 +89,10 @@ inline void apply_neumann_pressure(
     const DirichletFaces& dirichlet,
     int nx, int ny, int nz,
     double dx, double dy, double dz,
-    double density,
-    const std::vector<double>& gravity
+    double density
 ) {
     std::vector<double> p_tmp(p.size(), 0.0);
-    apply_neumann_pressure(p, p_tmp, location, dirichlet, nx, ny, nz, dx, dy, dz, density, gravity);
+    apply_neumann_pressure(p, p_tmp, location, dirichlet, nx, ny, nz, dx, dy, dz, density);
 }
 
 /**
@@ -132,4 +122,3 @@ inline void apply_solid_neumann_pressure_parallel(
 } // namespace navier_stokes_solver
 
 #endif // PRESSURE_POISSON_SOLVER_HPP
-

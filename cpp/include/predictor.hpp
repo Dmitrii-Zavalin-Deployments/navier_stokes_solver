@@ -5,7 +5,7 @@
  *
  *        This stage:
  *          - Computes u*, v*, w* using explicit integration
- *          - Applies viscosity, body forces, and gravity
+ *          - Applies viscosity and body forces
  *          - Updates ONLY fluid cells (mask == 1)
  *          - Preserves boundary/wall/solid states from Pre-Step
  */
@@ -38,16 +38,14 @@ struct FluidProperties {
  *   - Operate strictly on fluid cells (mask == 1)
  *   - Apply viscous diffusion (via Laplacian)
  *   - Apply external body forces fx, fy, fz
- *   - Apply gravity vector components
  *   - Preserve solid/wall states (mask == 0 or -1)
  *
- * @param dims     Grid dimensions and spacing (nx, ny, nz, dx, dy, dz)
- * @param fluid    Fluid properties (ν, ρ)
- * @param dt       Time step
- * @param u,v,w    Input velocity fields at time n
- * @param fx,fy,fz External body forces
- * @param gravity  Gravity vector [gx, gy, gz]
- * @param mask     Domain mask: 1=fluid, 0=solid, -1=wall
+ * @param dims      Grid dimensions and spacing (nx, ny, nz, dx, dy, dz)
+ * @param fluid     Fluid properties (ν, ρ)
+ * @param dt        Time step
+ * @param u,v,w     Input velocity fields at time n
+ * @param fx,fy,fz  External body forces
+ * @param mask      Domain mask: 1=fluid, 0=solid, -1=wall
  * @param u_star,v_star,w_star Output trial velocities
  */
 void compute_trial_velocities(
@@ -56,7 +54,6 @@ void compute_trial_velocities(
     double dt,
     const double* u, const double* v, const double* w,
     const double* fx, const double* fy, const double* fz,
-    const std::vector<double>& gravity,
     const std::vector<int>& mask,
     double* u_star, double* v_star, double* w_star
 );
@@ -64,4 +61,3 @@ void compute_trial_velocities(
 } // namespace navier_stokes_solver
 
 #endif // PREDICTOR_HPP
-
