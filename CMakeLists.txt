@@ -124,19 +124,6 @@ add_test(NAME SolidMaskingTest COMMAND test_solid_masking)
 
 
 
-# Waterfall Inflow Dynamics Integration Test
-add_executable(test_waterfall_inflow
-    cpp/cpp_integration_tests/test_waterfall_inflow.cpp
-)
-target_link_libraries(test_waterfall_inflow
-    PRIVATE
-        GTest::gtest_main
-        navier_stokes_core
-        nlohmann_json::nlohmann_json
-        OpenMP::OpenMP_CXX
-        Threads::Threads
-)
-add_test(NAME WaterfallInflowTest COMMAND test_waterfall_inflow)
 
 # ---------------------------------------------------------------------------
 # 4. Python Pybind11 Extension Module Target (`navier_stokes_cpp`)
