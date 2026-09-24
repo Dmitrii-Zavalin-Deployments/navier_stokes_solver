@@ -55,42 +55,42 @@ void apply_neumann_pressure(
                 if ((location == "x_min" || location == "wall") && i == 0 && !dirichlet.x_min && nx > 1) {
                     const int neighbor = get_flat_index(1, j, k, nx, ny);
                     if (neighbor >= 0) {
-                        val += p[static_cast<size_t>(neighbor)] - dp_dx * dx;
+                        val += p[static_cast<size_t>(neighbor)];
                         count++;
                     }
                 }
                 if ((location == "x_max" || location == "wall") && i == nx - 1 && !dirichlet.x_max && nx > 1) {
                     const int neighbor = get_flat_index(nx - 2, j, k, nx, ny);
                     if (neighbor >= 0) {
-                        val += p[static_cast<size_t>(neighbor)] + dp_dx * dx;
+                        val += p[static_cast<size_t>(neighbor)];
                         count++;
                     }
                 }
                 if ((location == "y_min" || location == "wall") && j == 0 && !dirichlet.y_min && ny > 1) {
                     const int neighbor = get_flat_index(i, 1, k, nx, ny);
                     if (neighbor >= 0) {
-                        val += p[static_cast<size_t>(neighbor)] - dp_dy * dy;
+                        val += p[static_cast<size_t>(neighbor)];
                         count++;
                     }
                 }
                 if ((location == "y_max" || location == "wall") && j == ny - 1 && !dirichlet.y_max && ny > 1) {
                     const int neighbor = get_flat_index(i, ny - 2, k, nx, ny);
                     if (neighbor >= 0) {
-                        val += p[static_cast<size_t>(neighbor)] + dp_dy * dy;
+                        val += p[static_cast<size_t>(neighbor)];
                         count++;
                     }
                 }
                 if ((location == "z_min" || location == "wall") && k == 0 && !dirichlet.z_min && nz > 1) {
                     const int neighbor = get_flat_index(i, j, 1, nx, ny);
                     if (neighbor >= 0) {
-                        val += p[static_cast<size_t>(neighbor)] - dp_dz * dz;
+                        val += p[static_cast<size_t>(neighbor)];
                         count++;
                     }
                 }
                 if ((location == "z_max" || location == "wall") && k == nz - 1 && !dirichlet.z_max && nz > 1) {
                     const int neighbor = get_flat_index(i, j, nz - 2, nx, ny);
                     if (neighbor >= 0) {
-                        val += p[static_cast<size_t>(neighbor)] + dp_dz * dz;
+                        val += p[static_cast<size_t>(neighbor)];
                         count++;
                     }
                 }
