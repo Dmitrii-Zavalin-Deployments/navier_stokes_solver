@@ -63,7 +63,6 @@ class SolverState:
             "simulation_parameters",
             "boundary_conditions",
             "external_forces",
-            "domain_configuration",
             "physical_constraints",
             "mask",
         ]:
@@ -81,7 +80,6 @@ class SolverState:
 
         self.boundary_conditions: list[Any] = input_data["boundary_conditions"]
         self.external_forces: dict[str, Any] = input_data["external_forces"]
-        self.domain_configuration: dict[str, Any] = input_data["domain_configuration"]
         self.physical_constraints: dict[str, Any] = input_data["physical_constraints"]
 
         pc = self.physical_constraints

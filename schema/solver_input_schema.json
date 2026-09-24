@@ -10,7 +10,6 @@
     "boundary_conditions",
     "mask",
     "external_forces",
-    "domain_configuration",
     "physical_constraints"
   ],
   "properties": {
@@ -38,31 +37,6 @@
         "max_pressure": {
           "type": "number",
           "description": "Upper bound for pressure. Prevents numerical explosions."
-        }
-      }
-    },
-    "domain_configuration": {
-      "type": "object",
-      "required": [
-        "type"
-      ],
-      "properties": {
-        "type": {
-          "type": "string",
-          "enum": [
-            "INTERNAL",
-            "EXTERNAL"
-          ],
-          "description": "INTERNAL: Pressure-driven pipe flow. EXTERNAL: Far-field aerodynamics."
-        },
-        "reference_velocity": {
-          "type": "array",
-          "description": "Optional reference velocity of the EXTERNAL flow",
-          "minItems": 3,
-          "maxItems": 3,
-          "items": {
-            "type": "number"
-          }
         }
       }
     },
@@ -227,22 +201,12 @@
     "external_forces": {
       "type": "object",
       "required": [
-        "force_vector",
-        "gravity_vector"
+        "force_vector"
       ],
       "properties": {
         "force_vector": {
           "type": "array",
           "description": "Generic external force density vector (e.g., electromagnetic, momentum sources).",
-          "minItems": 3,
-          "maxItems": 3,
-          "items": {
-            "type": "number"
-          }
-        },
-        "gravity_vector": {
-          "type": "array",
-          "description": "Gravitational acceleration vector in 3D space used for analytical hydrostatic pressure splitting.",
           "minItems": 3,
           "maxItems": 3,
           "items": {
