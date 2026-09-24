@@ -140,14 +140,10 @@ public:
             throw py::value_error("PHYSICS ERROR: Dynamic viscosity mu cannot be negative and must be finite.");
         }
 
-        // 6. Extract External Forces & 3D Gravity Vector Symmetrically
+        // 6. Extract External Forces (Localized Volumetric Force Vector only)
         py::dict ext_forces = state.attr("external_forces").cast<py::dict>();
-        std::vector<double> gravity = ext_forces["gravity_vector"].cast<std::vector<double>>();
         std::vector<double> force_vec = ext_forces["force_vector"].cast<std::vector<double>>();
 
-        if (gravity.size() != 3) {
-            throw py::value_error("CONTRACT VIOLATION: gravity_vector must contain exactly 3 components [gx, gy, gz].");
-        }
         if (force_vec.size() != 3) {
             throw py::value_error("CONTRACT VIOLATION: force_vector must contain exactly 3 components [fx, fy, fz].");
         }
@@ -217,7 +213,7 @@ public:
         // 9. Execute full time-step inside C++ Orchestrator Core (releasing GIL for OpenMP compute)
         {
             py::gil_scoped_release release;
-            orchestrator_->step(dt, mu, gravity, fx_vec, fy_vec, fz_vec, mask_vec, bc_list, u_, v_, w_, p_);
+            orchestrator_->step(dt, mu, fx_vec, fy_vec, fz_vec, mask_vec, bc_list, u_, v_, w_, p_);
         }
 
         std::cout << "[TELEMETRY STEP] Orchestrator step completed. Copying back to NumPy memory...\n";
