@@ -37,6 +37,9 @@ void execute_pre_step(
     const std::vector<int>& mask,
     const std::vector<BoundaryCondition>& bc_list,
     int nx, int ny, int nz,
+    double dx, double dy, double dz,
+    const std::vector<double>& gravity,
+    double density,
     bool cold_start
 ) {
     std::cout << "[PRESTEP_TRACE] === Entering execute_pre_step === | nx=" << nx 
@@ -46,6 +49,10 @@ void execute_pre_step(
     if (nx < 3 || ny < 3 || nz < 3) {
         std::cout << "[PRESTEP_ERROR] GEOMETRY ERROR: Grid dimensions must be at least 3x3x3.\n";
         throw std::invalid_argument("GEOMETRY ERROR: Grid dimensions must be at least 3x3x3 in execute_pre_step.");
+    }
+
+    if (gravity.size() < 3) {
+        throw std::invalid_argument("CONTRACT VIOLATION: gravity vector must have at least 3 components.");
     }
 
     const size_t total_cells = static_cast<size_t>(nx) * ny * nz;
@@ -103,27 +110,49 @@ void execute_pre_step(
             }
         }
 
-        // Guard against wiping out pre-initialized fields if inflow values evaluate to zero
-        if (found_inflow && (init_u != 0.0 || init_v != 0.0 || init_w != 0.0 || pre_u_max == 0.0)) {
-            std::cout << "[PRESTEP_TRACE] Executing parallel seeding across fluid (1) and boundary (-1) cells...\n";
-            #pragma omp parallel for collapse(3) schedule(static) if(total_cells > 1000)
-            for (int k = 0; k < nz; ++k) {
-                for (int j = 0; j < ny; ++j) {
-                    for (int i = 0; i < nx; ++i) {
-                        size_t idx = static_cast<size_t>(get_flat_index(i, j, k, nx, ny));
-                        if (mask[idx] == 1 || mask[idx] == -1) {
-                            u[idx] = init_u;
-                            v[idx] = init_v;
-                            w[idx] = init_w;
-                            p[idx] = init_p;
-                        }
+        // Unpack physical parameters from orchestrator inputs (no hardcoding)
+        double rho = density;
+        double gx = gravity[0];
+        double gy = gravity[1];
+        double gz = gravity[2];
+
+        // Reference origin set to maximum domain boundaries for rotated/generalized coordinate alignment
+        double x_ref = static_cast<double>(nx - 1) * dx;
+        double y_ref = static_cast<double>(ny - 1) * dy;
+        double z_ref = static_cast<double>(nz - 1) * dz;
+
+        std::cout << "[PRESTEP_TRACE] Executing generalized 3D hydrostatic seeding across fluid (1) and boundary (-1) cells...\n";
+        std::cout << "[PRESTEP_TRACE] Hydrostatic params -> rho=" << rho << ", g=(" << gx << ", " << gy << ", " << gz 
+                  << "), p_ref=" << init_p << ", ref_origin=(" << x_ref << ", " << y_ref << ", " << z_ref 
+                  << "), spacing=(" << dx << ", " << dy << ", " << dz << ")\n";
+    
+        std::cout << "[PRESTEP_TRACE] Executing parallel seeding across fluid (1) and boundary (-1) cells...\n";
+        #pragma omp parallel for collapse(3) schedule(static) if(total_cells > 1000)
+        for (int k = 0; k < nz; ++k) {
+            for (int j = 0; j < ny; ++j) {
+                for (int i = 0; i < nx; ++i) {
+                    size_t idx = static_cast<size_t>(get_flat_index(i, j, k, nx, ny));
+                    if (mask[idx] == 1 || mask[idx] == -1) {
+                        u[idx] = init_u;
+                        v[idx] = init_v;
+                        w[idx] = init_w;
+                        
+                        // Generalized 3D hydrostatic pressure calculation across all axes
+                        double x = i * dx;
+                        double y = j * dy;
+                        double z = k * dz;
+
+                        p[idx] = init_p + rho * (
+                            gx * (x - x_ref) + 
+                            gy * (y - y_ref) + 
+                            gz * (z - z_ref)
+                        );
                     }
                 }
             }
-        } else {
-            std::cout << "[PRESTEP_TRACE] Skipping uniform seeding override to preserve pre-initialized field state (init_u=" 
-                      << init_u << ", pre_u_max=" << pre_u_max << ").\n";
         }
+    
+        std::cout << "[PRESTEP_TRACE] Pre-initialized field state (init_u=" << init_u << ", pre_u_max=" << pre_u_max << ").\n";
 
         double post_seed_u_max = 0.0;
         for (size_t idx = 0; idx < total_cells; ++idx) {

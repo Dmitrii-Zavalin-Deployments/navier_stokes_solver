@@ -50,6 +50,9 @@ void execute_pre_step(
     const std::vector<int>& mask,
     const std::vector<BoundaryCondition>& bc_list,
     int nx, int ny, int nz,
+    double dx, double dy, double dz,
+    const std::vector& gravity,
+    double density,
     bool cold_start
 );
 
