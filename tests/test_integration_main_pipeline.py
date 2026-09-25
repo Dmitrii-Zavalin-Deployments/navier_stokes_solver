@@ -106,7 +106,7 @@ def test_main_full_pipeline_end_to_end(workspace_folder, monkeypatch):
     assert len(input_data["boundary_conditions"]) == 1
     assert input_data["boundary_conditions"][0]["type"] == "pressure"
     assert input_data["boundary_conditions"][0]["values"]["p"] == 10.0
-    assert len(input_data["mask"]) == 64  # 4 x 4 x 4 = 64 cells
+    assert len(input_data["mask"]) == 256  # 8 x 8 x 4 = 256 cells
     assert input_data["external_forces"]["force_vector"] == [1.0, 0.0, 0.0]
 
     # Solver execution config integration check:
