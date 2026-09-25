@@ -4,14 +4,14 @@
 #              Execution Engine under the Literate Testing Standard.
 # ==============================================================================
 
-# LITERATE TESTING NARRATIVE & GOVERNING EQUATIONS:
+# LITERATE TESTING NARRATIVE & GOVERNING PRINCIPLES:
 # ------------------------------------------------------------------------------
 # This test suite validates the full unmocked application pipeline:
 # Ingestion -> State Initialization -> C++ Solver Engine -> Archivist Output.
 # 
 # Governing incompressible Navier-Stokes momentum and continuity equations:
-#     \rho \left( \frac{\partial \mathbf{u}}{\partial t} + (\mathbf{u} \cdot \nabla)\mathbf{u} \right) = -\nabla p + \mu \nabla^2 \mathbf{u} + \mathbf{f}
-#     \nabla \cdot \mathbf{u} = 0
+#     rho * (du/dt + (u . nabla)u) = -nabla p + mu * Laplacian(u) + f
+#     nabla . u = 0
 #
 # Key verifications performed across this suite:
 # 1. End-to-end execution, input/config parity, and manifest generation.
@@ -46,9 +46,11 @@ def test_main_full_pipeline_end_to_end(workspace_folder, monkeypatch):
     with open(input_path, "r", encoding="utf-8") as f:
         input_json_data = json.load(f)
 
-    # We configure an external force vector, pressure boundary condition, and initial velocity seed.
+    # We configure an external force vector, complete pressure/velocity boundary condition values, and initial velocity seed.
     input_json_data["external_forces"]["force_vector"] = [1.0, 0.0, 0.0]
-    input_json_data["boundary_conditions"] = [{"location": "x_min", "type": "pressure", "values": {"p": 10.0}}]
+    input_json_data["boundary_conditions"] = [
+        {"location": "x_min", "type": "pressure", "values": {"u": 0.0, "v": 0.0, "w": 0.0, "p": 10.0}}
+    ]
     input_json_data["initial_conditions"]["velocity"] = [0.1, 0.1, 0.1]
 
     with open(input_path, "w", encoding="utf-8") as f:
@@ -168,6 +170,12 @@ def test_python_cpp_field_state_parity(workspace_folder):
     input_data["external_forces"]["force_vector"] = [1.0, 1.0, 1.0]
     input_data["initial_conditions"]["velocity"] = [0.1, 0.1, 0.1]
 
+    # Ensure all boundary conditions contain the full complement of required value fields
+    for bc in input_data.get("boundary_conditions", []):
+        for field in ["u", "v", "w", "p"]:
+            if field not in bc["values"]:
+                bc["values"][field] = 0.0
+
     state = SolverState(input_data, config_data)
     step_simulation(state)
 
@@ -215,7 +223,9 @@ def test_pybind11_memory_bridge_forensic_audit(workspace_folder):
     input_data, config_data = load_and_validate_inputs(input_path, Path(folder) / "config.json")
     input_data["external_forces"]["force_vector"] = [1.0, 2.0, 1.5]
     input_data["initial_conditions"]["velocity"] = [0.2, -0.1, 0.3]
-    input_data["boundary_conditions"] = [{"location": "x_min", "type": "pressure", "values": {"p": 5.0}}]
+    input_data["boundary_conditions"] = [
+        {"location": "x_min", "type": "pressure", "values": {"u": 0.0, "v": 0.0, "w": 0.0, "p": 5.0}}
+    ]
 
     state = SolverState(input_data, config_data)
 
