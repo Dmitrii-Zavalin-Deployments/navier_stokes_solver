@@ -8,16 +8,16 @@
 # LITERATE TESTING NARRATIVE & GOVERNING PRINCIPLES:
 # ------------------------------------------------------------------------------
 # This test suite validates the unmocked application pipeline on an asymmetric 
-# non-cubic domain (nx=5, ny=4, nz=3), verifying that memory indexing, tensor 
+# non-cubic domain (nx=5, ny=4, nz=4), verifying that memory indexing, tensor 
 # reshaping, and stride calculations handle non-uniform geometry without distortion:
-#     Total Cells = nx * ny * nz = 5 * 4 * 3 = 60 cells
+#     Total Cells = nx * ny * nz = 5 * 4 * 4 = 80 cells
 #
 # Governing incompressible Navier-Stokes momentum and continuity equations:
 #     rho * (du/dt + (u . nabla)u) = -nabla p + mu * Laplacian(u) + f
 #     nabla . u = 0
 #
 # Key verifications performed across this non-cubic suite:
-# 1. Ingestion parity and manifest structure on an asymmetric 5x4x3 domain.
+# 1. Ingestion parity and manifest structure on an asymmetric 5x4x4 domain.
 # 2. Zero-drift field parity between Python SolverState buffers and archived binaries.
 # 3. Pybind11 memory bridge integrity and in-place pointer preservation across non-uniform strides.
 # ------------------------------------------------------------------------------
@@ -31,11 +31,11 @@ from pathlib import Path
 import numpy as np
 
 
-def test_main_full_pipeline_non_cubic_5x4x3(workspace_folder, monkeypatch):
+def test_main_full_pipeline_non_cubic_5x4x4(workspace_folder, monkeypatch):
     """
     # Executes main() end-to-end without mocks through ingestion, C++ engine, and archivist,
     # validating input/config parity, manifest structure, physical field evolution, and binary shapes
-    # on an asymmetric 5x4x3 non-cubic grid to catch memory stride/indexing artifacts.
+    # on an asymmetric 5x4x4 non-cubic grid to catch memory stride/indexing artifacts.
     """
     folder = workspace_folder["folder"]
     input_file = workspace_folder["input_file_name"]
@@ -47,11 +47,11 @@ def test_main_full_pipeline_non_cubic_5x4x3(workspace_folder, monkeypatch):
         input_json_data = json.load(f)
 
     # We configure asymmetric spatial dimensions and boundary conditions for non-cubic validation:
-    input_json_data["grid"].update({"nx": 5, "ny": 4, "nz": 3})
-    input_json_data["mask"] = [0] * 60  # 5 * 4 * 3 = 60 cells
+    input_json_data["grid"].update({"nx": 5, "ny": 4, "nz": 4})
+    input_json_data["mask"] = [0] * 80  # 5 * 4 * 4 = 80 cells
     input_json_data["external_forces"]["force_vector"] = [1.0, 1.0, 1.0]
     input_json_data["initial_conditions"]["velocity"] = [0.1, 0.1, 0.1]
-    input_json_data["boundary_conditions"] = [{"location": "x_min", "type": "pressure", "values": {"p": 10.0}}]
+    input_json_data["boundary_conditions"] = [{"location": "x_min", "type": "pressure", "values": {"u": 0.0, "v": 0.0, "w": 0.0, "p": 10.0}}]
 
     with open(input_path, "w", encoding="utf-8") as f:
         json.dump(input_json_data, f)
@@ -80,14 +80,14 @@ def test_main_full_pipeline_non_cubic_5x4x3(workspace_folder, monkeypatch):
     assert "config" in manifest_data, "Manifest missing 'config' block"
     assert "results" in manifest_data, "Manifest missing 'results' block"
 
-    # Stage 2: Verify input ingestion parity for the 5x4x3 non-cubic grid.
+    # Stage 2: Verify input ingestion parity for the 5x4x4 non-cubic grid.
     input_data = manifest_data["inputs"]
     config_data = manifest_data["config"]
 
     assert input_data["grid"]["nx"] == 5
     assert input_data["grid"]["ny"] == 4
-    assert input_data["grid"]["nz"] == 3
-    assert len(input_data["mask"]) == 60  # 5 x 4 x 3 = 60 cells
+    assert input_data["grid"]["nz"] == 4
+    assert len(input_data["mask"]) == 80  # 5 x 4 x 4 = 80 cells
 
     assert config_data["max_poisson_iterations"] == 2000
     assert config_data["poisson_tolerance"] == 1e-8
@@ -113,10 +113,10 @@ def test_main_full_pipeline_non_cubic_5x4x3(workspace_folder, monkeypatch):
         for snapshot in expected_snapshots:
             assert snapshot in namelist, f"Missing snapshot binary '{snapshot}' in archive."
 
-            # We verify exact non-cubic array shape (5, 4, 3) and numerical stability:
+            # We verify exact non-cubic array shape (5, 4, 4) and numerical stability:
             array_bytes = zf.read(snapshot)
             array_data = np.load(io.BytesIO(array_bytes))
-            assert array_data.shape == (5, 4, 3), f"Unexpected shape {array_data.shape} for {snapshot}"
+            assert array_data.shape == (5, 4, 4), f"Unexpected shape {array_data.shape} for {snapshot}"
             assert not np.isnan(array_data).any(), f"NaN values detected in snapshot {snapshot}"
             assert not np.isinf(array_data).any(), f"Inf values detected in snapshot {snapshot}"
             assert np.max(np.abs(array_data)) > 0.0, f"CRITICAL ERROR: {snapshot} is identically zero."
@@ -125,7 +125,7 @@ def test_main_full_pipeline_non_cubic_5x4x3(workspace_folder, monkeypatch):
 def test_python_cpp_field_state_parity_non_cubic(workspace_folder):
     """
     # Verifies zero-drift parity between Python SolverState in-memory numpy fields
-    # and C++ exported binary snapshots on an asymmetric 5x4x3 non-cubic grid.
+    # and C++ exported binary snapshots on an asymmetric 5x4x4 non-cubic grid.
     """
     from src.archivist import archive_simulation_results
     from src.cpp_gate import step_simulation
@@ -138,11 +138,11 @@ def test_python_cpp_field_state_parity_non_cubic(workspace_folder):
     output_manifest_name = "parity_non_cubic_output.json"
 
     input_data, config_data = load_and_validate_inputs(input_path, Path(folder) / "config.json")
-    input_data["grid"].update({"nx": 5, "ny": 4, "nz": 3})
-    input_data["mask"] = [0] * 60
+    input_data["grid"].update({"nx": 5, "ny": 4, "nz": 4})
+    input_data["mask"] = [0] * 80
     input_data["external_forces"]["force_vector"] = [1.0, 1.0, 1.0]
     input_data["initial_conditions"]["velocity"] = [0.1, 0.1, 0.1]
-    input_data["boundary_conditions"] = [{"location": "x_min", "type": "pressure", "values": {"p": 10.0}}]
+    input_data["boundary_conditions"] = [{"location": "x_min", "type": "pressure", "values": {"u": 0.0, "v": 0.0, "w": 0.0, "p": 10.0}}]
 
     state = SolverState(input_data, config_data)
     step_simulation(state)
@@ -174,7 +174,7 @@ def test_python_cpp_field_state_parity_non_cubic(workspace_folder):
 
 def test_pybind11_memory_bridge_non_cubic(workspace_folder):
     """
-    # Verifies Pybind11 C++/Python memory bridge integrity on an asymmetric 5x4x3 non-cubic grid,
+    # Verifies Pybind11 C++/Python memory bridge integrity on an asymmetric 5x4x4 non-cubic grid,
     # confirming in-place buffer mutation without pointer reallocation across non-uniform strides.
     """
     from src.cpp_gate import step_simulation
@@ -186,11 +186,11 @@ def test_pybind11_memory_bridge_non_cubic(workspace_folder):
     input_path = Path(folder) / input_file
 
     input_data, config_data = load_and_validate_inputs(input_path, Path(folder) / "config.json")
-    input_data["grid"].update({"nx": 5, "ny": 4, "nz": 3})
-    input_data["mask"] = [0] * 60
+    input_data["grid"].update({"nx": 5, "ny": 4, "nz": 4})
+    input_data["mask"] = [0] * 80
     input_data["external_forces"]["force_vector"] = [1.0, 2.0, 1.5]
     input_data["initial_conditions"]["velocity"] = [0.2, -0.1, 0.3]
-    input_data["boundary_conditions"] = [{"location": "x_min", "type": "pressure", "values": {"p": 5.0}}]
+    input_data["boundary_conditions"] = [{"location": "x_min", "type": "pressure", "values": {"u": 0.0, "v": 0.0, "w": 0.0, "p": 5.0}}]
 
     state = SolverState(input_data, config_data)
     initial_pointers = [field.ctypes.data for field in state.fields]
