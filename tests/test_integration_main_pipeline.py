@@ -143,11 +143,11 @@ def test_main_full_pipeline_end_to_end(workspace_folder, monkeypatch):
             assert not np.isnan(array_data).any(), f"NaN values detected in snapshot {snapshot}"
             assert not np.isinf(array_data).any(), f"Inf values detected in snapshot {snapshot}"
 
-            # # Dynamic field evolution check: fields must show non-zero mutation under forcing.
-            # assert np.max(np.abs(array_data)) > 0.0, (
-            #     f"CRITICAL ERROR: {snapshot} is identically zero. "
-            #     "C++ solver failed to mutate field or transfer memory."
-            # )
+            # Dynamic field evolution check: fields must show non-zero mutation under forcing.
+            assert np.max(np.abs(array_data)) > 0.0, (
+                f"CRITICAL ERROR: {snapshot} is identically zero. "
+                "C++ solver failed to mutate field or transfer memory."
+            )
 
 
 def test_python_cpp_field_state_parity(workspace_folder):
