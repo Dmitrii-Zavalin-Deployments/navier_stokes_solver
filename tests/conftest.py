@@ -13,11 +13,24 @@ import pytest
 def valid_input_data():
     """
     # We define the grid dimensions for a 3D computational fluid dynamics domain.
-    # To satisfy schema constraints requiring a minimum of 4 cells along each grid axis,
-    # we set nx, ny, and nz to 4, yielding a total cell count of:
-    #     Total Cells = nx * ny * nz = 4 * 4 * 4 = 64
+    # We set nx=8, ny=8, and nz=4 to align with the structured geometry mask,
+    # yielding a total cell count of:
+    #     Total Cells = nx * ny * nz = 8 * 8 * 4 = 256
     """
-    nx, ny, nz = 4, 4, 4
+    nx, ny, nz = 8, 8, 4
+    
+    # We define the domain geometry mask across all 4 Z-layers, designating 
+    # active fluid cells (1), solid/wall boundaries (-1), and external ghost cells (0).
+    single_layer_mask = [
+        0,  0,  0,  0,  0,  0,  0,  0,
+        0, -1, -1, -1, -1, -1, -1,  0,
+        0, -1,  1,  1,  1,  1, -1,  0,
+        0, -1,  1,  1,  1,  1, -1,  0,
+        0, -1,  1,  1,  1,  1, -1,  0,
+        0, -1,  1,  1,  1,  1, -1,  0,
+        0, -1, -1, -1, -1, -1, -1,  0,
+        0,  0,  0,  0,  0,  0,  0,  0
+    ]
     
     # We construct and return the baseline input configuration dictionary.
     return {
@@ -56,13 +69,11 @@ def valid_input_data():
             "output_interval": 1,
         },
         "boundary_conditions": [
-            {
-                "location": "wall",
-                "type": "no-slip",
-                "values": {"u": 0.0, "v": 0.0, "w": 0.0},
-            }
+            {"location": "z_min", "type": "inflow", "values": {"u": 0.0, "v": 0.0, "w": 1.0, "p": 0.0}},
+            {"location": "z_max", "type": "outflow", "values": {"u": 0.0, "v": 0.0, "w": 1.0, "p": 0.0}},
+            {"location": "wall", "type": "no-slip", "values": {"u": 0.0, "v": 0.0, "w": 0.0, "p": 0.0}}
         ],
-        "mask": [0] * (nx * ny * nz),
+        "mask": single_layer_mask * nz,
         "external_forces": {
             "force_vector": [0.0, 0.0, 0.0]
         },
