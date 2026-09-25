@@ -93,12 +93,12 @@ def test_velocity_inlet_pressure_outlet(workspace_folder, monkeypatch):
     input_data["boundary_conditions"] = [
         {
             "location": "x_min",
-            "type": "velocity_inlet",
+            "type": "inflow",
             "values": {"u": 1.0, "v": 0.0, "w": 0.0, "p": 0.0}
         },
         {
             "location": "x_max",
-            "type": "pressure_outlet",
+            "type": "outflow",
             "values": {"u": 0.0, "v": 0.0, "w": 0.0, "p": 0.0}
         }
     ]
