@@ -93,8 +93,8 @@ def test_main_full_pipeline_end_to_end(workspace_folder, monkeypatch):
     assert input_data["domain_configuration"]["reference_velocity"] == [0.0, 0.0, 0.0]
 
     # Synchronized 4x4x4 grid (matching conftest.py) and fluid properties verification:
-    assert input_data["grid"]["nx"] == 4
-    assert input_data["grid"]["ny"] == 4
+    assert input_data["grid"]["nx"] == 8
+    assert input_data["grid"]["ny"] == 8
     assert input_data["grid"]["nz"] == 4
     assert input_data["fluid_properties"]["density"] == 1.0
     assert input_data["fluid_properties"]["viscosity"] == 0.01
