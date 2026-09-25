@@ -47,7 +47,7 @@ def test_main_full_pipeline_end_to_end(workspace_folder, monkeypatch):
         input_json_data = json.load(f)
 
     # We configure an external force vector, complete pressure/velocity boundary condition values, and initial velocity seed.
-    input_json_data["external_forces"]["force_vector"] = [1.0, 0.0, 0.0]
+    input_json_data["external_forces"]["force_vector"] = [1.0, 1.0, 1.0]
     input_json_data["boundary_conditions"] = [
         {"location": "x_min", "type": "pressure", "values": {"u": 0.0, "v": 0.0, "w": 0.0, "p": 10.0}}
     ]
