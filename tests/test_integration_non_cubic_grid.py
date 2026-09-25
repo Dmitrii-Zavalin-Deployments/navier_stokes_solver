@@ -46,9 +46,9 @@ def test_main_full_pipeline_non_cubic_5x4x4(workspace_folder, monkeypatch):
     with open(input_path, "r", encoding="utf-8") as f:
         input_json_data = json.load(f)
 
-    # We configure asymmetric spatial dimensions and boundary conditions for non-cubic validation:
+    # We configure asymmetric spatial dimensions and active fluid mask (1 = active fluid cell):
     input_json_data["grid"].update({"nx": 5, "ny": 4, "nz": 4})
-    input_json_data["mask"] = [0] * 80  # 5 * 4 * 4 = 80 cells
+    input_json_data["mask"] = [1] * 80  # 5 * 4 * 4 = 80 active cells
     input_json_data["external_forces"]["force_vector"] = [1.0, 1.0, 1.0]
     input_json_data["initial_conditions"]["velocity"] = [0.1, 0.1, 0.1]
     input_json_data["boundary_conditions"] = [{"location": "x_min", "type": "pressure", "values": {"u": 0.0, "v": 0.0, "w": 0.0, "p": 10.0}}]
@@ -139,7 +139,7 @@ def test_python_cpp_field_state_parity_non_cubic(workspace_folder):
 
     input_data, config_data = load_and_validate_inputs(input_path, Path(folder) / "config.json")
     input_data["grid"].update({"nx": 5, "ny": 4, "nz": 4})
-    input_data["mask"] = [0] * 80
+    input_data["mask"] = [1] * 80
     input_data["external_forces"]["force_vector"] = [1.0, 1.0, 1.0]
     input_data["initial_conditions"]["velocity"] = [0.1, 0.1, 0.1]
     input_data["boundary_conditions"] = [{"location": "x_min", "type": "pressure", "values": {"u": 0.0, "v": 0.0, "w": 0.0, "p": 10.0}}]
@@ -187,7 +187,7 @@ def test_pybind11_memory_bridge_non_cubic(workspace_folder):
 
     input_data, config_data = load_and_validate_inputs(input_path, Path(folder) / "config.json")
     input_data["grid"].update({"nx": 5, "ny": 4, "nz": 4})
-    input_data["mask"] = [0] * 80
+    input_data["mask"] = [1] * 80
     input_data["external_forces"]["force_vector"] = [1.0, 2.0, 1.5]
     input_data["initial_conditions"]["velocity"] = [0.2, -0.1, 0.3]
     input_data["boundary_conditions"] = [{"location": "x_min", "type": "pressure", "values": {"u": 0.0, "v": 0.0, "w": 0.0, "p": 5.0}}]
