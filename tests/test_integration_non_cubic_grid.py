@@ -1,10 +1,26 @@
-"""
-tests/test_integration_non_cubic_grid.py
-Unified End-to-End Integration Test for Navier-Stokes Execution Engine (Non-Cubic Grid).
-Executes unmocked CLI main entrypoint and validates ingestion configuration,
-solver execution, state integrity, field drift/parity, archivist output artifacts,
-and Pybind11 C++/Python memory bridge pointer preservation on an asymmetric 5x4x3 grid.
-"""
+# ==============================================================================
+# Test Name: test_integration_non_cubic_grid.py
+# Description: Unified End-to-End Integration Test Suite for the Navier-Stokes 
+#              Execution Engine on an Asymmetric Non-Cubic Grid under the 
+#              Literate Testing Standard.
+# ==============================================================================
+
+# LITERATE TESTING NARRATIVE & GOVERNING PRINCIPLES:
+# ------------------------------------------------------------------------------
+# This test suite validates the unmocked application pipeline on an asymmetric 
+# non-cubic domain (nx=5, ny=4, nz=3), verifying that memory indexing, tensor 
+# reshaping, and stride calculations handle non-uniform geometry without distortion:
+#     Total Cells = nx * ny * nz = 5 * 4 * 3 = 60 cells
+#
+# Governing incompressible Navier-Stokes momentum and continuity equations:
+#     rho * (du/dt + (u . nabla)u) = -nabla p + mu * Laplacian(u) + f
+#     nabla . u = 0
+#
+# Key verifications performed across this non-cubic suite:
+# 1. Ingestion parity and manifest structure on an asymmetric 5x4x3 domain.
+# 2. Zero-drift field parity between Python SolverState buffers and archived binaries.
+# 3. Pybind11 memory bridge integrity and in-place pointer preservation across non-uniform strides.
+# ------------------------------------------------------------------------------
 
 import io
 import json
@@ -17,19 +33,20 @@ import numpy as np
 
 def test_main_full_pipeline_non_cubic_5x4x3(workspace_folder, monkeypatch):
     """
-    Executes main() end-to-end without mocks through ingestion, C++ engine, and archivist,
-    validating input/config parity, manifest structure, physical field evolution, and binary shapes
-    on an asymmetric 5x4x3 non-cubic grid to catch memory stride/indexing artifacts.
+    # Executes main() end-to-end without mocks through ingestion, C++ engine, and archivist,
+    # validating input/config parity, manifest structure, physical field evolution, and binary shapes
+    # on an asymmetric 5x4x3 non-cubic grid to catch memory stride/indexing artifacts.
     """
     folder = workspace_folder["folder"]
     input_file = workspace_folder["input_file_name"]
     input_path = Path(folder) / input_file
     output_manifest_name = "navier_stokes_non_cubic_output.json"
 
-    # 1. Update input JSON to set asymmetric 5x4x3 grid and schema-compliant boundary conditions
+    # We load the base configuration payload provided by the workspace fixture.
     with open(input_path, "r", encoding="utf-8") as f:
         input_json_data = json.load(f)
 
+    # We configure asymmetric spatial dimensions and boundary conditions for non-cubic validation:
     input_json_data["grid"].update({"nx": 5, "ny": 4, "nz": 3})
     input_json_data["mask"] = [0] * 60  # 5 * 4 * 3 = 60 cells
     input_json_data["external_forces"]["force_vector"] = [1.0, 1.0, 1.0]
@@ -39,7 +56,7 @@ def test_main_full_pipeline_non_cubic_5x4x3(workspace_folder, monkeypatch):
     with open(input_path, "w", encoding="utf-8") as f:
         json.dump(input_json_data, f)
 
-    # 2. Configure CLI environment arguments
+    # We configure command-line arguments to simulate CLI invocation of main.py.
     cli_args = [
         "main.py",
         "--input_output_folder", folder,
@@ -48,11 +65,11 @@ def test_main_full_pipeline_non_cubic_5x4x3(workspace_folder, monkeypatch):
     ]
     monkeypatch.setattr(sys, "argv", cli_args)
 
-    # 3. Execute full unmocked pipeline
+    # We execute the full unmocked application pipeline.
     from src.main import main
     main()
 
-    # 4. Verify Output Manifest File Existence & Schema Structure
+    # Stage 1: Verify output JSON manifest existence and top-level schema blocks.
     manifest_path = Path(folder) / output_manifest_name
     assert manifest_path.is_file(), f"Output JSON manifest missing at: {manifest_path}"
 
@@ -63,7 +80,7 @@ def test_main_full_pipeline_non_cubic_5x4x3(workspace_folder, monkeypatch):
     assert "config" in manifest_data, "Manifest missing 'config' block"
     assert "results" in manifest_data, "Manifest missing 'results' block"
 
-    # 5. Verify Ingestion & Config Parity
+    # Stage 2: Verify input ingestion parity for the 5x4x3 non-cubic grid.
     input_data = manifest_data["inputs"]
     config_data = manifest_data["config"]
 
@@ -75,7 +92,7 @@ def test_main_full_pipeline_non_cubic_5x4x3(workspace_folder, monkeypatch):
     assert config_data["max_poisson_iterations"] == 2000
     assert config_data["poisson_tolerance"] == 1e-8
 
-    # 6. Verify Results Status and Timestamped Output ZIP
+    # Stage 3: Verify execution success status and timestamped output ZIP container.
     results = manifest_data["results"]
     assert results["status"] == "SUCCESS", f"Expected SUCCESS status, got: {results.get('status')}"
 
@@ -83,7 +100,7 @@ def test_main_full_pipeline_non_cubic_5x4x3(workspace_folder, monkeypatch):
     zip_path = Path(folder) / zip_filename
     assert zip_path.is_file(), f"Output ZIP archive missing at: {zip_path}"
 
-    # 7. Verify C++ Generated Field Binary Snapshots (.npy) in ZIP Archive
+    # Stage 4: Inspect C++ generated binary snapshot files (.npy) inside the ZIP archive.
     final_step = 3
     expected_snapshots = [
         f"field_u_step_{final_step:06d}.npy",
@@ -96,6 +113,7 @@ def test_main_full_pipeline_non_cubic_5x4x3(workspace_folder, monkeypatch):
         for snapshot in expected_snapshots:
             assert snapshot in namelist, f"Missing snapshot binary '{snapshot}' in archive."
 
+            # We verify exact non-cubic array shape (5, 4, 3) and numerical stability:
             array_bytes = zf.read(snapshot)
             array_data = np.load(io.BytesIO(array_bytes))
             assert array_data.shape == (5, 4, 3), f"Unexpected shape {array_data.shape} for {snapshot}"
@@ -106,8 +124,8 @@ def test_main_full_pipeline_non_cubic_5x4x3(workspace_folder, monkeypatch):
 
 def test_python_cpp_field_state_parity_non_cubic(workspace_folder):
     """
-    Verifies zero-drift parity between Python SolverState in-memory numpy fields
-    and C++ exported binary snapshots on an asymmetric 5x4x3 non-cubic grid.
+    # Verifies zero-drift parity between Python SolverState in-memory numpy fields
+    # and C++ exported binary snapshots on an asymmetric 5x4x3 non-cubic grid.
     """
     from src.archivist import archive_simulation_results
     from src.cpp_gate import step_simulation
@@ -156,8 +174,8 @@ def test_python_cpp_field_state_parity_non_cubic(workspace_folder):
 
 def test_pybind11_memory_bridge_non_cubic(workspace_folder):
     """
-    Verifies Pybind11 C++/Python memory bridge integrity on an asymmetric 5x4x3 non-cubic grid,
-    confirming in-place buffer mutation without pointer reallocation across non-uniform strides.
+    # Verifies Pybind11 C++/Python memory bridge integrity on an asymmetric 5x4x3 non-cubic grid,
+    # confirming in-place buffer mutation without pointer reallocation across non-uniform strides.
     """
     from src.cpp_gate import step_simulation
     from src.ingestion import load_and_validate_inputs
