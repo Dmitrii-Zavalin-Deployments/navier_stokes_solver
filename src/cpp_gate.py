@@ -224,9 +224,14 @@ def _apply_initial_boundary_conditions(state: SolverState) -> None:
                     state.fields[2, :, :, -1] = w_val
                     state.fields[3, :, :, -1] = p_val
 
-            _log_field_max_abs(f"AFTER applying {loc} (Target vals: u={u_val}, v={v_val}, w={w_val}, p={p_val})", state)
+            _log_field_max_abs(
+                f"AFTER applying {loc} (Target vals: u={u_val}, v={v_val}, w={w_val}, p={p_val})",
+                state,
+            )
         else:
-            logger.info(f"[FORENSIC TRACE] BC #{idx} type '{bc_type}' skipped for direct array assignment (not inflow/prescribed).")
+            logger.info(
+                f"[FORENSIC TRACE] BC #{idx} type '{bc_type}' skipped for direct array assignment."
+            )
 
     logger.info("[FORENSIC TRACE] === Exiting _apply_initial_boundary_conditions ===")
 
