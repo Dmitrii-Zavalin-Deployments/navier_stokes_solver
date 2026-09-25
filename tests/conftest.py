@@ -1,5 +1,4 @@
 """
-conftest.py
 Pytest fixtures providing test data and workspace directories for CLI-driven integration tests,
 dynamically syncing configuration data directly from production config/config.json.
 """
@@ -13,9 +12,10 @@ import pytest
 @pytest.fixture
 def valid_input_data():
     """
-    We define the grid dimensions for a 3D computational fluid dynamics domain.
-    To satisfy schema constraints requiring a minimum of 4 cells along each grid axis,
-    we set nx, ny, and nz to 4.
+    # We define the grid dimensions for a 3D computational fluid dynamics domain.
+    # To satisfy schema constraints requiring a minimum of 4 cells along each grid axis,
+    # we set nx, ny, and nz to 4, yielding a total cell count of:
+    #     Total Cells = nx * ny * nz = 4 * 4 * 4 = 64
     """
     nx, ny, nz = 4, 4, 4
     
@@ -72,8 +72,8 @@ def valid_input_data():
 @pytest.fixture
 def workspace_folder(tmp_path, valid_input_data):
     """
-    We create an isolated temporary input/output workspace folder containing input JSON files
-    and mirror the production configuration to satisfy CLI requirements.
+    # We create an isolated temporary input/output workspace folder containing input JSON files
+    # and mirror the production configuration to satisfy CLI requirements.
     """
     io_folder = tmp_path / "io_workspace"
     io_folder.mkdir(parents=True, exist_ok=True)

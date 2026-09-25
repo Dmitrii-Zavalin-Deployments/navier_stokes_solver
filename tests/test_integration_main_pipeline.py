@@ -30,8 +30,8 @@ import numpy as np
 
 def test_main_full_pipeline_end_to_end(workspace_folder, monkeypatch):
     """
-    Executes main() end-to-end without mocks through ingestion, C++ engine, and archivist,
-    validating input/config parity, manifest structure, physical field evolution, and binary shapes.
+    # Executes main() end-to-end without mocks through ingestion, C++ engine, and archivist,
+    # validating input/config parity, manifest structure, physical field evolution, and binary shapes.
     """
     print("\n================================================================================")
     print("DIAGNOSTIC START: test_main_full_pipeline_end_to_end")
@@ -92,10 +92,10 @@ def test_main_full_pipeline_end_to_end(workspace_folder, monkeypatch):
     assert input_data["domain_configuration"]["type"] == "INTERNAL"
     assert input_data["domain_configuration"]["reference_velocity"] == [0.0, 0.0, 0.0]
 
-    # Compact 3x3x3 grid and fluid properties verification:
-    assert input_data["grid"]["nx"] == 3
-    assert input_data["grid"]["ny"] == 3
-    assert input_data["grid"]["nz"] == 3
+    # Synchronized 4x4x4 grid (matching conftest.py) and fluid properties verification:
+    assert input_data["grid"]["nx"] == 4
+    assert input_data["grid"]["ny"] == 4
+    assert input_data["grid"]["nz"] == 4
     assert input_data["fluid_properties"]["density"] == 1.0
     assert input_data["fluid_properties"]["viscosity"] == 0.01
 
@@ -106,7 +106,7 @@ def test_main_full_pipeline_end_to_end(workspace_folder, monkeypatch):
     assert len(input_data["boundary_conditions"]) == 1
     assert input_data["boundary_conditions"][0]["type"] == "pressure"
     assert input_data["boundary_conditions"][0]["values"]["p"] == 10.0
-    assert len(input_data["mask"]) == 27  # 3 x 3 x 3 = 27 cells
+    assert len(input_data["mask"]) == 64  # 4 x 4 x 4 = 64 cells
     assert input_data["external_forces"]["force_vector"] == [1.0, 0.0, 0.0]
 
     # Solver execution config integration check:
@@ -136,10 +136,10 @@ def test_main_full_pipeline_end_to_end(workspace_folder, monkeypatch):
         for snapshot in expected_snapshots:
             assert snapshot in namelist, f"Missing snapshot binary '{snapshot}' in archive. Found: {namelist}"
 
-            # We load the binary array directly from archive bytes and verify 3x3x3 spatial dimensions:
+            # We load the binary array directly from archive bytes and verify 4x4x4 spatial dimensions:
             array_bytes = zf.read(snapshot)
             array_data = np.load(io.BytesIO(array_bytes))
-            assert array_data.shape == (3, 3, 3), f"Unexpected shape {array_data.shape} for {snapshot}"
+            assert array_data.shape == (4, 4, 4), f"Unexpected shape {array_data.shape} for {snapshot}"
             assert not np.isnan(array_data).any(), f"NaN values detected in snapshot {snapshot}"
             assert not np.isinf(array_data).any(), f"Inf values detected in snapshot {snapshot}"
 
@@ -152,8 +152,8 @@ def test_main_full_pipeline_end_to_end(workspace_folder, monkeypatch):
 
 def test_python_cpp_field_state_parity(workspace_folder):
     """
-    Verifies zero-drift parity between Python SolverState in-memory numpy fields
-    and C++ exported binary snapshots written to the archived ZIP container.
+    # Verifies zero-drift parity between Python SolverState in-memory numpy fields
+    # and C++ exported binary snapshots written to the archived ZIP container.
     """
     from src.archivist import archive_simulation_results
     from src.cpp_gate import step_simulation
@@ -208,9 +208,9 @@ def test_python_cpp_field_state_parity(workspace_folder):
 
 def test_pybind11_memory_bridge_forensic_audit(workspace_folder):
     """
-    Forensic audit test verifying Pybind11 C++/Python memory bridge integrity.
-    Confirms in-place buffer mutation without pointer reallocation and asserts
-    non-zero mutations across u, v, w, and p fields under dynamic body forces.
+    # Forensic audit test verifying Pybind11 C++/Python memory bridge integrity.
+    # Confirms in-place buffer mutation without pointer reallocation and asserts
+    # non-zero mutations across u, v, w, and p fields under dynamic body forces.
     """
     from src.cpp_gate import step_simulation
     from src.ingestion import load_and_validate_inputs
