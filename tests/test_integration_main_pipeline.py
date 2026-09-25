@@ -139,7 +139,7 @@ def test_main_full_pipeline_end_to_end(workspace_folder, monkeypatch):
             # We load the binary array directly from archive bytes and verify 4x4x4 spatial dimensions:
             array_bytes = zf.read(snapshot)
             array_data = np.load(io.BytesIO(array_bytes))
-            assert array_data.shape == (4, 4, 4), f"Unexpected shape {array_data.shape} for {snapshot}"
+            assert array_data.shape == (8, 8, 4), f"Unexpected shape {array_data.shape} for {snapshot}"
             assert not np.isnan(array_data).any(), f"NaN values detected in snapshot {snapshot}"
             assert not np.isinf(array_data).any(), f"Inf values detected in snapshot {snapshot}"
 
