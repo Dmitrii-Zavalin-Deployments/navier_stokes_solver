@@ -3,8 +3,7 @@ Unified End-to-End Integration Test for Navier-Stokes Execution Engine (Accelera
 
 This test module serves as a narrative document and verification suite for the full 
 unmocked pipeline, executing ingestion via python CLI (`src/main.py`), C++ core solvers 
-via Pybind11, and archivist artifact packaging on an 8x8x4 grid under accelerated flow 
-(mirroring the C++ test suite[cite: 1]).
+via Pybind11, and archivist artifact packaging on an 8x8x4 grid under accelerated flow.
 
 Explanatory text and physical equations are written as commented prose, while executable
 Python assertions verify ingestion configuration, solver execution, state integrity, field drift/parity,
@@ -38,19 +37,21 @@ def test_main_full_pipeline_accelerated_8x8x4(workspace_folder, monkeypatch):
     validating input/config parity, manifest structure, physical field evolution, and binary shapes
     on an 8x8x4 accelerated flow grid.
     """
+    # We retrieve the workspace folder and input file name from the test fixture.
     folder = workspace_folder["folder"]
     input_file = workspace_folder["input_file_name"]
     input_path = Path(folder) / input_file
     output_manifest_name = "navier_stokes_accelerated_output.json"
 
-    # 1. Update input JSON to apply accelerated body forces, initial velocity, 8x8x4 grid,
-    #    complex obstacle mask, and schema-compliant boundary conditions.
+    # We load the baseline input JSON configuration.
     with open(input_path, "r", encoding="utf-8") as f:
         input_json_data = json.load(f)
 
+    # We update the grid dimensions to allocate an 8x8x4 discrete Cartesian volume:
+    #     V = nx * ny * nz = 8 * 8 * 4 = 256 cells
     input_json_data["grid"].update({"nx": 8, "ny": 8, "nz": 4})
     
-    # 8x8x4 = 256 cells mask matching accelerated flow configuration[cite: 1]
+    # We define the complex obstacle and boundary mask for the 8x8x4 grid across 4 Z-layers:
     layer_mask = [
         0,  0,  0,  0,  0,  0,  0,  0,
         0, -1, -1, -1, -1, -1, -1,  0,
@@ -62,18 +63,24 @@ def test_main_full_pipeline_accelerated_8x8x4(workspace_folder, monkeypatch):
         0,  0,  0,  0,  0,  0,  0,  0
     ]
     input_json_data["mask"] = layer_mask * 4  # 4 layers (nz = 4) = 256 cells
+
+    # We configure external body force density vector components:
+    #     F = [fx, fy, fz] = [0.1, 0.1, 0.2]
     input_json_data["external_forces"]["force_vector"] = [0.1, 0.1, 0.2]
     input_json_data["initial_conditions"]["velocity"] = [0.5, 0.2, 0.1]
+
+    # We establish boundary conditions for inflow, outflow, and solid walls:
     input_json_data["boundary_conditions"] = [
         {"location": "z_min", "type": "inflow", "values": {"u": 0.5, "v": 0.2, "w": 0.1, "p": 0.0}},
         {"location": "z_max", "type": "outflow", "values": {"u": 0.5, "v": 0.2, "w": 0.1, "p": 0.0}},
         {"location": "wall", "type": "no-slip", "values": {"u": 0.0, "v": 0.0, "w": 0.0, "p": 0.0}}
     ]
 
+    # We write the updated configuration back to disk.
     with open(input_path, "w", encoding="utf-8") as f:
         json.dump(input_json_data, f)
 
-    # 2. Configure CLI environment arguments matching user specification
+    # We configure command-line arguments to execute main.py via the test runner.
     cli_args = [
         "main.py",
         "--input_output_folder", folder,
@@ -82,34 +89,35 @@ def test_main_full_pipeline_accelerated_8x8x4(workspace_folder, monkeypatch):
     ]
     monkeypatch.setattr(sys, "argv", cli_args)
 
-    # 3. Execute full unmocked pipeline via python entry point
+    # We execute the full unmocked pipeline entry point.
     from src.main import main
     main()
 
-    # 4. Verify Output Manifest File Existence & Schema Structure
+    # We verify that the output manifest file is generated successfully.
     manifest_path = Path(folder) / output_manifest_name
     assert manifest_path.is_file(), f"Output JSON manifest missing at: {manifest_path}"
 
     with open(manifest_path, "r", encoding="utf-8") as f:
         manifest_data = json.load(f)
 
+    # We assert structural integrity of the manifest blocks.
     assert "inputs" in manifest_data, "Manifest missing 'inputs' block"
     assert "config" in manifest_data, "Manifest missing 'config' block"
     assert "results" in manifest_data, "Manifest missing 'results' block"
 
-    # 5. Verify Ingestion & Config Parity
+    # We verify ingested grid parameters and dimensions parity.
     input_data = manifest_data["inputs"]
     config_data = manifest_data["config"]
 
     assert input_data["grid"]["nx"] == 8
     assert input_data["grid"]["ny"] == 8
     assert input_data["grid"]["nz"] == 4
-    assert len(input_data["mask"]) == 256  # 8 x 8 x 4 = 256 cells
+    assert len(input_data["mask"]) == 256
 
     assert config_data["max_poisson_iterations"] == 2000
     assert config_data["poisson_tolerance"] == 1e-8
 
-    # 6. Verify Results Status and Timestamped Output ZIP
+    # We check execution results and output archive presence.
     results = manifest_data["results"]
     assert results["status"] == "SUCCESS", f"Expected SUCCESS status, got: {results.get('status')}"
 
@@ -117,7 +125,7 @@ def test_main_full_pipeline_accelerated_8x8x4(workspace_folder, monkeypatch):
     zip_path = Path(folder) / zip_filename
     assert zip_path.is_file(), f"Output ZIP archive missing at: {zip_path}"
 
-    # 7. Verify C++ Generated Field Binary Snapshots (.npy) in ZIP Archive
+    # We verify that all expected NumPy field snapshots (.npy) are archived in the ZIP.
     final_step = results.get("final_step", 1)
     expected_snapshots = [
         f"field_u_step_{final_step:06d}.npy",
@@ -132,6 +140,8 @@ def test_main_full_pipeline_accelerated_8x8x4(workspace_folder, monkeypatch):
 
             array_bytes = zf.read(snapshot)
             array_data = np.load(io.BytesIO(array_bytes))
+            
+            # We verify binary array shape and numerical stability (no NaN/Inf).
             assert array_data.shape == (8, 8, 4), f"Unexpected shape {array_data.shape} for {snapshot}"
             assert not np.isnan(array_data).any(), f"NaN values detected in snapshot {snapshot}"
             assert not np.isinf(array_data).any(), f"Inf values detected in snapshot {snapshot}"
@@ -143,15 +153,14 @@ def test_main_full_pipeline_accelerated_8x8x4(workspace_folder, monkeypatch):
 # ============================================================================
 # Zero-drift validation checks that the in-memory numpy array buffers bound via
 # Pybind11 match the serialized binary snapshots archived on disk, and verifies 
-# intermediate stage outputs against unmocked C++ orchestrator behavior[cite: 1].
+# intermediate stage outputs against unmocked C++ orchestrator behavior.
 # ============================================================================
 
 
 def test_python_cpp_accelerated_stage_parity(workspace_folder):
     """
     Verifies zero-drift parity between Python SolverState in-memory numpy fields
-    and C++ exported binary snapshots, alongside step-by-step stage verification 
-    on the 8x8x4 accelerated flow grid.
+    and C++ exported binary snapshots on the 8x8x4 accelerated flow grid.
     """
     from src.archivist import archive_simulation_results
     from src.cpp_gate import step_simulation
@@ -163,6 +172,7 @@ def test_python_cpp_accelerated_stage_parity(workspace_folder):
     input_path = Path(folder) / input_file
     output_manifest_name = "parity_accelerated_output.json"
 
+    # We load and configure inputs for parity validation.
     input_data, config_data = load_and_validate_inputs(input_path, Path(folder) / "config.json")
     input_data["grid"].update({"nx": 8, "ny": 8, "nz": 4})
     
@@ -185,6 +195,7 @@ def test_python_cpp_accelerated_stage_parity(workspace_folder):
         {"location": "wall", "type": "no-slip", "values": {"u": 0.0, "v": 0.0, "w": 0.0, "p": 0.0}}
     ]
 
+    # We initialize the simulation state container and execute a single time step.
     state = SolverState(input_data, config_data)
     step_simulation(state)
 
@@ -199,6 +210,9 @@ def test_python_cpp_accelerated_stage_parity(workspace_folder):
 
     field_names = ["field_u", "field_v", "field_w", "field_p"]
     final_step = state.current_iteration
+
+    # We verify zero-drift parity between in-memory arrays and archived disk snapshots:
+    #     memory_array == archived_array
     with zipfile.ZipFile(zip_path, "r") as zf:
         for idx, name in enumerate(field_names):
             snapshot_filename = f"{name}_step_{final_step:06d}.npy"
@@ -224,7 +238,7 @@ def test_python_cpp_accelerated_stage_parity(workspace_folder):
 
 def test_pybind11_memory_bridge_accelerated(workspace_folder):
     """
-    Verifies Pybind11 C++/Python memory bridge integrity on the 8x8x4 accelerated grid,
+    Verifies Pybind11 C++/Python memory bridge pointer preservation on the 8x8x4 accelerated grid,
     confirming in-place buffer mutation without pointer reallocation.
     """
     from src.cpp_gate import step_simulation
@@ -258,13 +272,20 @@ def test_pybind11_memory_bridge_accelerated(workspace_folder):
     ]
 
     state = SolverState(input_data, config_data)
+    
+    # We record memory data pointers prior to C++ solver invocation:
+    #     ptr_pre = field.ctypes.data
     initial_pointers = [field.ctypes.data for field in state.fields]
 
     step_simulation(state)
 
+    # We capture post-execution pointers:
+    #     ptr_post = field.ctypes.data
     post_pointers = [field.ctypes.data for field in state.fields]
     field_labels = ["field_u", "field_v", "field_w", "field_p"]
 
+    # We assert that memory addresses remain invariant across execution:
+    #     ptr_pre == ptr_post
     for name, pre_ptr, post_ptr in zip(field_labels, initial_pointers, post_pointers):
         assert pre_ptr == post_ptr, f"MEMORY DRIFT DETECTED for {name}."
 
