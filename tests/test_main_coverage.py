@@ -4,6 +4,7 @@ This narrative test module verifies parameter enforcement, file validation gates
 and critical failure-manifest archival error handling under non-default policies.
 """
 
+import importlib
 import pytest
 
 from src.main import run_simulation
@@ -61,8 +62,8 @@ def test_run_simulation_system_config_not_found(tmp_path):
     dummy_input = tmp_path / "valid_input.json"
     dummy_input.write_text("{}")
     
-    # We temporarily repoint BASE_DIR in src.main to a clean temporary path that lacks a config folder.
-    import src.main as main_module
+    # We explicitly load the src.main module via importlib to avoid package-level function shadowing.
+    main_module = importlib.import_module("src.main")
     original_base_dir = main_module.BASE_DIR
     main_module.BASE_DIR = tmp_path
 
@@ -81,17 +82,20 @@ def test_run_simulation_archive_failure_manifest_error(tmp_path, monkeypatch):
     if the archiving function itself raises an exception, the critical error handler must catch it,
     log it via logger.critical, and successfully re-raise the original simulation error.
     """
+    # We retrieve the src.main module reference safely.
+    main_module = importlib.import_module("src.main")
+
     # We mock load_and_validate_inputs to raise a RuntimeError, simulating a core pipeline failure.
     def mock_load_fail(*args, **kwargs):
         raise RuntimeError("Simulated core pipeline execution failure")
 
-    monkeypatch.setattr("src.main.load_and_validate_inputs", mock_load_fail)
+    monkeypatch.setattr(main_module, "load_and_validate_inputs", mock_load_fail)
 
     # We mock archive_simulation_results so that when it attempts to write the FAILURE manifest, it also throws an error.
     def mock_archive_fail(*args, **kwargs):
         raise ValueError("Simulated archivist failure while writing error log")
 
-    monkeypatch.setattr("src.main.archive_simulation_results", mock_archive_fail)
+    monkeypatch.setattr(main_module, "archive_simulation_results", mock_archive_fail)
 
     # We verify that despite the secondary archiving error triggering lines 101-102, 
     # the original RuntimeError is ultimately re-raised to the caller.
