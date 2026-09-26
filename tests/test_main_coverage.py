@@ -79,30 +79,30 @@ def test_run_simulation_system_config_not_found(tmp_path):
 
 def test_run_simulation_archive_failure_manifest_error(tmp_path, monkeypatch):
     """
-    When the simulation encounters an unrecoverable failure and attempts to write a failure manifest via the archivist,
-    if the archiving function itself raises an exception, the critical error handler must catch it,
-    log it via logger.critical, and successfully re-raise the original simulation error.
+    When the simulation encounters an unrecoverable failure mid-execution 
+    and the subsequent failure-manifest archival also fails, the critical error 
+    handler successfully catches it, logs via logger.critical (lines 101-102), 
+    and re-raises the original error.
     """
-    # Ensure the input file exists so the initial file validation check passes
+    # Ensure the input file exists so it passes initial validation
     dummy_input = tmp_path / "dummy.json"
     dummy_input.write_text("{}")
 
-    # We retrieve the src.main module reference safely.
     main_module = importlib.import_module("src.main")
 
-    # We mock load_and_validate_inputs to raise a RuntimeError, simulating a core pipeline failure.
-    def mock_load_fail(*args, **kwargs):
-        raise RuntimeError("Simulated core pipeline execution failure")
+    # Mock step_simulation to fail INSIDE the active simulation try-block (line 64)
+    # This guarantees 'state' is instantiated and the except block (lines 91-103) is entered.
+    def mock_step_fail(*args, **kwargs):
+        raise RuntimeError("Simulated mid-simulation physical instability")
 
-    monkeypatch.setattr(main_module, "load_and_validate_inputs", mock_load_fail)
+    monkeypatch.setattr(main_module, "step_simulation", mock_step_fail)
 
-    # We mock archive_simulation_results so that when it attempts to write the FAILURE manifest, it also throws an error.
+    # Mock archive_simulation_results so that writing the FAILURE manifest throws an error (lines 95-100)
     def mock_archive_fail(*args, **kwargs):
         raise ValueError("Simulated archivist failure while writing error log")
 
     monkeypatch.setattr(main_module, "archive_simulation_results", mock_archive_fail)
 
-    # We verify that despite the secondary archiving error triggering lines 101-102, 
-    # the original RuntimeError is ultimately re-raised to the caller.
-    with pytest.raises(RuntimeError, match="Simulated core pipeline execution failure"):
+    # Verifies that lines 101-102 execute (logging critical) and the original error bubbles up
+    with pytest.raises(RuntimeError, match="Simulated mid-simulation physical instability"):
         run_simulation(tmp_path, dummy_input.name, "output.json")
