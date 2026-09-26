@@ -77,7 +77,7 @@ def test_run_simulation_system_config_not_found(tmp_path):
         main_module.BASE_DIR = original_base_dir
 
 
-def test_run_simulation_archive_failure_manifest_error(tmp_path, monkeypatch):
+def test_run_simulation_archive_failure_manifest_error(tmp_path, monkeypatch, valid_input_data):
     """
     When the simulation encounters an unrecoverable failure mid-execution 
     and the subsequent failure-manifest archival also fails, the critical error 
@@ -85,13 +85,8 @@ def test_run_simulation_archive_failure_manifest_error(tmp_path, monkeypatch):
     and re-raises the original error.
     """
     dummy_input = tmp_path / "dummy.json"
-    # Provide a minimal valid payload that passes schema validation
-    dummy_input.write_text(
-        '{"grid": {"nx": 4, "ny": 4, "nz": 4, "dx": 1.0, "dy": 1.0, "dz": 1.0}, '
-        '"boundary_conditions": {}, '
-        '"fluid_properties": {"density": 1.0, "viscosity": 0.1}, '
-        '"time_integration": {"total_iterations": 5, "dt": 0.01, "output_interval": 1}}'
-    )
+    # Dump the schema-compliant fixture dictionary directly to disk
+    dummy_input.write_text(json.dumps(valid_input_data))
 
     main_module = importlib.import_module("src.main")
 
