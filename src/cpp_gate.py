@@ -303,7 +303,18 @@ def step_simulation(state: SolverState) -> None:
     if state is None:
         raise ValueError("FATAL ERROR: state must be explicitly provided.")
 
-    dt = float(state.dt)
+    # Robust fallback extraction for time step 'dt' at start of step
+    try:
+        dt = float(state.dt)
+    except (AttributeError, TypeError):
+        try:
+            dt = float(state.input_data["simulation_parameters"]["time_step"])
+            state.dt = dt  # Cache back onto state for consistency
+        except (AttributeError, KeyError, TypeError) as inner_err:
+            raise KeyError(
+                "FATAL ERROR: Simulation time step 'dt' or 'simulation_parameters.time_step' must be explicitly provided."
+            ) from inner_err
+
     grid = state.input_data["grid"]
     dx = float(grid["dx"])
     dy = float(grid["dy"])
