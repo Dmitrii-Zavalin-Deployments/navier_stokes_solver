@@ -245,8 +245,6 @@ def _convert_boundary_conditions(state: SolverState) -> None:
     if not raw_bcs and hasattr(state, "input_data") and isinstance(state.input_data, dict):
         raw_bcs = state.input_data.get("boundary_conditions")
 
-    if not raw_bcs:
-        raise KeyError("FATAL ERROR: Boundary conditions configuration missing from SolverState or input_data.")
 
     state.boundary_conditions = [
         _dict_to_boundary_condition(bc) if isinstance(bc, dict) else bc
