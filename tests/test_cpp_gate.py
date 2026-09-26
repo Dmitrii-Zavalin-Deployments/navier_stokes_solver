@@ -7,18 +7,19 @@ memory bridging, and exception pathways under the Navier-Stokes solver wrapper.
 """
 
 import sys
-import pytest
-import numpy as np
 from unittest.mock import MagicMock, patch
 
-from src.state import SolverState
+import numpy as np
+import pytest
+
 from src.cpp_gate import (
-    _dict_to_boundary_condition,
     _apply_initial_boundary_conditions,
     _convert_boundary_conditions,
+    _dict_to_boundary_condition,
     _get_or_create_cpp_solver,
     step_simulation,
 )
+from src.state import SolverState
 
 
 def test_cpp_gate_import_error_handling():
