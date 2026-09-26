@@ -6,9 +6,10 @@ testing import error safeguards, boundary condition parsing and validation, stat
 CFL stability checks, time-step extraction fallbacks, and C++ solver execution lifecycle handlers.
 """
 
-import sys
 import importlib
+import sys
 from unittest.mock import MagicMock
+
 import numpy as np
 import pytest
 
@@ -33,7 +34,6 @@ def test_cpp_gate_import_error(monkeypatch):
         def find_spec(fullname, path, target=None):
             if fullname == "navier_stokes_cpp":
                 raise ImportError("Simulated missing C++ module")
-            return None
 
     sys.meta_path.insert(0, RaisingFinder)
     try:
@@ -166,6 +166,7 @@ def test_dict_to_boundary_condition_exception_handlers():
     # are gracefully caught and logged without aborting execution.
     """
     import navier_stokes_cpp
+
     from src.cpp_gate import _dict_to_boundary_condition
 
     # We substitute BoundaryCondition with our failing mock class:
