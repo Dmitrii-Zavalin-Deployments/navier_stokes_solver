@@ -83,6 +83,10 @@ def test_run_simulation_archive_failure_manifest_error(tmp_path, monkeypatch):
     if the archiving function itself raises an exception, the critical error handler must catch it,
     log it via logger.critical, and successfully re-raise the original simulation error.
     """
+    # Ensure the input file exists so the initial file validation check passes
+    dummy_input = tmp_path / "dummy.json"
+    dummy_input.write_text("{}")
+
     # We retrieve the src.main module reference safely.
     main_module = importlib.import_module("src.main")
 
@@ -101,4 +105,4 @@ def test_run_simulation_archive_failure_manifest_error(tmp_path, monkeypatch):
     # We verify that despite the secondary archiving error triggering lines 101-102, 
     # the original RuntimeError is ultimately re-raised to the caller.
     with pytest.raises(RuntimeError, match="Simulated core pipeline execution failure"):
-        run_simulation(tmp_path, "dummy.json", "output.json")
+        run_simulation(tmp_path, dummy_input.name, "output.json")
