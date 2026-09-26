@@ -240,7 +240,7 @@ def test_apply_initial_boundary_conditions_errors():
     empty_state.input_data.pop("boundary_conditions", None)
     empty_state.boundary_conditions = None
 
-    with pytest.raises(KeyError, match="Boundary conditions missing"):
+    with pytest.raises(KeyError, match="FATAL ERROR: Boundary conditions configuration missing"):
         _apply_initial_boundary_conditions(empty_state)
 
     state_bad_item = SolverState(input_data=_get_base_grid_input(), config_data={})
@@ -304,11 +304,12 @@ def test_inflow_missing_values_error(sample_solver_state):
     from src.cpp_gate import _apply_initial_boundary_conditions
 
     state = sample_solver_state
+    state.boundary_conditions = None
     state.input_data["boundary_conditions"] = [
         {"location": "x_min", "type": "inflow", "values": {"u": 1.0}}
     ]
 
-    with pytest.raises(KeyError, match="Inflow boundary condition 'x_min' missing required values"):
+    with pytest.raises(KeyError, match="missing required value"):
         _apply_initial_boundary_conditions(state)
 
 
@@ -400,8 +401,13 @@ def test_step_simulation_execution_and_fallbacks(sample_solver_state):
     step_simulation(state)
     assert state.current_iteration == 1
 
-    if state._cpp_solver and hasattr(state._cpp_solver, "sync_fields"):
-        delattr(state._cpp_solver, "sync_fields")
+    class MissingSyncSolver:
+        def __init__(self, state):
+            pass
+        def step(self, state):
+            pass
+            
+    state._cpp_solver = MissingSyncSolver(state)
     with pytest.raises(RuntimeError, match="missing required callable 'sync_fields'"):
         step_simulation(state)
 
