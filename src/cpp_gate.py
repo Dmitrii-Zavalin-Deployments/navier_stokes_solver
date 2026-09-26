@@ -231,11 +231,8 @@ def _apply_initial_boundary_conditions(state: SolverState) -> None:
     executed = False
     bcs_1 = getattr(state, "boundary_conditions", None)
     if bcs_1:
-        try:
-            process_raw_bcs(bcs_1)
-            executed = True
-        except Exception:
-            raise
+        process_raw_bcs(bcs_1)
+        executed = True
 
     input_data = getattr(state, "input_data", None)
     bcs_2 = input_data.get("boundary_conditions") if isinstance(input_data, dict) else None
