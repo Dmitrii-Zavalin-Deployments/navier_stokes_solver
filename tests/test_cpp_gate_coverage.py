@@ -65,7 +65,11 @@ BASE_FORCES = {
 # Canonical mask length = nx * ny * nz = 4 * 4 * 4 = 64
 BASE_MASK = [0] * 64
 
-BASE_CONFIG = {"mode": "test"}
+BASE_CONFIG = {
+    "mode": "test",
+    "max_poisson_iterations": 10,
+    "poisson_tolerance": 1e-6,
+}
 
 
 def create_test_input_data(overrides=None):
