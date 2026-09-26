@@ -111,10 +111,10 @@ TEST(BoundaryConditionsTest, PressureDrivenChannelFlow) {
     for (int step = 0; step < 150; ++step) {
         execute_pre_step(u, v, w, p, mask, bc_list, nx, ny, nz, false);
 
-        std::vector u_star(total_cells, 0.0);
-        std::vector v_star(total_cells, 0.0);
-        std::vector w_star(total_cells, 0.0);
-        std::vector fx(total_cells, 0.0), fy(total_cells, 0.0), fz(total_cells, 0.0);
+        std::vector<double> u_star(total_cells, 0.0);
+        std::vector<double> v_star(total_cells, 0.0);
+        std::vector<double> w_star(total_cells, 0.0);
+        std::vector<double> fx(total_cells, 0.0), fy(total_cells, 0.0), fz(total_cells, 0.0);
 
         compute_trial_velocities(
             dims, fluid, dt,
@@ -124,7 +124,7 @@ TEST(BoundaryConditionsTest, PressureDrivenChannelFlow) {
             u_star.data(), v_star.data(), w_star.data()
         );
 
-        std::vector rhs(total_cells, 0.0);
+        std::vector<double> rhs(total_cells, 0.0);
         const double scale = density / dt;
         for (int k = 1; k < nz - 1; ++k) {
             for (int j = 1; j < ny - 1; ++j) {
