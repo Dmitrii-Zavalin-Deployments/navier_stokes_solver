@@ -273,16 +273,12 @@ def test_get_or_create_cpp_solver_synchronization():
     Verifies that unstructured input dictionaries are automatically synchronized 
     to direct attributes on the SolverState instance prior to C++ instantiation.
     """
-    # Construct state via __new__ to allow testing pre-synchronization attribute absence
-    state = SolverState.__new__(SolverState)
-    state.input_data = create_test_input_data()
-    state.config = BASE_CONFIG
-    state.nx, state.ny, state.nz = 4, 4, 4
-    state.u = np.zeros((4, 4, 4))
-    state.v = np.zeros((4, 4, 4))
-    state.w = np.zeros((4, 4, 4))
-    state.p = np.zeros((4, 4, 4))
+    # Initialize state normally via __init__ to establish foundational grid and 
+    # contract attributes (dx, dy, dz, spatial bounds, etc.) required by the C++ bridge.
+    input_data = create_test_input_data()
+    state = SolverState(input_data=input_data, config_data=BASE_CONFIG)
     
+    # Strip target attributes to test their re-synchronization from input_data
     for attr in ["external_forces", "fluid_properties", "simulation_parameters", "dt", "boundary_conditions"]:
         if hasattr(state, attr):
             delattr(state, attr)
