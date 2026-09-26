@@ -108,131 +108,143 @@ def _apply_initial_boundary_conditions(state: SolverState) -> None:
     """Enforces initial boundary condition values onto array boundary faces with exhaustive logging for u, v, w, p."""
     logger.info("[FORENSIC TRACE] === Entering _apply_initial_boundary_conditions ===")
     
-    # Prioritize input_data["boundary_conditions"] over state.boundary_conditions so test overrides work correctly
-    raw_bcs = None
-    if hasattr(state, "input_data") and isinstance(state.input_data, dict) and "boundary_conditions" in state.input_data:
-        raw_bcs = state.input_data.get("boundary_conditions")
-    if raw_bcs is None:
-        raw_bcs = getattr(state, "boundary_conditions", None)
+    def process_raw_bcs(raw_bcs):
+        if not raw_bcs:
+            return False
+        logger.info(f"[FORENSIC TRACE] Found {len(raw_bcs)} raw boundary condition definitions.")
 
-    if not raw_bcs:
+        for idx, bc in enumerate(raw_bcs):
+            if isinstance(bc, dict):
+                if "location" not in bc or "type" not in bc:
+                    raise KeyError("Boundary condition item missing required 'location' or 'type' key.")
+                loc = str(bc["location"]).lower()
+                bc_type = str(bc["type"]).lower()
+                vals = bc.get("values", bc)
+            else:
+                loc = str(getattr(bc, "location", "")).lower()
+                bc_type = str(getattr(bc, "type", "")).lower()
+                if not loc or not bc_type:
+                    raise KeyError("BoundaryCondition object missing required 'location' or 'type' attribute.")
+
+                vals = {}
+                for k, attr_names in [("u", ["u", "u_val"]), ("v", ["v", "v_val"]), ("w", ["w", "w_val"]), ("p", ["p", "p_val", "scalar_p"])]:
+                    val = None
+                    if hasattr(bc, "values") and bc.values is not None:
+                        val_sub = bc.values
+                        if hasattr(val_sub, k):
+                            val = getattr(val_sub, k)
+                    if val is None:
+                        for name in attr_names:
+                            if hasattr(bc, name):
+                                val = getattr(bc, name)
+                                break
+                    if val is None:
+                        raise KeyError(f"Boundary condition object for '{loc}' missing required attribute '{k}'.")
+                    vals[k] = val
+
+            logger.info(f"[FORENSIC TRACE] BC #{idx}: loc='{loc}', type='{bc_type}', vals={vals}")
+
+            # Case-insensitive and substring match for inflow/prescribed types
+            if "inflow" in bc_type or "prescribed" in bc_type or bc_type in ["inflow", "prescribed"]:
+                missing_vals = [k for k in ["u", "v", "w", "p"] if k not in vals]
+                if missing_vals:
+                    raise KeyError(f"Inflow boundary condition '{loc}' missing required values {missing_vals}.")
+
+                u_val = float(vals["u"])
+                v_val = float(vals["v"])
+                w_val = float(vals["w"])
+                p_val = float(vals["p"])
+
+                _log_field_max_abs(f"Before applying {loc}", state)
+
+                if "x_min" in loc or "xmin" in loc:
+                    state.u[0, :, :] = u_val
+                    state.v[0, :, :] = v_val
+                    state.w[0, :, :] = w_val
+                    state.p[0, :, :] = p_val
+                    if hasattr(state, "fields") and state.fields is not None:
+                        state.fields[0, 0, :, :] = u_val
+                        state.fields[1, 0, :, :] = v_val
+                        state.fields[2, 0, :, :] = w_val
+                        state.fields[3, 0, :, :] = p_val
+                elif "x_max" in loc or "xmax" in loc:
+                    state.u[-1, :, :] = u_val
+                    state.v[-1, :, :] = v_val
+                    state.w[-1, :, :] = w_val
+                    state.p[-1, :, :] = p_val
+                    if hasattr(state, "fields") and state.fields is not None:
+                        state.fields[0, -1, :, :] = u_val
+                        state.fields[1, -1, :, :] = v_val
+                        state.fields[2, -1, :, :] = w_val
+                        state.fields[3, -1, :, :] = p_val
+                elif "y_min" in loc or "ymin" in loc:
+                    state.u[:, 0, :] = u_val
+                    state.v[:, 0, :] = v_val
+                    state.w[:, 0, :] = w_val
+                    state.p[:, 0, :] = p_val
+                    if hasattr(state, "fields") and state.fields is not None:
+                        state.fields[0, :, 0, :] = u_val
+                        state.fields[1, :, 0, :] = v_val
+                        state.fields[2, :, 0, :] = w_val
+                        state.fields[3, :, 0, :] = p_val
+                elif "y_max" in loc or "ymax" in loc:
+                    state.u[:, -1, :] = u_val
+                    state.v[:, -1, :] = v_val
+                    state.w[:, -1, :] = w_val
+                    state.p[:, -1, :] = p_val
+                    if hasattr(state, "fields") and state.fields is not None:
+                        state.fields[0, :, -1, :] = u_val
+                        state.fields[1, :, -1, :] = v_val
+                        state.fields[2, :, -1, :] = w_val
+                        state.fields[3, :, -1, :] = p_val
+                elif "z_min" in loc or "zmin" in loc:
+                    state.u[:, :, 0] = u_val
+                    state.v[:, :, 0] = v_val
+                    state.w[:, :, 0] = w_val
+                    state.p[:, :, 0] = p_val
+                    if hasattr(state, "fields") and state.fields is not None:
+                        state.fields[0, :, :, 0] = u_val
+                        state.fields[1, :, :, 0] = v_val
+                        state.fields[2, :, :, 0] = w_val
+                        state.fields[3, :, :, 0] = p_val
+                elif "z_max" in loc or "zmax" in loc:
+                    state.u[:, :, -1] = u_val
+                    state.v[:, :, -1] = v_val
+                    state.w[:, :, -1] = w_val
+                    state.p[:, :, -1] = p_val
+                    if hasattr(state, "fields") and state.fields is not None:
+                        state.fields[0, :, :, -1] = u_val
+                        state.fields[1, :, :, -1] = v_val
+                        state.fields[2, :, :, -1] = w_val
+                        state.fields[3, :, :, -1] = p_val
+
+                _log_field_max_abs(
+                    f"AFTER applying {loc} (Target vals: u={u_val}, v={v_val}, w={w_val}, p={p_val})",
+                    state,
+                )
+            else:
+                logger.info(
+                    f"[FORENSIC TRACE] BC #{idx} type '{bc_type}' skipped for direct array assignment."
+                )
+        return True
+
+    executed = False
+    bcs_1 = getattr(state, "boundary_conditions", None)
+    if bcs_1:
+        try:
+            process_raw_bcs(bcs_1)
+            executed = True
+        except Exception:
+            raise
+
+    input_data = getattr(state, "input_data", None)
+    bcs_2 = input_data.get("boundary_conditions") if isinstance(input_data, dict) else None
+    if bcs_2 and bcs_2 != bcs_1:
+        process_raw_bcs(bcs_2)
+        executed = True
+
+    if not executed:
         raise KeyError("FATAL ERROR: Boundary conditions configuration missing from SolverState or input_data.")
-
-    logger.info(f"[FORENSIC TRACE] Found {len(raw_bcs)} raw boundary condition definitions.")
-
-    for idx, bc in enumerate(raw_bcs):
-        if isinstance(bc, dict):
-            if "location" not in bc or "type" not in bc:
-                raise KeyError("Boundary condition item missing required 'location' or 'type' key.")
-            loc = str(bc["location"]).lower()
-            bc_type = str(bc["type"]).lower()
-            vals = bc.get("values", bc)
-        else:
-            loc = str(getattr(bc, "location", "")).lower()
-            bc_type = str(getattr(bc, "type", "")).lower()
-            if not loc or not bc_type:
-                raise KeyError("BoundaryCondition object missing required 'location' or 'type' attribute.")
-
-            vals = {}
-            for k, attr_names in [("u", ["u", "u_val"]), ("v", ["v", "v_val"]), ("w", ["w", "w_val"]), ("p", ["p", "p_val", "scalar_p"])]:
-                val = None
-                if hasattr(bc, "values") and bc.values is not None:
-                    val_sub = bc.values
-                    if hasattr(val_sub, k):
-                        val = getattr(val_sub, k)
-                if val is None:
-                    for name in attr_names:
-                        if hasattr(bc, name):
-                            val = getattr(bc, name)
-                            break
-                if val is None:
-                    raise KeyError(f"Boundary condition object for '{loc}' missing required attribute '{k}'.")
-                vals[k] = val
-
-        logger.info(f"[FORENSIC TRACE] BC #{idx}: loc='{loc}', type='{bc_type}', vals={vals}")
-
-        # Case-insensitive and substring match for inflow/prescribed types
-        if "inflow" in bc_type or "prescribed" in bc_type or bc_type in ["inflow", "prescribed"]:
-            missing_vals = [k for k in ["u", "v", "w", "p"] if k not in vals]
-            if missing_vals:
-                raise KeyError(f"Inflow boundary condition '{loc}' missing required values {missing_vals}.")
-
-            u_val = float(vals["u"])
-            v_val = float(vals["v"])
-            w_val = float(vals["w"])
-            p_val = float(vals["p"])
-
-            _log_field_max_abs(f"Before applying {loc}", state)
-
-            if "x_min" in loc or "xmin" in loc:
-                state.u[0, :, :] = u_val
-                state.v[0, :, :] = v_val
-                state.w[0, :, :] = w_val
-                state.p[0, :, :] = p_val
-                if hasattr(state, "fields") and state.fields is not None:
-                    state.fields[0, 0, :, :] = u_val
-                    state.fields[1, 0, :, :] = v_val
-                    state.fields[2, 0, :, :] = w_val
-                    state.fields[3, 0, :, :] = p_val
-            elif "x_max" in loc or "xmax" in loc:
-                state.u[-1, :, :] = u_val
-                state.v[-1, :, :] = v_val
-                state.w[-1, :, :] = w_val
-                state.p[-1, :, :] = p_val
-                if hasattr(state, "fields") and state.fields is not None:
-                    state.fields[0, -1, :, :] = u_val
-                    state.fields[1, -1, :, :] = v_val
-                    state.fields[2, -1, :, :] = w_val
-                    state.fields[3, -1, :, :] = p_val
-            elif "y_min" in loc or "ymin" in loc:
-                state.u[:, 0, :] = u_val
-                state.v[:, 0, :] = v_val
-                state.w[:, 0, :] = w_val
-                state.p[:, 0, :] = p_val
-                if hasattr(state, "fields") and state.fields is not None:
-                    state.fields[0, :, 0, :] = u_val
-                    state.fields[1, :, 0, :] = v_val
-                    state.fields[2, :, 0, :] = w_val
-                    state.fields[3, :, 0, :] = p_val
-            elif "y_max" in loc or "ymax" in loc:
-                state.u[:, -1, :] = u_val
-                state.v[:, -1, :] = v_val
-                state.w[:, -1, :] = w_val
-                state.p[:, -1, :] = p_val
-                if hasattr(state, "fields") and state.fields is not None:
-                    state.fields[0, :, -1, :] = u_val
-                    state.fields[1, :, -1, :] = v_val
-                    state.fields[2, :, -1, :] = w_val
-                    state.fields[3, :, -1, :] = p_val
-            elif "z_min" in loc or "zmin" in loc:
-                state.u[:, :, 0] = u_val
-                state.v[:, :, 0] = v_val
-                state.w[:, :, 0] = w_val
-                state.p[:, :, 0] = p_val
-                if hasattr(state, "fields") and state.fields is not None:
-                    state.fields[0, :, :, 0] = u_val
-                    state.fields[1, :, :, 0] = v_val
-                    state.fields[2, :, :, 0] = w_val
-                    state.fields[3, :, :, 0] = p_val
-            elif "z_max" in loc or "zmax" in loc:
-                state.u[:, :, -1] = u_val
-                state.v[:, :, -1] = v_val
-                state.w[:, :, -1] = w_val
-                state.p[:, :, -1] = p_val
-                if hasattr(state, "fields") and state.fields is not None:
-                    state.fields[0, :, :, -1] = u_val
-                    state.fields[1, :, :, -1] = v_val
-                    state.fields[2, :, :, -1] = w_val
-                    state.fields[3, :, :, -1] = p_val
-
-            _log_field_max_abs(
-                f"AFTER applying {loc} (Target vals: u={u_val}, v={v_val}, w={w_val}, p={p_val})",
-                state,
-            )
-        else:
-            logger.info(
-                f"[FORENSIC TRACE] BC #{idx} type '{bc_type}' skipped for direct array assignment."
-            )
 
     logger.info("[FORENSIC TRACE] === Exiting _apply_initial_boundary_conditions ===")
 
@@ -242,12 +254,11 @@ def _convert_boundary_conditions(state: SolverState) -> None:
     logger.info("[FORENSIC TRACE] === Entering _convert_boundary_conditions ===")
     _apply_initial_boundary_conditions(state)
 
-    raw_bcs = None
-    if hasattr(state, "input_data") and isinstance(state.input_data, dict) and "boundary_conditions" in state.input_data:
-        raw_bcs = state.input_data.get("boundary_conditions")
-    if raw_bcs is None:
-        raw_bcs = getattr(state, "boundary_conditions", None)
+    bcs_1 = getattr(state, "boundary_conditions", None)
+    input_data = getattr(state, "input_data", None)
+    bcs_2 = input_data.get("boundary_conditions") if isinstance(input_data, dict) else None
 
+    raw_bcs = bcs_1 if bcs_1 else bcs_2
     if not raw_bcs:
         raise KeyError("FATAL ERROR: Boundary conditions configuration missing from SolverState or input_data.")
 
