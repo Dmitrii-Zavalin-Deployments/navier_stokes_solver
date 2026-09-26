@@ -11,7 +11,6 @@ import pytest
 
 from src.state import SolverState
 
-
 # ============================================================================
 # NARRATIVE SECTION 1: Strict Non-Default Validation & Schema Presence Checks
 # ============================================================================
