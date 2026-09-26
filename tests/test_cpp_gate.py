@@ -282,9 +282,11 @@ def test_solver_missing_sync_fields_runtime_error():
     # Mock solver without sync_fields method
     faulty_solver = MagicMock(spec=[])
     
-    with patch("navier_stokes_cpp.NavierStokesSolver", return_value=faulty_solver):
-        with pytest.raises(RuntimeError, match="missing required callable 'sync_fields'"):
-            step_simulation(state)
+    with (
+        patch("navier_stokes_cpp.NavierStokesSolver", return_value=faulty_solver),
+        pytest.raises(RuntimeError, match="missing required callable 'sync_fields'"),
+    ):
+        step_simulation(state)
 
 
 def test_dt_missing_key_error():
@@ -314,6 +316,8 @@ def test_dt_missing_key_error():
     mock_solver = MagicMock()
     mock_solver.sync_fields = lambda st: None
 
-    with patch("navier_stokes_cpp.NavierStokesSolver", return_value=mock_solver):
-        with pytest.raises(KeyError, match="Simulation time step 'dt' or 'simulation_parameters.time_step' must be explicitly provided"):
-            step_simulation(state)
+    with (
+        patch("navier_stokes_cpp.NavierStokesSolver", return_value=mock_solver),
+        pytest.raises(KeyError, match="Simulation time step 'dt' or 'simulation_parameters.time_step' must be explicitly provided"),
+    ):
+        step_simulation(state)
