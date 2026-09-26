@@ -7,10 +7,12 @@ and semantic cross-field consistency checks (grid bounds and mask length matchin
 """
 
 import json
-
+from pathlib import Path
 import pytest
+import jsonschema
 
 from src.ingestion import load_and_validate_inputs
+
 
 # ============================================================================
 # NARRATIVE SECTION 1: Argument Presence & File Existence Safeguards
@@ -92,6 +94,8 @@ def test_ingestion_input_schema_validation_error(tmp_path, valid_schema_files):
     # We verify that an input instance violating the formal input schema raises a ValueError.
     """
     input_schema_path, config_schema_path, schema_dir = valid_schema_files
+    assert input_schema_path.is_file()
+    assert config_schema_path.is_file()
     
     input_path = tmp_path / "invalid_input.json"
     config_path = tmp_path / "config.json"
@@ -116,6 +120,8 @@ def test_ingestion_config_schema_validation_error(tmp_path, valid_schema_files, 
     # We verify that a configuration instance violating the formal config schema raises a ValueError.
     """
     input_schema_path, config_schema_path, schema_dir = valid_schema_files
+    assert input_schema_path.is_file()
+    assert config_schema_path.is_file()
 
     input_path = tmp_path / "input.json"
     config_path = tmp_path / "invalid_config.json"
@@ -151,6 +157,8 @@ def test_ingestion_invalid_grid_boundaries(tmp_path, valid_schema_files, sample_
     # We verify that invalid grid boundaries (where max <= min) raise a ValueError.
     """
     input_schema_path, config_schema_path, schema_dir = valid_schema_files
+    assert input_schema_path.is_file()
+    assert config_schema_path.is_file()
 
     input_path = tmp_path / "input.json"
     config_path = tmp_path / "config.json"
@@ -178,6 +186,8 @@ def test_ingestion_mask_length_mismatch(tmp_path, valid_schema_files, sample_val
     # We verify that a mask length mismatch against nx * ny * nz raises a ValueError.
     """
     input_schema_path, config_schema_path, schema_dir = valid_schema_files
+    assert input_schema_path.is_file()
+    assert config_schema_path.is_file()
 
     input_path = tmp_path / "input.json"
     config_path = tmp_path / "config.json"
