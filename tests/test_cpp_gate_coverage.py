@@ -10,6 +10,7 @@ architectural intent and the computational safeguards protecting the C++ bridge 
 import importlib
 import sys
 from unittest.mock import MagicMock
+
 import numpy as np
 import pytest
 
@@ -28,7 +29,6 @@ from src.cpp_gate import (
     step_simulation,
 )
 from src.state import SolverState
-
 
 # ==============================================================================
 # SCHEMA-COMPLIANT BASE CONFIGURATIONS (Grid cells >= 4 per schema)
