@@ -52,15 +52,44 @@ def test_cpp_gate_import_error(monkeypatch):
 
 
 def _get_base_grid_input():
-    """Returns a valid input_data dictionary satisfying SolverState grid requirements."""
+    """Returns a comprehensive valid input_data dictionary satisfying all SolverState strict non-default policies."""
     return {
+        "physical_constraints": {
+            "min_velocity": -10.0,
+            "max_velocity": 10.0,
+            "min_pressure": -100.0,
+            "max_pressure": 100.0,
+        },
+        "domain_configuration": {
+            "type": "INTERNAL",
+            "reference_velocity": [0.0, 0.0, 0.0],
+        },
         "grid": {
             "nx": 2, "ny": 2, "nz": 2,
             "dx": 0.5, "dy": 0.5, "dz": 0.5,
             "x_min": 0.0, "x_max": 1.0,
             "y_min": 0.0, "y_max": 1.0,
             "z_min": 0.0, "z_max": 1.0
-        }
+        },
+        "fluid_properties": {
+            "density": 1.0,
+            "viscosity": 0.01,
+        },
+        "initial_conditions": {
+            "velocity": [0.0, 0.0, 0.0],
+            "pressure": 0.0,
+        },
+        "simulation_parameters": {
+            "time_step": 0.01,
+            "total_time": 0.03,
+            "output_interval": 1,
+        },
+        "boundary_conditions": [
+            {"location": "x_min", "type": "inflow", "values": {"u": 1.0, "v": 0.0, "w": 0.0, "p": 0.0}}
+        ],
+        "external_forces": {
+            "force_vector": [0.0, 0.0, 0.0]
+        },
     }
 
 
@@ -206,15 +235,16 @@ def test_apply_initial_boundary_conditions_errors():
     from src.cpp_gate import _apply_initial_boundary_conditions
     from src.state import SolverState
 
-    empty_state = SolverState(input_data=_get_base_grid_input(), config_data={})
-    empty_state.input_data = {}
+    base_data = _get_base_grid_input()
+    base_data.pop("boundary_conditions", None)
+    empty_state = SolverState(input_data=base_data, config_data={})
     empty_state.boundary_conditions = None
 
-    with pytest.raises(KeyError, match="Boundary conditions missing from state and input_data"):
+    with pytest.raises(KeyError, match="Boundary conditions missing"):
         _apply_initial_boundary_conditions(empty_state)
 
     state_bad_item = SolverState(input_data=_get_base_grid_input(), config_data={})
-    state_bad_item.input_data = {"boundary_conditions": [{"location": "x_min"}]}
+    state_bad_item.input_data["boundary_conditions"] = [{"location": "x_min"}]
     with pytest.raises(KeyError, match="Boundary condition item missing required 'location' or 'type'"):
         _apply_initial_boundary_conditions(state_bad_item)
 
@@ -297,7 +327,7 @@ def test_convert_boundary_conditions_errors(sample_solver_state):
     from src.cpp_gate import _convert_boundary_conditions
 
     state = sample_solver_state
-    state.input_data = {}
+    state.input_data.pop("boundary_conditions", None)
     state.boundary_conditions = None
 
     with pytest.raises(KeyError, match="FATAL ERROR: Boundary conditions configuration missing"):
@@ -443,21 +473,7 @@ def sample_solver_state():
     """
     from src.state import SolverState
 
-    input_data = {
-        "grid": {
-            "nx": 2, "ny": 2, "nz": 2,
-            "dx": 0.5, "dy": 0.5, "dz": 0.5,
-            "x_min": 0.0, "x_max": 1.0,
-            "y_min": 0.0, "y_max": 1.0,
-            "z_min": 0.0, "z_max": 1.0
-        },
-        "boundary_conditions": [
-            {"location": "x_min", "type": "inflow", "values": {"u": 1.0, "v": 0.0, "w": 0.0, "p": 0.0}}
-        ],
-        "external_forces": {"force_vector": [0.0, 0.0, 0.0]},
-        "fluid_properties": {"density": 1.0, "viscosity": 0.01},
-        "simulation_parameters": {"time_step": 0.01}
-    }
+    input_data = _get_base_grid_input()
     state = SolverState(input_data=input_data, config_data={})
     state.dt = 0.01
     state.u = np.zeros((2, 2, 2))
