@@ -7,12 +7,10 @@ and semantic cross-field consistency checks (grid bounds and mask length matchin
 """
 
 import json
-from pathlib import Path
+
 import pytest
-import jsonschema
 
 from src.ingestion import load_and_validate_inputs
-
 
 # ============================================================================
 # NARRATIVE SECTION 1: Argument Presence & File Existence Safeguards
