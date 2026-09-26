@@ -94,7 +94,7 @@ def test_missing_boundary_conditions_fatal_errors():
     omits boundary conditions entirely from both state and input_data, a fatal
     KeyError must be raised.
     """
-    state = SolverState()
+    state = SolverState({}, {})
     state.boundary_conditions = None
     state.input_data = {}
 
@@ -110,7 +110,7 @@ def test_boundary_condition_item_missing_keys():
     When raw boundary conditions are iterated, items must contain valid keys
     or attributes. Malformed items raise a KeyError.
     """
-    state = SolverState()
+    state = SolverState({}, {})
     state.boundary_conditions = [{"location": "x_min"}]  # missing 'type'
 
     with pytest.raises(KeyError, match="missing required 'location' or 'type' key"):
@@ -132,7 +132,7 @@ def test_non_dict_boundary_condition_object_parsing():
             self.w = 0.0
             self.p = 0.0
 
-    state = SolverState()
+    state = SolverState({}, {})
     # Object missing required attribute 'p'
     incomplete_bc = MockBCObject("x_min", "inflow")
     del incomplete_bc.p
@@ -148,7 +148,7 @@ def test_inflow_missing_values_validation():
     Inflow or prescribed boundary types must contain complete momentum and pressure vectors (u, v, w, p).
     Omitting any value vector triggers a KeyError.
     """
-    state = SolverState()
+    state = SolverState({}, {})
     state.boundary_conditions = [{
         "location": "x_min",
         "type": "inflow",
@@ -164,7 +164,7 @@ def test_all_boundary_faces_spatial_coverage(tmp_path):
     To ensure complete spatial boundary mapping, we test all spatial faces:
     x_max/xmax, y_min/ymin, y_max/ymax, and z_max/zmax.
     """
-    state = SolverState()
+    state = SolverState({}, {})
     state.u = np.zeros((3, 3, 3))
     state.v = np.zeros((3, 3, 3))
     state.w = np.zeros((3, 3, 3))
@@ -197,7 +197,7 @@ def test_solver_state_none_and_uninitialized_guards():
     with pytest.raises(ValueError, match="state must be explicitly provided"):
         step_simulation(None)
 
-    state = SolverState()
+    state = SolverState({}, {})
     state.u = None  # Uninitialized velocity field
     state.input_data = {
         "grid": {"dx": 1.0, "dy": 1.0, "dz": 1.0},
@@ -216,7 +216,7 @@ def test_input_data_synchronization_and_dt_fallbacks():
     simulation_parameters) correctly synchronize to state attributes, and time-step (dt) 
     fallbacks resolve properly.
     """
-    state = SolverState()
+    state = SolverState({}, {})
     state.u = np.zeros((2, 2, 2))
     state.v = np.zeros((2, 2, 2))
     state.w = np.zeros((2, 2, 2))
@@ -261,7 +261,7 @@ def test_solver_missing_sync_fields_runtime_error():
     If the underlying C++ solver object lacks the mandatory 'sync_fields' method,
     a RuntimeError is raised during simulation stepping.
     """
-    state = SolverState()
+    state = SolverState({}, {})
     state.u = np.zeros((2, 2, 2))
     state.v = np.zeros((2, 2, 2))
     state.w = np.zeros((2, 2, 2))
@@ -294,7 +294,7 @@ def test_dt_missing_key_error():
     If neither state.dt nor input_data.simulation_parameters.time_step is present,
     a KeyError is raised during time step resolution.
     """
-    state = SolverState()
+    state = SolverState({}, {})
     state.u = np.zeros((2, 2, 2))
     state.v = np.zeros((2, 2, 2))
     state.w = np.zeros((2, 2, 2))
