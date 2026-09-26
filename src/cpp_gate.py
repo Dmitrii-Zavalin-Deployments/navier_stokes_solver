@@ -108,10 +108,12 @@ def _apply_initial_boundary_conditions(state: SolverState) -> None:
     """Enforces initial boundary condition values onto array boundary faces with exhaustive logging for u, v, w, p."""
     logger.info("[FORENSIC TRACE] === Entering _apply_initial_boundary_conditions ===")
     
-    # Prioritize state.boundary_conditions over input_data so custom test objects aren't ignored
-    raw_bcs = getattr(state, "boundary_conditions", None)
-    if not raw_bcs and hasattr(state, "input_data") and isinstance(state.input_data, dict):
+    # Prioritize input_data["boundary_conditions"] over state.boundary_conditions so test overrides work correctly
+    raw_bcs = None
+    if hasattr(state, "input_data") and isinstance(state.input_data, dict) and "boundary_conditions" in state.input_data:
         raw_bcs = state.input_data.get("boundary_conditions")
+    if raw_bcs is None:
+        raw_bcs = getattr(state, "boundary_conditions", None)
 
     if not raw_bcs:
         raise KeyError("FATAL ERROR: Boundary conditions configuration missing from SolverState or input_data.")
@@ -240,9 +242,11 @@ def _convert_boundary_conditions(state: SolverState) -> None:
     logger.info("[FORENSIC TRACE] === Entering _convert_boundary_conditions ===")
     _apply_initial_boundary_conditions(state)
 
-    raw_bcs = getattr(state, "boundary_conditions", None)
-    if not raw_bcs and hasattr(state, "input_data") and isinstance(state.input_data, dict):
+    raw_bcs = None
+    if hasattr(state, "input_data") and isinstance(state.input_data, dict) and "boundary_conditions" in state.input_data:
         raw_bcs = state.input_data.get("boundary_conditions")
+    if raw_bcs is None:
+        raw_bcs = getattr(state, "boundary_conditions", None)
 
     if not raw_bcs:
         raise KeyError("FATAL ERROR: Boundary conditions configuration missing from SolverState or input_data.")
