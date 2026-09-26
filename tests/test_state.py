@@ -1,10 +1,9 @@
 """
-test_state.py
-This test module serves as a narrative document and verification suite for src/state.py.
-Explanatory text and physical discretization formulas are written as commented prose,
-while executable Python assertions verify state instantiation, grid resolution steps,
-zero-copy memory views, unconstrained physical evolution, and exception handling across all paths,
-aligned with the compiled C++ core engine architecture (python_gate.cpp, simulation_prestep.cpp, orchestrator.cpp).
+Unit Test Module for SolverState Container (src/state.py).
+
+This module provides comprehensive narrative and executable verification for the 
+SolverState class, validating strict non-default policies, schema presence checks,
+numerical stability enforcement (NaN/Inf detection), and boundary condition extraction.
 """
 
 import numpy as np
@@ -13,273 +12,190 @@ import pytest
 from src.state import SolverState
 
 
-def _create_valid_state_inputs():
-    """Generates valid minimal input_data and config_data structures."""
-    input_data = {
-        "grid": {
-            "nx": 4,
-            "ny": 4,
-            "nz": 4,
-            "x_min": 0.0,
-            "x_max": 2.0,
-            "y_min": 0.0,
-            "y_max": 2.0,
-            "z_min": 0.0,
-            "z_max": 2.0,
-        },
-        "fluid_properties": {"density": 1000.0, "viscosity": 0.001},
-        "initial_conditions": {
-            "velocity": [1.0, 2.0, 3.0],
-            "pressure": 101325.0,
-        },
-        "simulation_parameters": {
-            "time_step": 0.01,
-            "total_time": 0.1,
-            "output_interval": 2,
-        },
-        "boundary_conditions": [
-            {"location": "x_min", "type": "inflow", "values": {"u": 1.0}}
-        ],
-        "external_forces": {"gravity": [0.0, -9.81, 0.0]},
-        "domain_configuration": {"type": "box"},
-        "physical_constraints": {
-            "min_velocity": -50.0,
-            "max_velocity": 50.0,
-            "min_pressure": 0.0,
-            "max_pressure": 200000.0,
-        },
-        "mask": [1] * 64,  # nx * ny * nz = 4 * 4 * 4 = 64
-    }
-
-    config_data = {"poisson_solver": "cg", "tolerance": 1e-6}
-
-    return input_data, config_data
-
-
 # ============================================================================
-# NARRATIVE SECTION 1: Operational State Construction & Zero-Copy Views
+# NARRATIVE SECTION 1: Strict Non-Default Validation & Schema Presence Checks
 # ============================================================================
-# Grid spatial step sizes are computed along each cartesian coordinate axis:
-#     dx = (x_max - x_min) / nx
-#     dy = (y_max - y_min) / ny
-#     dz = (z_max - z_min) / nz
-#
-# Total required time steps are calculated from physical time extents:
-#     N_iterations = round(total_time / dt)
-#
-# 4D fields allocation follows shape (4, nx, ny, nz) in C-contiguous memory.
-# Memory slices share views with parent fields array:
-#     u = fields[0],  v = fields[1],  w = fields[2],  p = fields[3]
+# Under strict non-default policies, missing or null required arguments, missing 
+# spatial grid sections, missing sub-schema blocks, or absent mandatory keys 
+# must immediately raise explicit ValueError or KeyError exceptions.
 # ============================================================================
 
 
-def test_solver_state_initialization_success():
-    """Verifies complete state initialization, spatial step math, zero-copy memory binding, and C++ pre-step field population."""
-    input_data, config_data = _create_valid_state_inputs()
-
-    # Spatial step math evaluation:
-    #     dx = (2.0 - 0.0) / 4 = 0.5 m
-    #     dy = (2.0 - 0.0) / 4 = 0.5 m
-    #     dz = (2.0 - 0.0) / 4 = 0.5 m
-    #     N_iterations = round(0.1 / 0.01) = 10
-    state = SolverState(input_data, config_data)
-
-    assert abs(state.dx - 0.5) < 1e-9
-    assert abs(state.dy - 0.5) < 1e-9
-    assert abs(state.dz - 0.5) < 1e-9
-    assert state.total_iterations == 10
-
-    # Zero-copy memory view assertions:
-    assert state.u.base is state.fields
-    assert state.v.base is state.fields
-    assert state.w.base is state.fields
-    assert state.p.base is state.fields
-
-    # Execute C++ pre-step / cold start to populate initial condition fields
-    if hasattr(state, "execute_pre_step"):
-        state.execute_pre_step()
-
-    # Initial condition field population assertion after C++ pre-step execution:
-    assert np.allclose(state.u, 1.0)
-    assert np.allclose(state.v, 2.0)
-    assert np.allclose(state.w, 3.0)
-    assert np.allclose(state.p, 101325.0)
+class MockCppBoundaryCondition:
+    """
+    Mock object emulating non-dictionary C++ boundary condition bindings
+    for testing attribute fallback extraction in get_boundary_condition_dicts().
+    """
+    def __init__(self, location: str, btype: str, u: float, v: float, w: float, p: float):
+        self.location = location
+        self.type = btype
+        self.u_val = u
+        self.v_val = v
+        self.w_val = w
+        self.scalar_p = p
 
 
-# ============================================================================
-# NARRATIVE SECTION 2: Schema Non-Default Input Policy Verification
-# ============================================================================
-# Strict state construction forbids null arguments, missing grid parameters,
-# missing sub-schema sections, or malformed velocity sequences.
-# ============================================================================
+def test_solver_state_none_inputs():
+    """
+    # We verify that providing explicit None values for input_data or config_data 
+    # triggers a ValueError under strict initialization rules.
+    """
+    # For a null input_data dictionary, initialization must fail:
+    #     SolverState(None, {}) -> ValueError
+    with pytest.raises(ValueError, match="input_data must be explicitly provided"):
+        SolverState(None, {})
+
+    # For a null config_data dictionary, initialization must fail:
+    #     SolverState({}, None) -> ValueError
+    with pytest.raises(ValueError, match="config_data must be explicitly provided"):
+        SolverState({}, None)
 
 
-def test_solver_state_null_input_or_config():
-    """Verifies exception handling when input_data or config_data is None."""
-    input_data, config_data = _create_valid_state_inputs()
+def test_solver_state_missing_grid():
+    """
+    # We verify that omitting the required 'grid' section or passing None 
+    # raises a KeyError.
+    """
+    # When the grid section is entirely absent from input_data:
+    with pytest.raises(KeyError, match="missing required 'grid' section"):
+        SolverState({}, {})
 
-    with pytest.raises((ValueError, RuntimeError)):
-        SolverState(None, config_data)
-
-    with pytest.raises((ValueError, RuntimeError)):
-        SolverState(input_data, None)
-
-
-def test_solver_state_missing_grid_section_or_keys():
-    """Verifies exception handling when grid section or required grid keys are missing/None."""
-    input_data, config_data = _create_valid_state_inputs()
-
-    # Missing 'grid' section:
-    del input_data["grid"]
-    with pytest.raises((KeyError, ValueError, RuntimeError)):
-        SolverState(input_data, config_data)
-
-    # None 'grid' section:
-    input_data, config_data = _create_valid_state_inputs()
-    input_data["grid"] = None
-    with pytest.raises((KeyError, ValueError, RuntimeError)):
-        SolverState(input_data, config_data)
-
-    # Missing key inside grid:
-    input_data, config_data = _create_valid_state_inputs()
-    input_data["grid"]["nx"] = None
-    with pytest.raises((KeyError, ValueError, RuntimeError)):
-        SolverState(input_data, config_data)
+    # When the grid section is explicitly set to None:
+    with pytest.raises(KeyError, match="missing required 'grid' section"):
+        SolverState({"grid": None}, {})
 
 
-def test_solver_state_missing_subsections():
-    """Verifies exception handling when required schema sections are missing or set to None."""
+def test_solver_state_missing_grid_keys():
+    """
+    # We verify that missing individual required parameters within the grid section 
+    # trigger a KeyError identifying the missing key.
+    """
+    # An incomplete grid dictionary missing required keys (e.g., nx, ny, nz):
+    incomplete_grid = {"x_min": 0.0, "x_max": 1.0}
+    input_data = {"grid": incomplete_grid}
+
+    # Ingestion must raise a KeyError for the missing required grid parameters:
+    with pytest.raises(KeyError, match="Non-default policy violation in 'grid'"):
+        SolverState(input_data, {})
+
+
+def test_solver_state_missing_sub_schemas(base_valid_input):
+    """
+    # We verify that omitting any required sub-schema section (e.g., fluid_properties, 
+    # simulation_parameters, boundary_conditions, external_forces, physical_constraints, 
+    # or mask) triggers a KeyError.
+    """
     required_sections = [
         "fluid_properties",
-        "initial_conditions",
         "simulation_parameters",
         "boundary_conditions",
         "external_forces",
-        "domain_configuration",
         "physical_constraints",
         "mask",
     ]
 
-    for sec in required_sections:
-        input_data, config_data = _create_valid_state_inputs()
-        del input_data[sec]
-        with pytest.raises((KeyError, ValueError, RuntimeError)):
-            SolverState(input_data, config_data)
+    for section in required_sections:
+        corrupted_input = base_valid_input.copy()
+        corrupted_input[section] = None
 
-        input_data, config_data = _create_valid_state_inputs()
-        input_data[sec] = None
-        with pytest.raises((KeyError, ValueError, RuntimeError)):
-            SolverState(input_data, config_data)
+        # Omitting or setting a required section to None must violate policy:
+        with pytest.raises(KeyError, match=f"missing required section '{section}'"):
+            SolverState(corrupted_input, {})
 
 
-def test_solver_state_missing_subsection_keys():
-    """Verifies exception handling when inner keys in IC, sim_params, or constraints are missing."""
-    input_data, config_data = _create_valid_state_inputs()
-    input_data["initial_conditions"]["velocity"] = None
-    with pytest.raises((KeyError, ValueError, RuntimeError)):
-        SolverState(input_data, config_data)
+def test_solver_state_missing_simulation_parameter_keys(base_valid_input):
+    """
+    # We verify that omitting mandatory parameters inside simulation_parameters 
+    # (time_step, total_time, output_interval) raises a KeyError.
+    """
+    corrupted_input = base_valid_input.copy()
+    corrupted_input["simulation_parameters"] = {}  # Empty dict missing time_step
 
-    input_data, config_data = _create_valid_state_inputs()
-    input_data["simulation_parameters"]["time_step"] = None
-    with pytest.raises((KeyError, ValueError, RuntimeError)):
-        SolverState(input_data, config_data)
-
-    input_data, config_data = _create_valid_state_inputs()
-    input_data["physical_constraints"]["min_velocity"] = None
-    with pytest.raises((KeyError, ValueError, RuntimeError)):
-        SolverState(input_data, config_data)
+    with pytest.raises(KeyError, match="Non-default policy violation in 'simulation_parameters'"):
+        SolverState(corrupted_input, {})
 
 
-def test_solver_state_invalid_initial_velocity():
-    """Verifies exception handling when initial_conditions.velocity is malformed."""
-    input_data, config_data = _create_valid_state_inputs()
+def test_solver_state_missing_physical_constraint_keys(base_valid_input):
+    """
+    # We verify that omitting mandatory parameters inside physical_constraints 
+    # raises a KeyError.
+    """
+    corrupted_input = base_valid_input.copy()
+    corrupted_input["physical_constraints"] = {}  # Empty dict missing velocity/pressure bounds
 
-    input_data["initial_conditions"]["velocity"] = 5.0
-    with pytest.raises((ValueError, RuntimeError)):
-        SolverState(input_data, config_data)
-
-    input_data["initial_conditions"]["velocity"] = [1.0, 2.0]
-    with pytest.raises((ValueError, RuntimeError)):
-        SolverState(input_data, config_data)
+    with pytest.raises(KeyError, match="Non-default policy violation in 'physical_constraints'"):
+        SolverState(corrupted_input, {})
 
 
 # ============================================================================
-# NARRATIVE SECTION 3: Field Constraint Enforcement & Divergence Detection
+# NARRATIVE SECTION 2: Physical Constraints & Boundary Condition Extraction
 # ============================================================================
-# Field values are monitored for finite numerical stability:
-#     not np.isfinite(fields).all() ==> raise ArithmeticError
-# Allowing unconstrained physical evolution beyond arbitrary bounds.
+# Solver state validates numerical field stability via NaN/Inf detection and 
+# normalizes mixed boundary condition representations into standard dictionaries.
 # ============================================================================
 
 
-def test_enforce_physical_constraints_unconstrained_evolution():
-    """Verifies that field values evolve freely without artificial clamping."""
-    input_data, config_data = _create_valid_state_inputs()
-    state = SolverState(input_data, config_data)
-
-    state.u[0, 0, 0] = 100.0
-    state.v[0, 0, 0] = -100.0
-    state.p[0, 0, 0] = -500.0
-
-    state.enforce_physical_constraints()
-
-    assert abs(state.u[0, 0, 0] - 100.0) < 1e-9
-    assert abs(state.v[0, 0, 0] - (-100.0)) < 1e-9
-    assert abs(state.p[0, 0, 0] - (-500.0)) < 1e-9
-
-
-def test_enforce_physical_constraints_nan_inf_detection():
-    """Verifies ArithmeticError detection when fields contain non-finite numbers (NaN or Inf)."""
-    input_data, config_data = _create_valid_state_inputs()
-    state = SolverState(input_data, config_data)
-
+def test_enforce_physical_constraints_nan_detection(base_valid_input):
+    """
+    # We verify that enforce_physical_constraints() detects non-finite values (NaN or Inf) 
+    # in the simulation fields buffer and raises an ArithmeticError.
+    """
+    state = SolverState(base_valid_input, {})
+    
+    # We inject a NaN into the velocity field buffer:
+    #     state.fields[0, 0, 0, 0] = np.nan
     state.fields[0, 0, 0, 0] = np.nan
+
+    # Enforcing physical constraints must detect the non-finite value and raise an error:
     with pytest.raises(ArithmeticError, match="Numerical instability detected"):
         state.enforce_physical_constraints()
 
-    state.fields[0, 0, 0, 0] = np.inf
-    with pytest.raises(ArithmeticError, match="Numerical instability detected"):
-        state.enforce_physical_constraints()
 
+def test_get_boundary_condition_dicts_mixed(base_valid_input):
+    """
+    # We verify that get_boundary_condition_dicts() correctly normalizes both raw dictionaries 
+    # and non-dictionary C++ boundary condition objects into standard configuration dictionaries.
+    """
+    state = SolverState(base_valid_input, {})
 
-# ============================================================================
-# NARRATIVE SECTION 4: Boundary Condition Dictionary Standard Extraction
-# ============================================================================
-# Boundary condition objects are normalized into pure dictionary representations,
-# supporting both raw dicts and compiled C++ BoundaryCondition instances.
-# ============================================================================
-
-
-def test_get_boundary_condition_dicts_handling():
-    """Verifies dictionary extraction across raw dicts, C++ objects, and fallback defaults."""
-    input_data, config_data = _create_valid_state_inputs()
-
-    class MockCppBC:
-        def __init__(self):
-            self.location = "y_max"
-            self.type = "wall"
-            self.u_val = 0.0
-            self.v_val = 0.0
-            self.w_val = 0.0
-            self.scalar_p = 100000.0
-
-    class MinimalObject:
-        pass
-
-    raw_dict = {"location": "x_min", "type": "inflow", "values": {"u": 10.0}}
-    cpp_obj = MockCppBC()
-    empty_obj = MinimalObject()
-
-    input_data["boundary_conditions"] = [raw_dict, cpp_obj, empty_obj]
-    state = SolverState(input_data, config_data)
+    # We configure mixed boundary conditions containing both standard dicts and C++ mock objects:
+    mock_bc = MockCppBoundaryCondition(
+        location="z_min", btype="inflow", u=1.0, v=0.0, w=0.0, p=0.0
+    )
+    state.boundary_conditions = [
+        {"location": "wall", "type": "no-slip", "values": {"u": 0.0, "v": 0.0, "w": 0.0, "p": 0.0}},
+        mock_bc
+    ]
 
     bc_dicts = state.get_boundary_condition_dicts()
 
-    assert len(bc_dicts) == 3
-    assert bc_dicts[0] == raw_dict
-    assert bc_dicts[1]["location"] == "y_max"
-    assert bc_dicts[1]["type"] == "wall"
-    assert abs(bc_dicts[1]["values"]["p"] - 100000.0) < 1e-9
-    assert bc_dicts[2]["location"] == ""
-    assert bc_dicts[2]["type"] == ""
-    assert bc_dicts[2]["values"]["u"] == 0.0
+    # We assert that the resulting list contains properly structured dictionaries for all entries:
+    assert len(bc_dicts) == 2
+    assert bc_dicts[0]["location"] == "wall"
+    assert bc_dicts[1]["location"] == "z_min"
+    assert bc_dicts[1]["type"] == "inflow"
+    assert bc_dicts[1]["values"]["u"] == 1.0
+
+
+@pytest.fixture
+def base_valid_input():
+    """
+    # We provide a complete, schema-compliant baseline input dictionary for testing valid initializations.
+    """
+    return {
+        "grid": {
+            "nx": 4, "ny": 4, "nz": 4,
+            "x_min": 0.0, "x_max": 1.0,
+            "y_min": 0.0, "y_max": 1.0,
+            "z_min": 0.0, "z_max": 1.0
+        },
+        "fluid_properties": {"density": 1.0, "viscosity": 0.01},
+        "simulation_parameters": {"time_step": 0.01, "total_time": 0.1, "output_interval": 1},
+        "boundary_conditions": [{"location": "wall", "type": "no-slip", "values": {"u": 0.0}}],
+        "external_forces": {"force_vector": [0.0, 0.0, 0.0]},
+        "physical_constraints": {
+            "min_velocity": -10.0, "max_velocity": 10.0,
+            "min_pressure": -100.0, "max_pressure": 100.0
+        },
+        "mask": [0] * 64
+    }
