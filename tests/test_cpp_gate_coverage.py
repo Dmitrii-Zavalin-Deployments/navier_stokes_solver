@@ -31,6 +31,62 @@ from src.cpp_gate import (
 from src.state import SolverState
 
 # ==============================================================================
+# SCHEMA-COMPLIANT BASE CONFIGURATIONS (Grid cells >= 4 per schema)
+# ==============================================================================
+BASE_GRID = {
+    "nx": 4, "ny": 4, "nz": 4,
+    "x_min": 0.0, "x_max": 1.0,
+    "y_min": 0.0, "y_max": 1.0,
+    "z_min": 0.0, "z_max": 1.0,
+}
+
+BASE_FLUID_PROPERTIES = {
+    "density": 1.0,
+    "viscosity": 0.01,
+}
+
+BASE_SIM_PARAMS = {
+    "time_step": 0.01,
+    "total_time": 1.0,
+    "output_interval": 10,
+}
+
+BASE_CONSTRAINTS = {
+    "min_velocity": -10.0,
+    "max_velocity": 10.0,
+    "min_pressure": -100.0,
+    "max_pressure": 100.0,
+}
+
+BASE_FORCES = {
+    "force_vector": [0.0, 0.0, 0.0]
+}
+
+# Canonical mask length = nx * ny * nz = 4 * 4 * 4 = 64
+BASE_MASK = [0] * 64
+
+BASE_CONFIG = {"mode": "test"}
+
+
+def create_test_input_data(overrides=None):
+    """Helper to generate a fully schema-compliant input dictionary."""
+    data = {
+        "grid": BASE_GRID.copy(),
+        "fluid_properties": BASE_FLUID_PROPERTIES.copy(),
+        "simulation_parameters": BASE_SIM_PARAMS.copy(),
+        "physical_constraints": BASE_CONSTRAINTS.copy(),
+        "external_forces": BASE_FORCES.copy(),
+        "mask": BASE_MASK.copy(),
+        "boundary_conditions": [
+            {"location": "x_min", "type": "inflow", "values": {"u": 1.0, "v": 0.0, "w": 0.0, "p": 0.0}}
+        ],
+    }
+    if overrides:
+        data.update(overrides)
+    return data
+
+
+# ==============================================================================
 # SECTION 1: C++ Module Import Resilience
 # ==============================================================================
 # In distributed environments or development setups where the compiled C++ shared library 
@@ -57,7 +113,7 @@ def test_import_error_branch(monkeypatch):
     monkeypatch.setattr(builtins, "__import__", mock_import)
 
     import src.cpp_gate
-    with pytest.raises(ImportError, match="Failed to import compiled C++ module"):
+    with pytest.raises(ImportError, match=r"Failed to import compiled C\+\+ module"):
         importlib.reload(src.cpp_gate)
 
     # Restore original import behavior and module state.
@@ -76,8 +132,7 @@ def test_import_error_branch(monkeypatch):
 def test_bc_setting_attribute_and_type_errors(monkeypatch):
     """
     Ensures that unexpected AttributeError or TypeError exceptions encountered during 
-    direct attribute setters on a boundary condition object are caught and logged without 
-    halting execution.
+    direct attribute setters on a boundary condition object are caught and logged.
     """
     class BadLocationBC:
         @property
@@ -130,14 +185,12 @@ def test_non_dict_bc_missing_location_or_type():
         type = "inflow"
         u = v = w = p = 0.0
 
-    state = SolverState(
-        grid={"dx": 0.1, "dy": 0.1, "dz": 0.1},
-        boundary_conditions=[IncompleteBC()],
-        u=np.zeros((3, 3, 3)),
-        v=np.zeros((3, 3, 3)),
-        w=np.zeros((3, 3, 3)),
-        p=np.zeros((3, 3, 3)),
-    )
+    input_data = create_test_input_data({"boundary_conditions": [IncompleteBC()]})
+    state = SolverState(input_data=input_data, config_data=BASE_CONFIG)
+    state.u = np.zeros((4, 4, 4))
+    state.v = np.zeros((4, 4, 4))
+    state.w = np.zeros((4, 4, 4))
+    state.p = np.zeros((4, 4, 4))
     
     with pytest.raises(KeyError, match="BoundaryCondition object missing required 'location' or 'type' attribute"):
         _apply_initial_boundary_conditions(state)
@@ -166,16 +219,13 @@ def test_non_dict_bc_with_values_subobject():
         type = "inflow"
         values = SubValues()
 
-    state = SolverState(
-        grid={"dx": 0.1, "dy": 0.1, "dz": 0.1},
-        boundary_conditions=[ObjectBC()],
-        u=np.zeros((3, 3, 3)),
-        v=np.zeros((3, 3, 3)),
-        w=np.zeros((3, 3, 3)),
-        p=np.zeros((3, 3, 3)),
-    )
+    input_data = create_test_input_data({"boundary_conditions": [ObjectBC()]})
+    state = SolverState(input_data=input_data, config_data=BASE_CONFIG)
+    state.u = np.zeros((4, 4, 4))
+    state.v = np.zeros((4, 4, 4))
+    state.w = np.zeros((4, 4, 4))
+    state.p = np.zeros((4, 4, 4))
     
-    # Execution should successfully parse and apply boundary data from the sub-object.
     _apply_initial_boundary_conditions(state)
 
 
@@ -191,28 +241,15 @@ def test_convert_bc_from_input_data_and_missing_error():
     Tests both the successful fallback extraction of boundary conditions from `input_data` 
     and the strict exception guard when boundary configurations are entirely omitted.
     """
-    # Case A: Fallback to input_data["boundary_conditions"] when state.boundary_conditions is None.
-    state = SolverState(
-        grid={"dx": 0.1, "dy": 0.1, "dz": 0.1},
-        input_data={"boundary_conditions": [{"location": "x_min", "type": "inflow", "u": 1.0, "v": 0.0, "w": 0.0, "p": 0.0}]},
-        u=np.zeros((3, 3, 3)),
-        v=np.zeros((3, 3, 3)),
-        w=np.zeros((3, 3, 3)),
-        p=np.zeros((3, 3, 3)),
-    )
+    input_data_valid = create_test_input_data()
+    state = SolverState(input_data=input_data_valid, config_data=BASE_CONFIG)
     state.boundary_conditions = None
     _convert_boundary_conditions(state)
     assert isinstance(state.boundary_conditions, list)
 
-    # Case B: Complete absence of boundary condition data must raise a KeyError.
-    state_bad = SolverState(
-        grid={"dx": 0.1, "dy": 0.1, "dz": 0.1},
-        input_data={},
-        u=np.zeros((3, 3, 3)),
-        v=np.zeros((3, 3, 3)),
-        w=np.zeros((3, 3, 3)),
-        p=np.zeros((3, 3, 3)),
-    )
+    input_data_bad = create_test_input_data()
+    del input_data_bad["boundary_conditions"]
+    state_bad = SolverState(input_data=input_data_bad, config_data=BASE_CONFIG)
     state_bad.boundary_conditions = None
     with pytest.raises(KeyError, match="Boundary conditions configuration missing"):
         _convert_boundary_conditions(state_bad)
@@ -227,26 +264,16 @@ def test_convert_bc_from_input_data_and_missing_error():
 
 def test_get_or_create_cpp_solver_synchronization():
     """
-    Verifies that unstructured input dictionaries ('external_forces', 'fluid_properties', 
-    'simulation_parameters', and 'time_step') are automatically synchronized to direct 
-    attributes on the SolverState instance prior to C++ instantiation.
+    Verifies that unstructured input dictionaries are automatically synchronized 
+    to direct attributes on the SolverState instance prior to C++ instantiation.
     """
-    state = SolverState(
-        grid={"dx": 0.1, "dy": 0.1, "dz": 0.1},
-        boundary_conditions=[{"location": "x_min", "type": "inflow", "u": 1.0, "v": 0.0, "w": 0.0, "p": 0.0}],
-        input_data={
-            "external_forces": {"fx": 0.0},
-            "fluid_properties": {"density": 1.0},
-            "simulation_parameters": {"time_step": 0.01},
-            "boundary_conditions": [{"location": "x_min", "type": "inflow", "u": 1.0, "v": 0.0, "w": 0.0, "p": 0.0}],
-        },
-        u=np.zeros((3, 3, 3)),
-        v=np.zeros((3, 3, 3)),
-        w=np.zeros((3, 3, 3)),
-        p=np.zeros((3, 3, 3)),
-    )
+    input_data = create_test_input_data()
+    state = SolverState(input_data=input_data, config_data=BASE_CONFIG)
+    state.u = np.zeros((4, 4, 4))
+    state.v = np.zeros((4, 4, 4))
+    state.w = np.zeros((4, 4, 4))
+    state.p = np.zeros((4, 4, 4))
     
-    # Strip direct attributes to test automated synchronization.
     for attr in ["external_forces", "fluid_properties", "simulation_parameters", "dt"]:
         if hasattr(state, attr):
             delattr(state, attr)
@@ -268,23 +295,16 @@ def test_get_or_create_cpp_solver_synchronization():
 
 def test_step_simulation_trailing_dt_exception():
     """
-    Ensures that if the simulation time step ('dt' or 'simulation_parameters.time_step') 
-    is unexpectedly stripped or invalidated after the C++ step execution, the trailing 
-    validation block raises a descriptive KeyError.
+    Ensures that if the simulation time step is unexpectedly stripped or invalidated 
+    after the C++ step execution, the trailing validation block raises a KeyError.
     """
-    state = SolverState(
-        grid={"dx": 0.1, "dy": 0.1, "dz": 0.1},
-        dt=0.01,
-        boundary_conditions=[{"location": "x_min", "type": "inflow", "u": 0.0, "v": 0.0, "w": 0.0, "p": 0.0}],
-        input_data={
-            "boundary_conditions": [{"location": "x_min", "type": "inflow", "u": 0.0, "v": 0.0, "w": 0.0, "p": 0.0}],
-            "simulation_parameters": {"time_step": 0.01},
-        },
-        u=np.zeros((3, 3, 3)),
-        v=np.zeros((3, 3, 3)),
-        w=np.zeros((3, 3, 3)),
-        p=np.zeros((3, 3, 3)),
-    )
+    input_data = create_test_input_data()
+    state = SolverState(input_data=input_data, config_data=BASE_CONFIG)
+    state.dt = 0.01
+    state.u = np.zeros((4, 4, 4))
+    state.v = np.zeros((4, 4, 4))
+    state.w = np.zeros((4, 4, 4))
+    state.p = np.zeros((4, 4, 4))
 
     class MockSolver:
         def step(self, s):
