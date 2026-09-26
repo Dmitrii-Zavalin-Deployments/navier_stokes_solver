@@ -6,10 +6,9 @@ testing import error safeguards, boundary condition parsing and validation, stat
 CFL stability checks, time-step extraction fallbacks, and C++ solver execution lifecycle handlers.
 """
 
-import importlib
 import sys
+import importlib
 from unittest.mock import MagicMock
-
 import numpy as np
 import pytest
 
@@ -25,21 +24,19 @@ def test_cpp_gate_import_error(monkeypatch):
     """
     # We verify that failing to import navier_stokes_cpp correctly raises an ImportError.
     """
-    # We remove navier_stokes_cpp from sys.modules if present:
     monkeypatch.delitem(sys.modules, "navier_stokes_cpp", raising=False)
     
-    # We mock sys.modules to raise ImportError when navier_stokes_cpp is imported:
     class RaisingFinder:
         @staticmethod
         def find_spec(fullname, path, target=None):
             if fullname == "navier_stokes_cpp":
                 raise ImportError("Simulated missing C++ module")
+            return None
 
     sys.meta_path.insert(0, RaisingFinder)
     try:
         import src.cpp_gate
         importlib.reload(src.cpp_gate)
-        # If import succeeded unexpectedly, we force trigger the check:
         raise AssertionError("Expected ImportError was not raised.")
     except ImportError as e:
         assert "Failed to import compiled C++ module" in str(e)
@@ -50,8 +47,21 @@ def test_cpp_gate_import_error(monkeypatch):
 
 
 # ============================================================================
-# FIXTURE: Mock C++ Environment
+# HELPER & FIXTURES
 # ============================================================================
+
+
+def _get_base_grid_input():
+    """Returns a valid input_data dictionary satisfying SolverState grid requirements."""
+    return {
+        "grid": {
+            "nx": 2, "ny": 2, "nz": 2,
+            "dx": 0.5, "dy": 0.5, "dz": 0.5,
+            "x_min": 0.0, "x_max": 1.0,
+            "y_min": 0.0, "y_max": 1.0,
+            "z_min": 0.0, "z_max": 1.0
+        }
+    }
 
 
 @pytest.fixture(autouse=True)
@@ -97,7 +107,6 @@ def mock_cpp_extension():
                     raise AttributeError("Simulated values attribute error")
             return BadValues()
 
-        # For field_map attribute assignment testing:
         @property
         def u(self):
             return 0.0
@@ -143,19 +152,15 @@ def test_dict_to_boundary_condition_validations():
     """
     from src.cpp_gate import _dict_to_boundary_condition
 
-    # 1. Non-dictionary input raises TypeError:
     with pytest.raises(TypeError, match="Boundary condition configuration must be a dictionary"):
         _dict_to_boundary_condition("not_a_dict")  # type: ignore[arg-type]
 
-    # 2. Missing 'location' key raises KeyError:
     with pytest.raises(KeyError, match="missing required field 'location'"):
         _dict_to_boundary_condition({"type": "inflow", "values": {"u": 0, "v": 0, "w": 0, "p": 0}})
 
-    # 3. Missing 'type' key raises KeyError:
     with pytest.raises(KeyError, match="missing required field 'type'"):
         _dict_to_boundary_condition({"location": "x_min", "values": {"u": 0, "v": 0, "w": 0, "p": 0}})
 
-    # 4. Missing required value field (e.g. 'p') raises KeyError:
     with pytest.raises(KeyError, match="missing required value field"):
         _dict_to_boundary_condition({"location": "x_min", "type": "inflow", "values": {"u": 1, "v": 0, "w": 0}})
 
@@ -166,17 +171,15 @@ def test_dict_to_boundary_condition_exception_handlers():
     # are gracefully caught and logged without aborting execution.
     """
     import navier_stokes_cpp
-
     from src.cpp_gate import _dict_to_boundary_condition
 
-    # We substitute BoundaryCondition with our failing mock class:
     original_bc = navier_stokes_cpp.BoundaryCondition
-    navier_stokes_cpp.BoundaryCondition = navier_stokes_cpp.MockFailingBoundaryCondition if hasattr(navier_stokes_cpp, "MockFailingBoundaryCondition") else type("BadBC", (), {
+    navier_stokes_cpp.BoundaryCondition = getattr(navier_stokes_cpp, "MockFailingBoundaryCondition", type("BadBC", (), {
         "location": property(lambda self: "", lambda self, v: (_ for _ in ()).throw(AttributeError("err"))),
         "type": property(lambda self: "", lambda self, v: (_ for _ in ()).throw(TypeError("err"))),
         "values": property(lambda self: type("V", (), {"u": property(lambda s: 0, lambda s, v: (_ for _ in ()).throw(AttributeError("err")))})()),
         "u": property(lambda self: 0, lambda self, v: (_ for _ in ()).throw(TypeError("err")))
-    })
+    }))
 
     try:
         bc_dict = {"location": "x_min", "type": "inflow", "values": {"u": 1.0, "v": 0.0, "w": 0.0, "p": 0.0}}
@@ -202,15 +205,14 @@ def test_apply_initial_boundary_conditions_errors():
     from src.cpp_gate import _apply_initial_boundary_conditions
     from src.state import SolverState
 
-    empty_state = SolverState()
+    empty_state = SolverState(input_data=_get_base_grid_input(), config_data={})
     empty_state.input_data = {}
     empty_state.boundary_conditions = None
 
     with pytest.raises(KeyError, match="Boundary conditions missing from state and input_data"):
         _apply_initial_boundary_conditions(empty_state)
 
-    # Missing location or type in raw dict:
-    state_bad_item = SolverState()
+    state_bad_item = SolverState(input_data=_get_base_grid_input(), config_data={})
     state_bad_item.input_data = {"boundary_conditions": [{"location": "x_min"}]}
     with pytest.raises(KeyError, match="Boundary condition item missing required 'location' or 'type'"):
         _apply_initial_boundary_conditions(state_bad_item)
@@ -226,9 +228,8 @@ def test_apply_initial_boundary_conditions_object_errors():
     class IncompleteBCObject:
         location = "x_min"
         type = "inflow"
-        # missing values and attributes
 
-    state = SolverState()
+    state = SolverState(input_data=_get_base_grid_input(), config_data={})
     state.boundary_conditions = [IncompleteBCObject()]
     with pytest.raises(KeyError, match="missing required attribute"):
         _apply_initial_boundary_conditions(state)
@@ -236,7 +237,7 @@ def test_apply_initial_boundary_conditions_object_errors():
     class MissingLocObj:
         type = "inflow"
 
-    state_no_loc = SolverState()
+    state_no_loc = SolverState(input_data=_get_base_grid_input(), config_data={})
     state_no_loc.boundary_conditions = [MissingLocObj()]
     with pytest.raises(KeyError, match="BoundaryCondition object missing required 'location' or 'type'"):
         _apply_initial_boundary_conditions(state_no_loc)
@@ -253,7 +254,7 @@ def test_apply_initial_boundary_conditions_all_faces(sample_solver_state):
     state.fields = np.zeros((4, 2, 2, 2))
     state.input_data["boundary_conditions"] = [
         {"location": "x_min", "type": "inflow", "values": {"u": 1.0, "v": 0.1, "w": 0.0, "p": 10.0}},
-        {"location": "x_max", "type": "outflow", "values": {"u": 1.0, "v": 0.1, "w": 0.0, "p": 10.0}},  # non-inflow type skipped for direct assignment
+        {"location": "x_max", "type": "outflow", "values": {"u": 1.0, "v": 0.1, "w": 0.0, "p": 10.0}},
         {"location": "x_max", "type": "inflow", "values": {"u": 2.0, "v": 0.2, "w": 0.0, "p": 20.0}},
         {"location": "y_min", "type": "inflow", "values": {"u": 3.0, "v": 0.3, "w": 0.0, "p": 30.0}},
         {"location": "y_max", "type": "inflow", "values": {"u": 4.0, "v": 0.4, "w": 0.0, "p": 40.0}},
@@ -273,7 +274,7 @@ def test_inflow_missing_values_error(sample_solver_state):
 
     state = sample_solver_state
     state.input_data["boundary_conditions"] = [
-        {"location": "x_min", "type": "inflow", "values": {"u": 1.0}}  # missing v, w, p
+        {"location": "x_min", "type": "inflow", "values": {"u": 1.0}}
     ]
 
     with pytest.raises(KeyError, match="Inflow boundary condition 'x_min' missing required values"):
@@ -313,7 +314,6 @@ def test_get_or_create_cpp_solver_validation(sample_solver_state):
         _get_or_create_cpp_solver(None)  # type: ignore[arg-type]
 
     state = sample_solver_state
-    # Clear direct attributes to test synchronization from input_data:
     if hasattr(state, "external_forces"):
         delattr(state, "external_forces")
     if hasattr(state, "fluid_properties"):
@@ -335,20 +335,17 @@ def test_step_simulation_validations_and_cfl(sample_solver_state):
     """
     from src.cpp_gate import step_simulation
 
-    # 1. None state raises ValueError:
     with pytest.raises(ValueError, match="state must be explicitly provided"):
         step_simulation(None)  # type: ignore[arg-type]
 
-    # 2. Uninitialized velocity fields raise ValueError:
     state = sample_solver_state
     state.u = None
     with pytest.raises(ValueError, match="Velocity fields .* must be initialized"):
         step_simulation(state)
 
-    # 3. CFL violation (> 1.0) raises ValueError:
     state2 = sample_solver_state
     state2.dt = 1.0
-    state2.u = np.ones((2, 2, 2)) * 100.0  # high velocity -> high CFL
+    state2.u = np.ones((2, 2, 2)) * 100.0
     state2.v = np.zeros((2, 2, 2))
     state2.w = np.zeros((2, 2, 2))
     with pytest.raises(ValueError, match="CFL violation intercepted"):
@@ -369,17 +366,14 @@ def test_step_simulation_execution_and_fallbacks(sample_solver_state):
     state.w = np.zeros((2, 2, 2))
     state.fields = np.zeros((4, 2, 2, 2))
 
-    # Test successful step:
     step_simulation(state)
     assert state.current_iteration == 1
 
-    # Test missing sync_fields method raises RuntimeError:
     if state._cpp_solver and hasattr(state._cpp_solver, "sync_fields"):
         delattr(state._cpp_solver, "sync_fields")
     with pytest.raises(RuntimeError, match="missing required callable 'sync_fields'"):
         step_simulation(state)
 
-    # Test solver step exception handling raises RuntimeError:
     state2 = sample_solver_state
     state2.dt = 0.01
     state2.u = np.zeros((2, 2, 2))
@@ -399,7 +393,6 @@ def test_step_simulation_execution_and_fallbacks(sample_solver_state):
     with pytest.raises(RuntimeError, match="C++ execution failure during solver step"):
         step_simulation(state2)
 
-    # Test dt fallback extraction from simulation_parameters:
     state3 = sample_solver_state
     if hasattr(state3, "dt"):
         delattr(state3, "dt")
@@ -409,7 +402,6 @@ def test_step_simulation_execution_and_fallbacks(sample_solver_state):
     state3.fields = np.zeros((4, 2, 2, 2))
     state3.input_data["simulation_parameters"] = {"time_step": 0.005}
 
-    # Restore working mock solver:
     class WorkingSolver:
         def __init__(self, state):
             pass
@@ -424,7 +416,6 @@ def test_step_simulation_execution_and_fallbacks(sample_solver_state):
     step_simulation(state3)
     assert state3.current_time > 0.0
 
-    # Test missing dt everywhere raises KeyError:
     state4 = sample_solver_state
     if hasattr(state4, "dt"):
         delattr(state4, "dt")
@@ -451,9 +442,14 @@ def sample_solver_state():
     """
     from src.state import SolverState
 
-    state = SolverState()
-    state.input_data = {
-        "grid": {"nx": 2, "ny": 2, "nz": 2, "dx": 0.5, "dy": 0.5, "dz": 0.5},
+    input_data = {
+        "grid": {
+            "nx": 2, "ny": 2, "nz": 2,
+            "dx": 0.5, "dy": 0.5, "dz": 0.5,
+            "x_min": 0.0, "x_max": 1.0,
+            "y_min": 0.0, "y_max": 1.0,
+            "z_min": 0.0, "z_max": 1.0
+        },
         "boundary_conditions": [
             {"location": "x_min", "type": "inflow", "values": {"u": 1.0, "v": 0.0, "w": 0.0, "p": 0.0}}
         ],
@@ -461,6 +457,7 @@ def sample_solver_state():
         "fluid_properties": {"density": 1.0, "viscosity": 0.01},
         "simulation_parameters": {"time_step": 0.01}
     }
+    state = SolverState(input_data=input_data, config_data={})
     state.dt = 0.01
     state.u = np.zeros((2, 2, 2))
     state.v = np.zeros((2, 2, 2))
