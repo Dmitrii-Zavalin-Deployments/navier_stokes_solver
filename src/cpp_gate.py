@@ -307,12 +307,17 @@ def step_simulation(state: SolverState) -> None:
     if state is None:
         raise ValueError("FATAL ERROR: state must be explicitly provided.")
 
-    # Enforce strict CFL stability boundary guard (C <= 1.0) under no-default policy with NoneType protection
+    # Enforce strict CFL stability boundary guard (C <= 1.0) under no-default policy with proper KeyError raising
     try:
-        dt = float(state.dt) if getattr(state, "dt", None) is not None else float(state.input_data["simulation_parameters"]["time_step"])
-    except (AttributeError, TypeError, KeyError):
-        dt = float(state.input_data["simulation_parameters"]["time_step"])
-        
+        if getattr(state, "dt", None) is not None:
+            dt = float(state.dt)
+        else:
+            dt = float(state.input_data["simulation_parameters"]["time_step"])
+    except (AttributeError, TypeError, KeyError) as inner_err:
+        raise KeyError(
+            "Simulation time step 'dt' or 'simulation_parameters.time_step' must be explicitly provided."
+        ) from inner_err
+
     grid = state.input_data["grid"]
     dx = float(grid["dx"])
     dy = float(grid["dy"])
@@ -360,10 +365,13 @@ def step_simulation(state: SolverState) -> None:
         raise RuntimeError(f"C++ execution failure during solver step: {e}") from e
 
     try:
-        dt = float(state.dt) if getattr(state, "dt", None) is not None else float(state.input_data["simulation_parameters"]["time_step"])
+        if getattr(state, "dt", None) is not None:
+            dt = float(state.dt)
+        else:
+            dt = float(state.input_data["simulation_parameters"]["time_step"])
     except (AttributeError, TypeError, KeyError) as inner_err:
         raise KeyError(
-            "FATAL ERROR: Simulation time step 'dt' or 'simulation_parameters.time_step' must be explicitly provided."
+            "Simulation time step 'dt' or 'simulation_parameters.time_step' must be explicitly provided."
         ) from inner_err
 
     state.current_iteration += 1
