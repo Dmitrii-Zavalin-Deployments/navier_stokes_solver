@@ -86,7 +86,7 @@ def test_missing_boundary_conditions_fatal_errors(valid_input_data):
     with pytest.raises(KeyError, match=r"FATAL ERROR: Boundary conditions missing from state and input_data\."):
         _apply_initial_boundary_conditions(state)
 
-    with pytest.raises(KeyError, match=r"FATAL ERROR: Boundary conditions configuration missing from SolverState or input_data\."):
+    with pytest.raises(KeyError, match=r"FATAL ERROR: Boundary conditions missing from state and input_data\."):
         _convert_boundary_conditions(state)
 
 

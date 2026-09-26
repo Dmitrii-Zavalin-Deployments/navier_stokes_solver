@@ -307,8 +307,12 @@ def step_simulation(state: SolverState) -> None:
     if state is None:
         raise ValueError("FATAL ERROR: state must be explicitly provided.")
 
-    # Enforce strict CFL stability boundary guard (C <= 1.0) under no-default policy
-    dt = float(state.dt)
+    # Enforce strict CFL stability boundary guard (C <= 1.0) under no-default policy with NoneType protection
+    try:
+        dt = float(state.dt) if getattr(state, "dt", None) is not None else float(state.input_data["simulation_parameters"]["time_step"])
+    except (AttributeError, TypeError, KeyError):
+        dt = float(state.input_data["simulation_parameters"]["time_step"])
+        
     grid = state.input_data["grid"]
     dx = float(grid["dx"])
     dy = float(grid["dy"])
@@ -356,14 +360,11 @@ def step_simulation(state: SolverState) -> None:
         raise RuntimeError(f"C++ execution failure during solver step: {e}") from e
 
     try:
-        dt = float(state.dt)
-    except (AttributeError, TypeError):
-        try:
-            dt = float(state.input_data["simulation_parameters"]["time_step"])
-        except (AttributeError, KeyError, TypeError) as inner_err:
-            raise KeyError(
-                "FATAL ERROR: Simulation time step 'dt' or 'simulation_parameters.time_step' must be explicitly provided."
-            ) from inner_err
+        dt = float(state.dt) if getattr(state, "dt", None) is not None else float(state.input_data["simulation_parameters"]["time_step"])
+    except (AttributeError, TypeError, KeyError) as inner_err:
+        raise KeyError(
+            "FATAL ERROR: Simulation time step 'dt' or 'simulation_parameters.time_step' must be explicitly provided."
+        ) from inner_err
 
     state.current_iteration += 1
     state.current_time += dt
