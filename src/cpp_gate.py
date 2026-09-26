@@ -108,14 +108,13 @@ def _apply_initial_boundary_conditions(state: SolverState) -> None:
     """Enforces initial boundary condition values onto array boundary faces with exhaustive logging for u, v, w, p."""
     logger.info("[FORENSIC TRACE] === Entering _apply_initial_boundary_conditions ===")
     
-    raw_bcs = None
-    if hasattr(state, "input_data") and isinstance(state.input_data, dict):
+    # Prioritize state.boundary_conditions over input_data so custom test objects aren't ignored
+    raw_bcs = getattr(state, "boundary_conditions", None)
+    if not raw_bcs and hasattr(state, "input_data") and isinstance(state.input_data, dict):
         raw_bcs = state.input_data.get("boundary_conditions")
-    if not raw_bcs:
-        raw_bcs = getattr(state, "boundary_conditions", None)
 
     if not raw_bcs:
-        raise KeyError("FATAL ERROR: Boundary conditions missing from state and input_data.")
+        raise KeyError("FATAL ERROR: Boundary conditions configuration missing from SolverState or input_data.")
 
     logger.info(f"[FORENSIC TRACE] Found {len(raw_bcs)} raw boundary condition definitions.")
 
@@ -269,8 +268,6 @@ def _get_or_create_cpp_solver(state: SolverState) -> Any:
     if not has_solver:
         logger.info("[FORENSIC TRACE] Initializing C++ solver from scratch...")
         
-        # Synchronize input_data dictionaries to direct state attributes 
-        # so Pybind11 C++ attribute lookups succeed reliably.
         if hasattr(state, "input_data") and isinstance(state.input_data, dict):
             if "external_forces" in state.input_data and not hasattr(state, "external_forces"):
                 state.external_forces = state.input_data["external_forces"]
@@ -290,7 +287,6 @@ def _get_or_create_cpp_solver(state: SolverState) -> Any:
         
         _log_field_max_abs("POST-constructor state (Did C++ zero out fields?)", state)
         
-        # Re-apply initial boundary values AFTER C++ constructor initialization
         _apply_initial_boundary_conditions(state)
         
         _log_field_max_abs("POST-re-application state", state)
@@ -307,7 +303,6 @@ def step_simulation(state: SolverState) -> None:
     if state is None:
         raise ValueError("FATAL ERROR: state must be explicitly provided.")
 
-    # Enforce strict CFL stability boundary guard (C <= 1.0) under no-default policy
     dt = float(state.dt)
     grid = state.input_data["grid"]
     dx = float(grid["dx"])
@@ -339,7 +334,6 @@ def step_simulation(state: SolverState) -> None:
             logger.info("[FORENSIC TRACE] Executing solver.sync_fields(state)...")
             solver.sync_fields(state)
             
-            # Explicitly resynchronize Python state primary attributes from fields array
             if hasattr(state, "fields") and state.fields is not None:
                 state.u = state.fields[0]
                 state.v = state.fields[1]
