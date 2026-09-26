@@ -87,6 +87,7 @@ def _get_base_grid_input():
         "boundary_conditions": [
             {"location": "x_min", "type": "inflow", "values": {"u": 1.0, "v": 0.0, "w": 0.0, "p": 0.0}}
         ],
+        "mask": [1, 1, 1, 1, 1, 1, 1, 1],
         "external_forces": {
             "force_vector": [0.0, 0.0, 0.0]
         },
@@ -235,9 +236,8 @@ def test_apply_initial_boundary_conditions_errors():
     from src.cpp_gate import _apply_initial_boundary_conditions
     from src.state import SolverState
 
-    base_data = _get_base_grid_input()
-    base_data.pop("boundary_conditions", None)
-    empty_state = SolverState(input_data=base_data, config_data={})
+    empty_state = SolverState(input_data=_get_base_grid_input(), config_data={})
+    empty_state.input_data.pop("boundary_conditions", None)
     empty_state.boundary_conditions = None
 
     with pytest.raises(KeyError, match="Boundary conditions missing"):
