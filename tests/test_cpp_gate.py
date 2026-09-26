@@ -427,7 +427,7 @@ def test_step_simulation_execution_and_fallbacks(sample_solver_state):
     navier_stokes_cpp.NavierStokesSolver = FailingSolver
     state2._cpp_solver = None
 
-    with pytest.raises(RuntimeError, match="C++ execution failure during solver step"):
+    with pytest.raises(RuntimeError, match=r"C\+\+ execution failure during solver step"):
         step_simulation(state2)
 
     state3 = sample_solver_state
