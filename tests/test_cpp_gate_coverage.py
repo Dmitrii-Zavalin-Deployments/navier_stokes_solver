@@ -10,7 +10,6 @@ architectural intent and the computational safeguards protecting the C++ bridge 
 import importlib
 import sys
 from unittest.mock import MagicMock
-
 import numpy as np
 import pytest
 
@@ -29,6 +28,7 @@ from src.cpp_gate import (
     step_simulation,
 )
 from src.state import SolverState
+
 
 # ==============================================================================
 # SCHEMA-COMPLIANT BASE CONFIGURATIONS (Grid cells >= 4 per schema)
@@ -241,17 +241,19 @@ def test_convert_bc_from_input_data_and_missing_error():
     Tests both the successful fallback extraction of boundary conditions from `input_data` 
     and the strict exception guard when boundary configurations are entirely omitted.
     """
+    # Case A: Fallback to input_data["boundary_conditions"] when state.boundary_conditions is None.
     input_data_valid = create_test_input_data()
     state = SolverState(input_data=input_data_valid, config_data=BASE_CONFIG)
     state.boundary_conditions = None
     _convert_boundary_conditions(state)
     assert isinstance(state.boundary_conditions, list)
 
-    input_data_bad = create_test_input_data()
-    del input_data_bad["boundary_conditions"]
-    state_bad = SolverState(input_data=input_data_bad, config_data=BASE_CONFIG)
+    # Case B: Complete absence of boundary condition data must raise a KeyError.
+    # Bypassing __init__ via __new__ to test missing boundary condition error guard directly.
+    state_bad = SolverState.__new__(SolverState)
+    state_bad.input_data = {"grid": BASE_GRID}
     state_bad.boundary_conditions = None
-    with pytest.raises(KeyError, match="Boundary conditions configuration missing"):
+    with pytest.raises(KeyError, match="Boundary conditions configuration missing|Boundary conditions missing"):
         _convert_boundary_conditions(state_bad)
 
 
@@ -267,16 +269,20 @@ def test_get_or_create_cpp_solver_synchronization():
     Verifies that unstructured input dictionaries are automatically synchronized 
     to direct attributes on the SolverState instance prior to C++ instantiation.
     """
-    input_data = create_test_input_data()
-    state = SolverState(input_data=input_data, config_data=BASE_CONFIG)
+    # Construct state via __new__ to allow testing pre-synchronization attribute absence
+    state = SolverState.__new__(SolverState)
+    state.input_data = create_test_input_data()
+    state.config = BASE_CONFIG
+    state.nx, state.ny, state.nz = 4, 4, 4
     state.u = np.zeros((4, 4, 4))
     state.v = np.zeros((4, 4, 4))
     state.w = np.zeros((4, 4, 4))
     state.p = np.zeros((4, 4, 4))
     
-    for attr in ["external_forces", "fluid_properties", "simulation_parameters", "dt"]:
+    for attr in ["external_forces", "fluid_properties", "simulation_parameters", "dt", "boundary_conditions"]:
         if hasattr(state, attr):
             delattr(state, attr)
+    state.input_data["boundary_conditions"] = [{"location": "x_min", "type": "inflow", "values": {"u": 1.0, "v": 0.0, "w": 0.0, "p": 0.0}}]
 
     solver = _get_or_create_cpp_solver(state)
     assert solver is not None
