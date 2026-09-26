@@ -84,14 +84,18 @@ def test_run_simulation_archive_failure_manifest_error(tmp_path, monkeypatch):
     handler successfully catches it, logs via logger.critical (lines 101-102), 
     and re-raises the original error.
     """
-    # Ensure the input file exists so it passes initial validation
     dummy_input = tmp_path / "dummy.json"
-    dummy_input.write_text("{}")
+    # Provide a minimal valid payload that passes schema validation
+    dummy_input.write_text(
+        '{"grid": {"nx": 4, "ny": 4, "nz": 4, "dx": 1.0, "dy": 1.0, "dz": 1.0}, '
+        '"boundary_conditions": {}, '
+        '"fluid_properties": {"density": 1.0, "viscosity": 0.1}, '
+        '"time_integration": {"total_iterations": 5, "dt": 0.01, "output_interval": 1}}'
+    )
 
     main_module = importlib.import_module("src.main")
 
     # Mock step_simulation to fail INSIDE the active simulation try-block (line 64)
-    # This guarantees 'state' is instantiated and the except block (lines 91-103) is entered.
     def mock_step_fail(*args, **kwargs):
         raise RuntimeError("Simulated mid-simulation physical instability")
 
