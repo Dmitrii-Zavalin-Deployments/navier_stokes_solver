@@ -83,10 +83,10 @@ def test_missing_boundary_conditions_fatal_errors(valid_input_data):
     state.boundary_conditions = None
     state.input_data = {}
 
-    with pytest.raises(KeyError, match="FATAL ERROR: Boundary conditions missing"):
+    with pytest.raises(KeyError, match="FATAL ERROR: Boundary conditions missing from state and input_data"):
         _apply_initial_boundary_conditions(state)
 
-    with pytest.raises(KeyError, match="FATAL ERROR: Boundary conditions configuration missing"):
+    with pytest.raises(KeyError, match="FATAL ERROR: Boundary conditions configuration missing from SolverState or input_data"):
         _convert_boundary_conditions(state)
 
 
@@ -96,7 +96,7 @@ def test_boundary_condition_item_missing_keys(valid_input_data):
     or attributes. Malformed items raise a KeyError.
     """
     state = SolverState(valid_input_data, {})
-    state.boundary_conditions = [{"location": "x_min"}]  # missing 'type'
+    state.input_data["boundary_conditions"] = [{"location": "x_min"}]  # missing 'type'
 
     with pytest.raises(KeyError, match="missing required 'location' or 'type' key"):
         _apply_initial_boundary_conditions(state)
@@ -120,7 +120,7 @@ def test_non_dict_boundary_condition_object_parsing(valid_input_data):
     incomplete_bc = MockBCObject("x_min", "inflow")
     del incomplete_bc.p
     
-    state.boundary_conditions = [incomplete_bc]
+    state.input_data["boundary_conditions"] = [incomplete_bc]
 
     with pytest.raises(KeyError, match="missing required attribute 'p'"):
         _apply_initial_boundary_conditions(state)
@@ -131,7 +131,7 @@ def test_inflow_missing_values_validation(valid_input_data):
     Inflow or prescribed boundary types must contain complete momentum and pressure vectors.
     """
     state = SolverState(valid_input_data, {})
-    state.boundary_conditions = [{
+    state.input_data["boundary_conditions"] = [{
         "location": "x_min",
         "type": "inflow",
         "values": {"u": 1.0, "v": 0.0, "w": 0.0}  # missing 'p'
@@ -153,7 +153,7 @@ def test_all_boundary_faces_spatial_coverage(valid_input_data):
     state.fields = np.zeros((4, 3, 3, 3))
 
     faces = ["x_max", "xmax", "y_min", "ymin", "y_max", "ymax", "z_max", "zmax"]
-    state.boundary_conditions = [
+    state.input_data["boundary_conditions"] = [
         {
             "location": face,
             "type": "inflow",
@@ -202,8 +202,7 @@ def test_input_data_synchronization_and_dt_fallbacks(valid_input_data):
     state.current_iteration = 0
     state.current_time = 0.0
 
-    if hasattr(state, "dt"):
-        delattr(state, "dt")
+    state.dt = None  # Set to None to trigger simulation_parameters fallback
 
     state.input_data = {
         "grid": {"dx": 1.0, "dy": 1.0, "dz": 1.0},
@@ -254,7 +253,9 @@ def test_solver_missing_sync_fields_runtime_error(valid_input_data):
         }]
     }
 
-    faulty_solver = MagicMock(spec=[])
+    faulty_solver = MagicMock()
+    faulty_solver.step = MagicMock(return_value=None)
+    del faulty_solver.sync_fields  # Ensure sync_fields is missing while step exists
     
     with (
         patch("navier_stokes_cpp.NavierStokesSolver", return_value=faulty_solver),
@@ -273,8 +274,7 @@ def test_dt_missing_key_error(valid_input_data):
     state.w = np.zeros((2, 2, 2))
     state.p = np.zeros((2, 2, 2))
     state.fields = np.zeros((4, 2, 2, 2))
-    if hasattr(state, "dt"):
-        delattr(state, "dt")
+    state.dt = None  # Set to None to trigger KeyError check
     
     state.input_data = {
         "grid": {"dx": 1.0, "dy": 1.0, "dz": 1.0},
@@ -287,6 +287,7 @@ def test_dt_missing_key_error(valid_input_data):
     }
 
     mock_solver = MagicMock()
+    mock_solver.step = MagicMock(return_value=None)
     mock_solver.sync_fields = lambda st: None
 
     with (
