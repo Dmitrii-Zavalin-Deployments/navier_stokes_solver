@@ -17,6 +17,9 @@
  *     mask[idx] = 1 -> Fluid cell (subject to flow equations and projection steps)
  *     mask[idx] = 0 -> Solid cell (clamped to zero velocity)
  *     mask[idx] = -1 -> Wall boundary cell (clamped to zero velocity)
+ * 
+ * Additionally, a pressure Dirichlet anchor boundary is supplied to the boundary 
+ * condition list to satisfy the PressurePoissonSolver singularity check.
  * ---------------------------------------------------------------------------------
  */
 
@@ -112,6 +115,13 @@ TEST(SolidMaskingTest, InternalSolidObjectMasking) {
     bc_wall.v_val = 0.0;
     bc_wall.w_val = 0.0;
     bc_list.push_back(bc_wall);
+
+    // Configure required Dirichlet pressure anchor to satisfy solver validation checks
+    BoundaryCondition bc_pressure;
+    bc_pressure.location = "x_max";
+    bc_pressure.type = "pressure";
+    bc_pressure.scalar_p = 0.0;
+    bc_list.push_back(bc_pressure);
 
     SolverConfig config{2000, 1e-8, density};
     NavierStokesOrchestrator orchestrator(dims, config);

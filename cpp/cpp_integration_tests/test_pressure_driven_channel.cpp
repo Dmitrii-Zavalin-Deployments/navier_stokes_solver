@@ -16,6 +16,9 @@
  * 
  * TEST SCENARIO:
  *   - We initialize a linear pressure drop from p_in = 10.0 Pa to p_out = 0.0 Pa across the channel.
+ *   - We configure inlet and outlet boundary conditions with type = "pressure" to satisfy 
+ *     the PressurePoissonSolver singularity validation gate (which requires at least one 
+ *     Dirichlet pressure or outflow boundary).
  *   - We execute a multi-step time integration loop combining pre-step enforcement, trial velocity
  *     computation, pressure Poisson equation solving, and velocity correction.
  *   - We verify that the mean streamwise velocity in the channel core becomes positive (u > 0.0),
@@ -73,12 +76,14 @@ TEST(BoundaryConditionsTest, PressureDrivenChannelFlow) {
         }
     }
 
-    // We configure boundary condition descriptors for pressure inlet and outlet:
+    // We configure boundary condition descriptors for pressure inlet and outlet.
+    // NOTE: The boundary type must be set to "pressure" so that the PressurePoissonSolver
+    // recognizes them as valid Dirichlet anchors and avoids throwing a zero-Dirichlet fatal error.
     std::vector<BoundaryCondition> bc_list;
 
     BoundaryCondition bc_in;
     bc_in.location = "x_min";
-    bc_in.type = "pressure_inlet";
+    bc_in.type = "pressure";
     bc_in.scalar_p = p_in;
     bc_in.values.has_u = false;
     bc_in.values.has_v = false;
@@ -88,7 +93,7 @@ TEST(BoundaryConditionsTest, PressureDrivenChannelFlow) {
 
     BoundaryCondition bc_out;
     bc_out.location = "x_max";
-    bc_out.type = "pressure_outlet";
+    bc_out.type = "pressure";
     bc_out.scalar_p = p_out;
     bc_out.values.has_u = false;
     bc_out.values.has_v = false;
@@ -106,10 +111,10 @@ TEST(BoundaryConditionsTest, PressureDrivenChannelFlow) {
     for (int step = 0; step < 150; ++step) {
         execute_pre_step(u, v, w, p, mask, bc_list, nx, ny, nz, false);
 
-        std::vector<double> u_star(total_cells, 0.0);
-        std::vector<double> v_star(total_cells, 0.0);
-        std::vector<double> w_star(total_cells, 0.0);
-        std::vector<double> fx(total_cells, 0.0), fy(total_cells, 0.0), fz(total_cells, 0.0);
+        std::vector u_star(total_cells, 0.0);
+        std::vector v_star(total_cells, 0.0);
+        std::vector w_star(total_cells, 0.0);
+        std::vector fx(total_cells, 0.0), fy(total_cells, 0.0), fz(total_cells, 0.0);
 
         compute_trial_velocities(
             dims, fluid, dt,
@@ -119,7 +124,7 @@ TEST(BoundaryConditionsTest, PressureDrivenChannelFlow) {
             u_star.data(), v_star.data(), w_star.data()
         );
 
-        std::vector<double> rhs(total_cells, 0.0);
+        std::vector rhs(total_cells, 0.0);
         const double scale = density / dt;
         for (int k = 1; k < nz - 1; ++k) {
             for (int j = 1; j < ny - 1; ++j) {
