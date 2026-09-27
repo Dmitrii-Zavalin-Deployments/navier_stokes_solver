@@ -60,9 +60,6 @@ NavierStokesOrchestrator::NavierStokesOrchestrator(const GridDimensions& dims, c
       w_star_(total_cells_, 0.0),
       rhs_(total_cells_, 0.0),
       cold_start_(true) {
-    if (total_cells_ == 0) {
-        throw std::invalid_argument("GridDimensions result in zero total cells.");
-    }
 }
 
 void NavierStokesOrchestrator::step(
