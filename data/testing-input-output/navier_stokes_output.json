@@ -19,8 +19,8 @@
       "viscosity": 0.01
     },
     "simulation_parameters": {
-      "time_step": 0.1,
-      "total_time": 1.0,
+      "time_step": 0.03,
+      "total_time": 0.3,
       "output_interval": 5
     },
     "boundary_conditions": [
@@ -332,7 +332,7 @@
     "poisson_tolerance": 1e-08
   },
   "results": {
-    "status": "FAILURE",
-    "zip_filename": "NOT_APPLICABLE"
+    "status": "SUCCESS",
+    "zip_filename": "20260927_155036.zip"
   }
 }
