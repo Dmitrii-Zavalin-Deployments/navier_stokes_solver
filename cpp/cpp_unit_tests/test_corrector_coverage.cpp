@@ -34,7 +34,7 @@ TEST(CorrectorErrorTest, InvalidGeometryDimensions) {
 
     // Expecting an invalid_argument exception due to grid dimensions below 3x3x3.
     EXPECT_THROW({
-        solve_corrector_parallel(
+        navier_stokes_solver::solve_corrector_parallel(
             u, v, w, u_star, v_star, w_star, p, mask,
             nx, ny, nz, 0.1, 0.1, 0.1, 0.01, 1000.0
         );
@@ -66,7 +66,7 @@ TEST(CorrectorErrorTest, InvalidGridSpacing) {
 
     // Expecting an invalid_argument exception when dx is non-positive.
     EXPECT_THROW({
-        solve_corrector_parallel(
+        navier_stokes_solver::solve_corrector_parallel(
             u, v, w, u_star, v_star, w_star, p, mask,
             nx, ny, nz, 0.0, 0.1, 0.1, 0.01, 1000.0
         );
@@ -97,7 +97,7 @@ TEST(CorrectorErrorTest, InvalidPhysicsParameters) {
 
     // Expecting an invalid_argument exception when dt <= 0.0.
     EXPECT_THROW({
-        solve_corrector_parallel(
+        navier_stokes_solver::solve_corrector_parallel(
             u, v, w, u_star, v_star, w_star, p, mask,
             nx, ny, nz, 0.1, 0.1, 0.1, 0.0, 1000.0
         );
@@ -105,7 +105,7 @@ TEST(CorrectorErrorTest, InvalidPhysicsParameters) {
 
     // Expecting an invalid_argument exception when rho <= 0.0.
     EXPECT_THROW({
-        solve_corrector_parallel(
+        navier_stokes_solver::solve_corrector_parallel(
             u, v, w, u_star, v_star, w_star, p, mask,
             nx, ny, nz, 0.1, 0.1, 0.1, 0.01, -500.0
         );
@@ -136,7 +136,7 @@ TEST(CorrectorErrorTest, VectorSizeMismatch) {
     std::vector<int> mask(total_cells, 1);
 
     EXPECT_THROW({
-        solve_corrector_parallel(
+        navier_stokes_solver::solve_corrector_parallel(
             u, v, w, u_star, v_star, w_star, p, mask,
             nx, ny, nz, 0.1, 0.1, 0.1, 0.01, 1000.0
         );
@@ -170,7 +170,7 @@ TEST(CorrectorErrorTest, NonFiniteVelocityExplosion) {
     p[0] = NAN;
 
     EXPECT_THROW({
-        solve_corrector_parallel(
+        navier_stokes_solver::solve_corrector_parallel(
             u, v, w, u_star, v_star, w_star, p, mask,
             nx, ny, nz, 0.1, 0.1, 0.1, 0.01, 1000.0
         );
