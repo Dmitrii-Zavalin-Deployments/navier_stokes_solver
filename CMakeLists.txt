@@ -72,10 +72,6 @@ add_test(NAME UnitTests COMMAND unit_tests)
 # ---------------------------------------------------------------------------
 # Copy input data required by integration tests into the build tree
 
-
-
-
-
 # Plane Poiseuille Flow Integration Test
 add_executable(test_plane_poiseuille_flow
     cpp/cpp_integration_tests/test_plane_poiseuille_flow.cpp
@@ -89,10 +85,6 @@ target_link_libraries(test_plane_poiseuille_flow
         Threads::Threads
 )
 add_test(NAME PlanePoiseuilleFlowTest COMMAND test_plane_poiseuille_flow)
-
-
-
-
 
 # Pressure-Driven Channel Flow Integration Test
 add_executable(test_pressure_driven_channel
