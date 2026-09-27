@@ -146,9 +146,8 @@ TEST(CorrectorErrorTest, VectorSizeMismatch) {
 // =========================================================================
 // SECTION 5: Non-Finite Velocity Projection & Loop Error Handling
 // =========================================================================
-// WHAT: We test that passing valid/finite initial inputs that result in non-finite 
-//       velocity projections inside the parallel loop successfully trigger the 
-//       forensic audit and execute lines 218-222.
+// WHAT: We test that passing valid finite inputs that overflow to Infinity during 
+//       velocity updates inside the parallel loop successfully trigger the forensic audit.
 // WHY:  Ensures the runtime error handling block at the end of the solver functions correctly.
 
 TEST(CorrectorErrorTest, NonFiniteVelocityExplosion) {
@@ -157,23 +156,26 @@ TEST(CorrectorErrorTest, NonFiniteVelocityExplosion) {
     int nz = 3;
     size_t total_cells = static_cast<size_t>(nx) * ny * nz;
     
-    std::vector<double> u(total_cells, 0.0);
+std::vector<double> u(total_cells, 0.0);
     std::vector<double> v(total_cells, 0.0);
     std::vector<double> w(total_cells, 0.0);
     std::vector<double> u_star(total_cells, 0.0);
     std::vector<double> v_star(total_cells, 0.0);
     std::vector<double> w_star(total_cells, 0.0);
-    std::vector<double> p(total_cells, 0.0);
+    
+    // Finite inputs passing the initial audit, but structured to overflow during gradient calculation
+    std::vector p(total_cells, 0.0);
+    p[0] = -1.0e150;
+    p[2] =  1.0e150;
     std::vector<int> mask(total_cells, 1);
 
-    // Using an extremely small dx causes idx_2inv (0.5 / dx) to overflow to Infinity.
-    // Combined with the pressure gradient, this generates an infinite velocity update
-    // inside the parallel loop, directly triggering lines 218-222.
-    double dx = 1.0e-308;
+    // dx is positive (bypassing initial check), but small enough that multiplying 
+    // by the massive pressure difference overflows double precision to Infinity.
+    double dx = 1.0e-160;
     double dy = 0.1;
     double dz = 0.1;
     double dt = 0.01;
-    double rho = 1000.0;
+    double rho = 1.0;
 
     EXPECT_THROW({
         navier_stokes_solver::solve_corrector_parallel(
