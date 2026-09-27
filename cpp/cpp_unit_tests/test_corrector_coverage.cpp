@@ -156,25 +156,28 @@ TEST(CorrectorErrorTest, NonFiniteVelocityExplosion) {
     int nz = 3;
     size_t total_cells = static_cast<size_t>(nx) * ny * nz;
     
-std::vector<double> u(total_cells, 0.0);
+    std::vector<double> u(total_cells, 0.0);
     std::vector<double> v(total_cells, 0.0);
     std::vector<double> w(total_cells, 0.0);
     std::vector<double> u_star(total_cells, 0.0);
     std::vector<double> v_star(total_cells, 0.0);
     std::vector<double> w_star(total_cells, 0.0);
-    
-    // Finite inputs passing the initial audit, but structured to overflow during gradient calculation
-    std::vector p(total_cells, 0.0);
-    p[0] = -1.0e150;
-    p[2] =  1.0e150;
+
+    std::vector<double> p(total_cells, 0.0);
     std::vector<int> mask(total_cells, 1);
 
-    // dx is positive (bypassing initial check), but small enough that multiplying 
-    // by the massive pressure difference overflows double precision to Infinity.
-    double dx = 1.0e-160;
-    double dy = 0.1;
-    double dz = 0.1;
-    double dt = 0.01;
+    // For nx = ny = nz = 3, the only interior cell is (1,1,1).
+    // Assuming row-major get_flat_index(i,j,k,nx,ny):
+    // center = 13, west = 12, east = 14.
+    p[12] = -1.0e150;  // west neighbor
+    p[14] =  1.0e150;  // east neighbor
+
+    // dx is positive (bypassing initial check), but small enough that multiplying
+    // by the massive pressure difference can overflow double precision to Infinity.
+    double dx  = 1.0e-160;
+    double dy  = 0.1;
+    double dz  = 0.1;
+    double dt  = 0.01;
     double rho = 1.0;
 
     EXPECT_THROW({
