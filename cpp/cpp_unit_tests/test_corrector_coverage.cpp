@@ -167,7 +167,7 @@ TEST(CorrectorErrorTest, NonFiniteVelocityExplosion) {
     std::vector<int> mask(total_cells, 1);
 
     // Inject NaN into the pressure field to force a non-finite velocity evaluation
-    p[0] = NAN;
+    p[1 + nx + nx * ny] = NAN;
 
     EXPECT_THROW({
         navier_stokes_solver::solve_corrector_parallel(
