@@ -25,7 +25,7 @@
 using namespace navier_stokes_solver;
 
 /**
- * @section Helper — Construct a minimal GridConfig for a 3×3×3 domain.
+ * @section Helper — Construct a minimal RhieChowInterpolator::GridConfig for a 3×3×3 domain.
  *
  * Rhie–Chow interpolation requires:
  *   - nx, ny, nz
@@ -33,8 +33,8 @@ using namespace navier_stokes_solver;
  *
  * We use unit spacing for simplicity.
  */
-static GridConfig make_grid_3x3x3() {
-    GridConfig cfg;
+static RhieChowInterpolator::GridConfig make_grid_3x3x3() {
+    RhieChowInterpolator::GridConfig cfg;
     cfg.nx = 3;
     cfg.ny = 3;
     cfg.nz = 3;
@@ -77,7 +77,7 @@ static std::vector<int> make_fluid_mask(size_t N) {
 TEST(RhieChowCoverage, MaskSizeMismatchThrowsInvalidArgument) {
 
     // --- Grid configuration: 3×3×3 domain
-    GridConfig cfg = make_grid_3x3x3();
+    RhieChowInterpolator::GridConfig cfg = make_grid_3x3x3();
     const size_t total_cells =
         static_cast<size_t>(cfg.nx) * cfg.ny * cfg.nz;
 
@@ -123,7 +123,7 @@ TEST(RhieChowCoverage, MaskSizeMismatchThrowsInvalidArgument) {
  */
 TEST(RhieChowCoverage, CorrectMaskSizeDoesNotThrow) {
 
-    GridConfig cfg = make_grid_3x3x3();
+    RhieChowInterpolator::GridConfig cfg = make_grid_3x3x3();
     const size_t total_cells =
         static_cast<size_t>(cfg.nx) * cfg.ny * cfg.nz;
 
