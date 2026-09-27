@@ -148,12 +148,13 @@ static BoundaryCondition make_bc(
  * For free-slip BCs, the code applies:
  *
  *   - i == 0 or i == nx-1 → u_new = 0.0
- *   - j interior          → v_new = values.v
- *   - k interior          → w_new = values.w
+ *   - j == 0 or j == ny-1 → v_new = 0.0, else v_new = values.v
+ *   - k == 0 or k == nz-1 → w_new = 0.0, else w_new = values.w
  *   - p_new               → values.p (if non-zero)
  *
  * We place a free-slip BC on x_min and verify the resulting field values
- * on boundary and interior cells with i == 0.
+ * on all cells with i == 0, distinguishing boundary (j,k on edges)
+ * from interior (j,k in the middle).
  */
 TEST(SimulationPrestepCoverage, FreeSlipDirectionalBranches) {
 
@@ -163,43 +164,41 @@ TEST(SimulationPrestepCoverage, FreeSlipDirectionalBranches) {
     std::vector<int> mask;
     make_fields_3x3x3(u, v, w, p, mask);
 
-    // free-slip BC with explicit values
     BoundaryCondition bc = make_bc(
-        /*type=*/"free-slip",
-        /*location=*/"x_min",
-        /*u=*/5.0, /*v=*/7.0, /*w=*/9.0, /*p=*/11.0
+        "free-slip",
+        "x_min",
+        5.0, 7.0, 9.0, 11.0
     );
 
     std::vector<BoundaryCondition> bc_list = { bc };
 
-    execute_pre_step(
-        u, v, w, p,
-        mask,
-        bc_list,
-        nx, ny, nz,
-        /*cold_start=*/false
-    );
+    execute_pre_step(u, v, w, p, mask, bc_list, nx, ny, nz, false);
 
-    // Boundary cells (j==0 or j==ny-1 or k==0 or k==nz-1) → v,w forced to 0.0
     for (int k = 0; k < nz; ++k) {
         for (int j = 0; j < ny; ++j) {
+
             size_t idx = static_cast<size_t>(get_flat_index(0, j, k, nx, ny));
-            EXPECT_DOUBLE_EQ(u[idx], 0.0);
-            EXPECT_DOUBLE_EQ(p[idx], 11.0);
-            if (j == 0 || j == ny - 1 || k == 0 || k == nz - 1) {
-                EXPECT_DOUBLE_EQ(v[idx], 0.0);
-                EXPECT_DOUBLE_EQ(w[idx], 0.0);
+
+            // Normal velocity always zero at x_min
+            ASSERT_DOUBLE_EQ(u[idx], 0.0);
+
+            // Pressure always set
+            ASSERT_DOUBLE_EQ(p[idx], 11.0);
+
+            // Tangential velocity v
+            if (j == 0 || j == ny - 1) {
+                ASSERT_DOUBLE_EQ(v[idx], 0.0);
+            } else {
+                ASSERT_DOUBLE_EQ(v[idx], 7.0);
+            }
+
+            // Tangential velocity w
+            if (k == 0 || k == nz - 1) {
+                ASSERT_DOUBLE_EQ(w[idx], 0.0);
+            } else {
+                ASSERT_DOUBLE_EQ(w[idx], 9.0);
             }
         }
-    }
-
-    // Interior cell (i=0, j=1, k=1) → v,w take explicit values
-    {
-        size_t idx = static_cast<size_t>(get_flat_index(0, 1, 1, nx, ny));
-        EXPECT_DOUBLE_EQ(u[idx], 0.0);
-        EXPECT_DOUBLE_EQ(v[idx], 7.0);
-        EXPECT_DOUBLE_EQ(w[idx], 9.0);
-        EXPECT_DOUBLE_EQ(p[idx], 11.0);
     }
 }
 
