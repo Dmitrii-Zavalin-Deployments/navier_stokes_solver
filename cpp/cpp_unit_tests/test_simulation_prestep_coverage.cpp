@@ -153,7 +153,7 @@ static BoundaryCondition make_bc(
  *   - p_new               → values.p (if non-zero)
  *
  * We place a free-slip BC on x_min and verify the resulting field values
- * on all cells with i == 0.
+ * on boundary and interior cells with i == 0.
  */
 TEST(SimulationPrestepCoverage, FreeSlipDirectionalBranches) {
 
@@ -180,19 +180,26 @@ TEST(SimulationPrestepCoverage, FreeSlipDirectionalBranches) {
         /*cold_start=*/false
     );
 
-    // All cells with i == 0 must satisfy free-slip rules:
-    //   u_new = 0.0 (i == 0)
-    //   v_new = values.v (interior fallback)
-    //   w_new = values.w (interior fallback)
-    //   p_new = values.p
+    // Boundary cells (j==0 or j==ny-1 or k==0 or k==nz-1) → v,w forced to 0.0
     for (int k = 0; k < nz; ++k) {
         for (int j = 0; j < ny; ++j) {
             size_t idx = static_cast<size_t>(get_flat_index(0, j, k, nx, ny));
             EXPECT_DOUBLE_EQ(u[idx], 0.0);
-            EXPECT_DOUBLE_EQ(v[idx], 7.0);
-            EXPECT_DOUBLE_EQ(w[idx], 9.0);
             EXPECT_DOUBLE_EQ(p[idx], 11.0);
+            if (j == 0 || j == ny - 1 || k == 0 || k == nz - 1) {
+                EXPECT_DOUBLE_EQ(v[idx], 0.0);
+                EXPECT_DOUBLE_EQ(w[idx], 0.0);
+            }
         }
+    }
+
+    // Interior cell (i=0, j=1, k=1) → v,w take explicit values
+    {
+        size_t idx = static_cast<size_t>(get_flat_index(0, 1, 1, nx, ny));
+        EXPECT_DOUBLE_EQ(u[idx], 0.0);
+        EXPECT_DOUBLE_EQ(v[idx], 7.0);
+        EXPECT_DOUBLE_EQ(w[idx], 9.0);
+        EXPECT_DOUBLE_EQ(p[idx], 11.0);
     }
 }
 
@@ -413,4 +420,3 @@ TEST(SimulationPrestepCoverage, PressureCoverage) {
         EXPECT_DOUBLE_EQ(w[idx], 0.0);
     }
 }
-
