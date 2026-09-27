@@ -147,7 +147,7 @@ def test_invalid_gravity_vector_size():
 
     nx, ny, nz = 8, 8, 8
     state = DummySolverState(nx=nx, ny=ny, nz=nz)
-    state.external_forces["gravity_vector"] = [0.0, -9.81]
+    state.external_forces["gravity_vector"] = [0.0, -9.81, 0.0, 1.0]  # Size 4 triggers size mismatch
     solver = navier_stokes_cpp.NavierStokesSolver(state)
 
     with pytest.raises((TypeError, ValueError, RuntimeError)):
