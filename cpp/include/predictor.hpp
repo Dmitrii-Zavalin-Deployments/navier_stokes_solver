@@ -31,6 +31,26 @@ struct FluidProperties {
 };
 
 /**
+ * @brief Validation gate for predictor inputs.
+ *
+ * Performs:
+ *   - Null pointer checks
+ *   - Mask size validation
+ *   - Grid geometry validation (>= 3×3×3, positive spacing)
+ *   - Temporal parameter validation (dt > 0)
+ *   - Physical parameter validation (nu >= 0, density > 0)
+ */
+void validate_inputs(
+    const GridDimensions& dims,
+    const FluidProperties& fluid,
+    double dt,
+    const double* u, const double* v, const double* w,
+    const double* fx, const double* fy, const double* fz,
+    const std::vector<int>& mask,
+    const double* u_star, const double* v_star, const double* w_star
+);
+
+/**
  * @brief Computes the trial velocity field (u*, v*, w*) using explicit
  *        temporal integration of the momentum equation.
  *
