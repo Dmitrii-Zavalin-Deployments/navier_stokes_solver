@@ -95,9 +95,6 @@
             0.0
         ]
     },
-    "domain_configuration": {
-        "type": "INTERNAL"
-    },
     "physical_constraints": {
         "min_velocity": -100.0,
         "max_velocity": 100.0,
