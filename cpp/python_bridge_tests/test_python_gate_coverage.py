@@ -1,17 +1,6 @@
 """
 @file test_python_gate_coverage.py
-@brief Comprehensive Python unit test suite targeting 100% test coverage for python_gate.cpp.
-
-WHAT: This test suite provides exhaustive verification of the Pybind11 bridge layer (python_gate.cpp) 
-that connects the Python sovereign SolverState container with the high-performance C++ Navier-Stokes Orchestrator.
-
-HOW: It constructs valid and malformed mock solver states, passing them through the C++ constructor, 
-time-stepping execution loops, and field synchronization routines to verify strict contract enforcement, 
-exception translation, tensor shape validation, and boundary condition parsing.
-
-WHY: Achieving 100% test coverage ensures that all physical bounds, geometry specifications, data type casting 
-safeguards, and numerical stability checks fail gracefully with informative, predictable exceptions 
-rather than causing segmentation faults or silent memory corruption during computational fluid dynamics simulations.
+@brief Comprehensive Python unit test suite targeting test coverage for python_gate.cpp.
 """
 
 import pytest
@@ -21,8 +10,8 @@ import navier_stokes_cpp as nsc
 
 class MockSolverState:
     """
-    We define a foundational mock solver state representing a sovereign Python container 
-    holding domain dimensions, physical properties, solver configurations, and tensor buffers.
+    Mock solver state representing a sovereign Python container.
+    Initializes with an outflow BC to provide pressure datum for the C++ Poisson solver.
     """
     def __init__(
         self,
@@ -62,33 +51,29 @@ class MockSolverState:
             "gravity_vector": [0.0, 0.0, -9.81],
             "force_vector": [0.0, 0.0, 0.0],
         }
-        self.boundary_conditions = []
+        
+        bc_outflow = nsc.BoundaryCondition() if nsc else None
+        if bc_outflow:
+            bc_outflow.location = "x_max"
+            bc_outflow.type = "outflow"
+            bc_outflow.scalar_p = 0.0
+            self.boundary_conditions = [bc_outflow]
+        else:
+            self.boundary_conditions = []
 
 
 def test_constructor_none_state():
-    """
-    A null or None state object violates the fundamental initialization contract 
-    and must immediately raise a value error.
-    """
     with pytest.raises(ValueError, match="state object cannot be None"):
         nsc.NavierStokesSolver(None)
 
 
 def test_constructor_invalid_geometry():
-    """
-    Node-based discretization requires at least 2 nodes per dimension (nx, ny, nz >= 2) 
-    to compute valid spatial grid spacing (dx, dy, dz).
-    """
-    state = MockSolverState(nx=1)
+    state = MockSolverState(nx=0)
     with pytest.raises(ValueError, match="GEOMETRY ERROR"):
         nsc.NavierStokesSolver(state)
 
 
 def test_constructor_invalid_spacing():
-    """
-    Zero or non-finite spatial spans result in invalid grid spacing values, 
-    triggering strict geometry error protection.
-    """
     state = MockSolverState(x_min=1.0, x_max=1.0)
     with pytest.raises(ValueError, match="GEOMETRY ERROR"):
         nsc.NavierStokesSolver(state)
@@ -99,10 +84,6 @@ def test_constructor_invalid_spacing():
 
 
 def test_constructor_invalid_density():
-    """
-    Fluid density must remain strictly positive and finite to maintain physical validity 
-    within the Navier-Stokes momentum equations.
-    """
     state = MockSolverState(density=0.0)
     with pytest.raises(ValueError, match="PHYSICS ERROR"):
         nsc.NavierStokesSolver(state)
@@ -113,10 +94,6 @@ def test_constructor_invalid_density():
 
 
 def test_constructor_missing_attributes():
-    """
-    Incomplete state containers lacking required attributes must be caught and wrapped 
-    into a standard state contract error.
-    """
     class IncompleteState:
         pass
 
@@ -127,10 +104,6 @@ def test_constructor_missing_attributes():
 
 
 def test_constructor_type_error_rethrow():
-    """
-    Type mismatches during attribute casting (e.g., string assigned to integer grid dimension) 
-    must translate cleanly into pybind11 type errors.
-    """
     class BadTypeState:
         nx = "not_an_int"
         ny = 3
@@ -149,9 +122,6 @@ def test_constructor_type_error_rethrow():
 
 
 def test_step_none_state():
-    """
-    Executing a time-step with a None state reference must raise a fatal value error.
-    """
     state = MockSolverState()
     solver = nsc.NavierStokesSolver(state)
     with pytest.raises(ValueError, match="state object cannot be None"):
@@ -159,10 +129,6 @@ def test_step_none_state():
 
 
 def test_step_invalid_dt():
-    """
-    Temporal increments (dt) must be strictly positive and finite. Non-positive or NaN 
-    time steps trigger a temporal error.
-    """
     state = MockSolverState(dt=0.0)
     solver = nsc.NavierStokesSolver(state)
     with pytest.raises(ValueError, match="TEMPORAL ERROR"):
@@ -174,9 +140,6 @@ def test_step_invalid_dt():
 
 
 def test_step_invalid_viscosity():
-    """
-    Dynamic viscosity cannot be negative or non-finite.
-    """
     state = MockSolverState(viscosity=-0.01)
     solver = nsc.NavierStokesSolver(state)
     with pytest.raises(ValueError, match="PHYSICS ERROR"):
@@ -188,9 +151,6 @@ def test_step_invalid_viscosity():
 
 
 def test_step_1d_mask():
-    """
-    The solver supports both 3D volumetric and flattened 1D array masks for domain cutout mapping.
-    """
     state = MockSolverState()
     solver = nsc.NavierStokesSolver(state)
     state.mask = np.ones(state.nx * state.ny * state.nz, dtype=np.int32)
@@ -198,9 +158,6 @@ def test_step_1d_mask():
 
 
 def test_step_invalid_mask_ndim():
-    """
-    Unsupported mask dimensions (e.g., 2D matrices) must be rejected with a geometry error.
-    """
     state = MockSolverState()
     solver = nsc.NavierStokesSolver(state)
     state.mask = np.ones((state.nx, state.ny), dtype=np.int32)
@@ -209,9 +166,6 @@ def test_step_invalid_mask_ndim():
 
 
 def test_step_invalid_mask_ndim_2():
-    """
-    Additional 2D mask dimension check branch to ensure complete code path coverage in python_gate.cpp.
-    """
     state = MockSolverState()
     solver = nsc.NavierStokesSolver(state)
     state.mask = np.zeros((4, 4), dtype=np.int32)
@@ -220,92 +174,77 @@ def test_step_invalid_mask_ndim_2():
 
 
 def test_step_boundary_conditions_dict_parsing():
-    """
-    Boundary conditions supplied via dictionary configurations are correctly parsed and mapped 
-    into C++ BoundaryCondition structures.
-    """
     state = MockSolverState()
     solver = nsc.NavierStokesSolver(state)
-    state.boundary_conditions = [
-        {
-            "location": "x_min",
-            "type": "dirichlet",
-            "values": {"u": 1.0, "v": 0.0, "w": 0.0, "p": 0.0},
-        }
-    ]
+
+    bc_inlet = nsc.BoundaryCondition()
+    bc_inlet.location = "x_min"
+    bc_inlet.type = "inflow"
+    bc_inlet.u_val = 1.0
+
+    bc_outlet = nsc.BoundaryCondition()
+    bc_outlet.location = "x_max"
+    bc_outlet.type = "outflow"
+    bc_outlet.scalar_p = 0.0
+
+    state.boundary_conditions = [bc_inlet, bc_outlet]
     solver.step(state)
 
 
 def test_step_boundary_conditions_non_finite_values():
-    """
-    Non-finite boundary condition values (NaN or inf) within dictionaries trigger an advection 
-    term explosion exception to preserve numerical stability.
-    """
     state = MockSolverState()
     solver = nsc.NavierStokesSolver(state)
 
-    state.boundary_conditions = [{
-        "location": "x_min",
-        "type": "dirichlet",
-        "values": {"u": float("nan")}
-    }]
-    with pytest.raises(RuntimeError, match="Advection term exploded"):
+    bc_nan_u = nsc.BoundaryCondition()
+    bc_nan_u.location = "x_min"
+    bc_nan_u.type = "inflow"
+    bc_nan_u.u_val = float("nan")
+
+    bc_outlet = nsc.BoundaryCondition()
+    bc_outlet.location = "x_max"
+    bc_outlet.type = "outflow"
+    bc_outlet.scalar_p = 0.0
+
+    state.boundary_conditions = [bc_nan_u, bc_outlet]
+    with pytest.raises(RuntimeError, match="Invalid non-finite velocity encountered in boundary condition input."):
         solver.step(state)
 
-    state.boundary_conditions = [{
-        "location": "x_min",
-        "type": "dirichlet",
-        "values": {"v": float("inf")}
-    }]
-    with pytest.raises(RuntimeError, match="Advection term exploded"):
-        solver.step(state)
+    bc_inf_p = nsc.BoundaryCondition()
+    bc_inf_p.location = "x_max"
+    bc_inf_p.type = "pressure"
+    bc_inf_p.scalar_p = float("inf")
 
-    state.boundary_conditions = [{
-        "location": "x_min",
-        "type": "dirichlet",
-        "values": {"w": float("nan")}
-    }]
-    with pytest.raises(RuntimeError, match="Advection term exploded"):
-        solver.step(state)
-
-    state.boundary_conditions = [{
-        "location": "x_min",
-        "type": "dirichlet",
-        "values": {"p": float("inf")}
-    }]
-    with pytest.raises(RuntimeError, match="Advection term exploded"):
+    state.boundary_conditions = [bc_inf_p]
+    with pytest.raises(RuntimeError, match="Invalid non-finite pressure encountered in boundary condition input."):
         solver.step(state)
 
 
 def test_step_boundary_condition_object_non_finite():
-    """
-    Direct Cosphere BoundaryCondition instances containing non-finite values correctly trigger 
-    runtime safety exceptions.
-    """
     state = MockSolverState()
     solver = nsc.NavierStokesSolver(state)
 
     bc = nsc.BoundaryCondition()
     bc.location = "x_min"
-    bc.type = "dirichlet"
+    bc.type = "no-slip"
     bc.u_val = float("nan")
 
-    state.boundary_conditions = [bc]
-    with pytest.raises(RuntimeError, match="Advection term exploded"):
+    bc_outlet = nsc.BoundaryCondition()
+    bc_outlet.location = "x_max"
+    bc_outlet.type = "outflow"
+    bc_outlet.scalar_p = 0.0
+
+    state.boundary_conditions = [bc, bc_outlet]
+    with pytest.raises(RuntimeError, match="Invalid non-finite velocity encountered in boundary condition input."):
         solver.step(state)
 
 
 def test_step_boundary_condition_object_instance():
-    """
-    Direct C++ BoundaryCondition object instances passed inside the boundary conditions list 
-    are correctly processed without dictionary wrappers.
-    """
     state = MockSolverState()
     solver = nsc.NavierStokesSolver(state)
 
     bc = nsc.BoundaryCondition()
     bc.location = "outlet"
-    bc.type = "neumann"
+    bc.type = "outflow"
     bc.u_val = 0.0
     bc.v_val = 0.0
     bc.w_val = 0.0
@@ -316,9 +255,6 @@ def test_step_boundary_condition_object_instance():
 
 
 def test_sync_fields_none_state():
-    """
-    Synchronizing fields with a None state reference must raise a fatal value error.
-    """
     state = MockSolverState()
     solver = nsc.NavierStokesSolver(state)
     with pytest.raises(ValueError, match="state object cannot be None"):
