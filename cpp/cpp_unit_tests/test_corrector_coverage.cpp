@@ -144,12 +144,12 @@ TEST(CorrectorErrorTest, VectorSizeMismatch) {
 }
 
 // =========================================================================
-// SECTION 5: Non-Finite Velocity Projection & Explosion Handling
+// SECTION 5: Non-Finite Velocity Projection & Loop Error Handling
 // =========================================================================
-// WHAT: We test that injecting non-finite pressure or velocity values into the fields 
-//       triggers the forensic numerical audit and throws a runtime error.
-// WHY:  Ensures that runaway numerical instabilities or floating-point explosions 
-//       are safely intercepted rather than propagating silently.
+// WHAT: We test that passing valid/finite initial inputs that result in non-finite 
+//       velocity projections inside the parallel loop successfully trigger the 
+//       forensic audit and execute lines 218-222.
+// WHY:  Ensures the runtime error handling block at the end of the solver functions correctly.
 
 TEST(CorrectorErrorTest, NonFiniteVelocityExplosion) {
     int nx = 3;
@@ -166,13 +166,19 @@ TEST(CorrectorErrorTest, NonFiniteVelocityExplosion) {
     std::vector<double> p(total_cells, 0.0);
     std::vector<int> mask(total_cells, 1);
 
-    // Inject NaN into the pressure field to force a non-finite velocity evaluation
-    p[1 + nx + nx * ny] = NAN;
+    // Using an extremely small dx causes idx_2inv (0.5 / dx) to overflow to Infinity.
+    // Combined with the pressure gradient, this generates an infinite velocity update
+    // inside the parallel loop, directly triggering lines 218-222.
+    double dx = 1.0e-308;
+    double dy = 0.1;
+    double dz = 0.1;
+    double dt = 0.01;
+    double rho = 1000.0;
 
     EXPECT_THROW({
         navier_stokes_solver::solve_corrector_parallel(
             u, v, w, u_star, v_star, w_star, p, mask,
-            nx, ny, nz, 0.1, 0.1, 0.1, 0.01, 1000.0
+            nx, ny, nz, dx, dy, dz, dt, rho
         );
     }, std::runtime_error);
 }
