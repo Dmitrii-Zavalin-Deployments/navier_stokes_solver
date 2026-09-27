@@ -3,6 +3,15 @@
 @brief Literate Test Suite for Python Pybind11 Bindings Bridge & Orchestrator
 """
 
+# =========================================================================
+# SECTION 1: Sovereign State Container & Mock Fixtures
+# =========================================================================
+# To test the C++ extension module without depending on higher-level 
+# orchestrators, we define a sovereign container matching the exact memory 
+# layout and attributes expected by python_gate.cpp.
+# The computational grid uses dimensions nx, ny, nz, and fields are stored 
+# in a 4-component array representing pressure and velocity components.
+
 import numpy as np
 import pytest
 
@@ -26,9 +35,12 @@ class DummySolverState:
         self.z_max = 1.0
         self.dt = 0.001
 
+        # Fields array containing conserved variables: 
+        # index 0 represents scalar pressure/density proxy, indices 1-3 velocity components (u, v, w).
         self.fields = np.zeros((4, nx, ny, nz), dtype=np.float64)
         self.fields[0, :, :, :] = 0.1
 
+        # Domain mask defining fluid cells (0) versus solid boundaries (-1).
         self.mask = np.zeros((nx, ny, nz), dtype=np.int32)
         self.mask[0, :, :] = -1
         self.mask[-1, :, :] = -1
@@ -65,7 +77,15 @@ class DummySolverState:
             self.boundary_conditions = []
 
 
+# =========================================================================
+# SECTION 2: Module Initialization & Introspection Verification
+# =========================================================================
+# We verify that the compiled Pybind11 extension module is properly loaded, 
+# exposes the core solver class and boundary condition structures, and 
+# maintains descriptive docstrings for runtime introspection.
+
 def test_module_initialization():
+    # The compiled extension module must exist and provide class bindings.
     assert navier_stokes_cpp is not None, "Extension module navier_stokes_cpp must be compiled and available."
     assert isinstance(navier_stokes_cpp.__doc__, str)
     assert len(navier_stokes_cpp.__doc__) > 0
@@ -80,17 +100,31 @@ def test_docstring_introspection():
     init_doc = str(navier_stokes_cpp.NavierStokesSolver.__init__.__doc__)
     step_doc = str(navier_stokes_cpp.NavierStokesSolver.step.__doc__)
 
+    # Assertions verify that constructors and time-step methods document their state container dependency.
     assert "Initialize solver instance directly from sovereign SolverState container" in init_doc
     assert "Advance the Navier-Stokes system by one time-step using state container references" in step_doc
 
+
+# =========================================================================
+# SECTION 3: Defensive Programming & Error Handling Checks
+# =========================================================================
+# The bridge must gracefully reject invalid arguments, null references, 
+# and malformed physical configurations by throwing appropriate exceptions.
 
 def test_invalid_state_error_handling():
     if navier_stokes_cpp is None:
         pytest.skip("navier_stokes_cpp module not available.")
 
+    # Passing an invalid or null state container must trigger an exception.
     with pytest.raises((TypeError, ValueError, RuntimeError)):
         navier_stokes_cpp.NavierStokesSolver(None)
 
+
+# =========================================================================
+# SECTION 4: Boundary Condition Property Access
+# =========================================================================
+# Boundary conditions govern domain interactions. We verify property setters 
+# and getters for wall locations, boundary types, and prescribed scalar values.
 
 def test_boundary_condition_property_access():
     if navier_stokes_cpp is None:
@@ -111,6 +145,12 @@ def test_boundary_condition_property_access():
     assert bc.v_val == 0.0
     assert bc.w_val == -0.5
 
+
+# =========================================================================
+# SECTION 5: Core Solver Execution & Time-Stepping Validation
+# =========================================================================
+# We execute a simulation step using the mock container and verify that 
+# field shapes are preserved and numerical outputs remain finite.
 
 def test_navier_stokes_solver_container_execution():
     if navier_stokes_cpp is None:
@@ -141,6 +181,12 @@ def test_step_none_state_error():
         solver.step(None)
 
 
+# =========================================================================
+# SECTION 6: External Force Vector & Constraint Validation
+# =========================================================================
+# External force vectors must conform to expected dimensions (size 3 for 3D space).
+# Malformed force vector inputs must be caught and rejected by the C++ bridge.
+
 def test_invalid_force_vector_size():
     if navier_stokes_cpp is None:
         pytest.skip("navier_stokes_cpp module not available.")
@@ -153,6 +199,12 @@ def test_invalid_force_vector_size():
     with pytest.raises((TypeError, ValueError, RuntimeError)):
         solver.step(state)
 
+
+# =========================================================================
+# SECTION 7: Numerical Stability & Non-Finite Field Detection
+# =========================================================================
+# Solvers must detect corrupted or non-finite inputs (such as NaNs introduced 
+# via boundary conditions) and halt execution safely.
 
 def test_non_finite_field_simulation_failure():
     if navier_stokes_cpp is None:
@@ -171,6 +223,12 @@ def test_non_finite_field_simulation_failure():
     with pytest.raises((TypeError, ValueError, RuntimeError)):
         solver.step(state)
 
+
+# =========================================================================
+# SECTION 8: Field Synchronization and Memory Management
+# =========================================================================
+# Field synchronization ensures changes computed in C++ are correctly mapped 
+# back into Python-managed numpy containers.
 
 def test_sync_fields_none_error():
     if navier_stokes_cpp is None:

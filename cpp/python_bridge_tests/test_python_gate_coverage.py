@@ -3,6 +3,15 @@
 @brief Comprehensive Python unit test suite targeting test coverage for python_gate.cpp.
 """
 
+# =========================================================================
+# SECTION 1: Sovereign Mock Fixture Definition
+# =========================================================================
+# To test the C++ Python bridge under rigorous boundary and failure scenarios, 
+# we define a sovereign mock state container. This container mimics the exact 
+# attributes, dictionaries, and memory layouts expected by python_gate.cpp.
+# An outflow boundary condition is initialized by default to establish a valid 
+# pressure datum for the internal Poisson solver.
+
 import pytest
 import numpy as np
 import navier_stokes_cpp as nsc
@@ -61,6 +70,14 @@ class MockSolverState:
         else:
             self.boundary_conditions = []
 
+
+# =========================================================================
+# SECTION 2: Constructor Validation & Defensive Guardrails
+# =========================================================================
+# The C++ bridge must protect against invalid pointers, degenerate geometries, 
+# malformed spatial bounds, physical impossibility (such as non-positive density), 
+# and structural contract violations. We verify that appropriate exceptions 
+# are thrown under these error conditions.
 
 def test_constructor_none_state():
     with pytest.raises(ValueError, match="state object cannot be None"):
@@ -121,6 +138,13 @@ def test_constructor_type_error_rethrow():
         nsc.NavierStokesSolver(BadTypeState())
 
 
+# =========================================================================
+# SECTION 3: Time-Step & Physical Property Constraints
+# =========================================================================
+# Time-stepping execution requires valid temporal increments (\(\Delta t > 0\)) 
+# and stable physical property coefficients (such as positive kinematic viscosity). 
+# We verify that zero, negative, or non-finite parameters trigger error gates.
+
 def test_step_none_state():
     state = MockSolverState()
     solver = nsc.NavierStokesSolver(state)
@@ -150,6 +174,13 @@ def test_step_invalid_viscosity():
         solver.step(state)
 
 
+# =========================================================================
+# SECTION 4: Grid Mask & Spatial Array Dimensions
+# =========================================================================
+# Domain masks define fluid and obstacle cells and must conform to expected 
+# dimensional constraints (1D flattened or 3D volumetric arrays matching grid dimensions). 
+# Malformed dimensions must be intercepted.
+
 def test_step_1d_mask():
     state = MockSolverState()
     solver = nsc.NavierStokesSolver(state)
@@ -172,6 +203,13 @@ def test_step_invalid_mask_ndim_2():
     with pytest.raises(ValueError, match="GEOMETRY ERROR: mask must be a 1D or 3D NumPy array"):
         solver.step(state)
 
+
+# =========================================================================
+# SECTION 5: Boundary Condition Parsing & Non-Finite Checks
+# =========================================================================
+# Boundary conditions dictate flow inlets, outlets, and wall interactions. 
+# We verify that standard configurations parse successfully and that any 
+# injected non-finite values (NaN or Inf) are caught immediately before simulation steps.
 
 def test_step_boundary_conditions_dict_parsing():
     state = MockSolverState()
@@ -253,6 +291,13 @@ def test_step_boundary_condition_object_instance():
 
     solver.step(state)
 
+
+# =========================================================================
+# SECTION 6: Field Synchronization & Memory Safety
+# =========================================================================
+# Field synchronization guarantees that data arrays are correctly mapped and 
+# updated back between C++ solver memory spaces and Python containers. 
+# We verify that null pointer references trigger appropriate exceptions.
 
 def test_sync_fields_none_state():
     state = MockSolverState()

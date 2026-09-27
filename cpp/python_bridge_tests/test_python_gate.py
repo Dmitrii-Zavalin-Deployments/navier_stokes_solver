@@ -3,6 +3,14 @@
 @brief Literate Test Suite for Python Pybind11 Bindings Bridge (python_gate.cpp)
 """
 
+# =========================================================================
+# SECTION 1: Sovereign Mock State Container & Imports
+# =========================================================================
+# To test the C++ Pybind11 extension module (`python_gate.cpp`) independently, 
+# we define a sovereign mock container (`DummySolverState`) that mirrors the 
+# exact attribute structures, numpy field dimensions, and property dictionaries 
+# expected by the C++ bridge interface.
+
 import numpy as np
 import pytest
 
@@ -68,6 +76,12 @@ class DummySolverState:
             self.boundary_conditions = []
 
 
+# =========================================================================
+# SECTION 2: Module Initialization & Introspection Verification
+# =========================================================================
+# We verify that the compiled extension module loads successfully and exposes 
+# correct class bindings and descriptive docstrings for runtime introspection.
+
 def test_module_initialization():
     assert navier_stokes_cpp is not None, "Extension module navier_stokes_cpp must be compiled and available."
     assert isinstance(navier_stokes_cpp.__doc__, str)
@@ -87,6 +101,12 @@ def test_docstring_introspection():
     assert "Advance the Navier-Stokes system by one time-step using state container references" in step_doc
 
 
+# =========================================================================
+# SECTION 3: Defensive Programming & Error Handling
+# =========================================================================
+# The bridge must gracefully reject invalid or null reference states by throwing 
+# appropriate type or value exceptions.
+
 def test_invalid_state_error_handling():
     if navier_stokes_cpp is None:
         pytest.skip("navier_stokes_cpp module not available.")
@@ -94,6 +114,12 @@ def test_invalid_state_error_handling():
     with pytest.raises((TypeError, ValueError)):
         navier_stokes_cpp.NavierStokesSolver(None)
 
+
+# =========================================================================
+# SECTION 4: Boundary Condition Property Access & Setup
+# =========================================================================
+# Boundary condition objects manage domain boundaries. We verify that property 
+# setters and getters correctly assign locations, types, and scalar constraints.
 
 def test_boundary_condition_property_access():
     if navier_stokes_cpp is None:
@@ -114,6 +140,12 @@ def test_boundary_condition_property_access():
     assert bc.v_val == 0.0
     assert bc.w_val == -0.5
 
+
+# =========================================================================
+# SECTION 5: Core Solver Execution & Time-Stepping Validation
+# =========================================================================
+# We validate full solver initialization and time-stepping execution using 
+# container references, ensuring numerical fields remain finite and properly shaped.
 
 def test_navier_stokes_solver_container_execution():
     if navier_stokes_cpp is None:
@@ -143,6 +175,13 @@ def test_step_none_state_error():
     with pytest.raises((TypeError, ValueError)):
         solver.step(None)
 
+
+# =========================================================================
+# SECTION 6: External Forces & Numerical Stability Gates
+# =========================================================================
+# External force inputs must conform to exact vector dimensions (size 3). 
+# Furthermore, corrupted or non-finite values (such as NaNs in boundary conditions) 
+# must be detected and rejected by the C++ bridge layer.
 
 def test_invalid_force_vector_size():
     if navier_stokes_cpp is None:
@@ -174,6 +213,12 @@ def test_non_finite_field_simulation_failure():
     with pytest.raises(RuntimeError, match="Invalid non-finite velocity encountered in boundary condition input."):
         solver.step(state)
 
+
+# =========================================================================
+# SECTION 7: Field Synchronization & Memory Management
+# =========================================================================
+# Field synchronization ensures computed values are correctly mapped back 
+# between Python container memory and C++ solver routines.
 
 def test_sync_fields_none_error():
     if navier_stokes_cpp is None:
