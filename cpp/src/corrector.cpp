@@ -47,6 +47,13 @@ void solve_corrector_parallel(
         throw std::invalid_argument("CONTRACT VIOLATION: Vector size mismatch in corrector module.");
     }
 
+    // --- INPUT FINITENESS AUDIT ---
+    for (size_t idx = 0; idx < total_cells; ++idx) {
+        if (!std::isfinite(u_star[idx]) || !std::isfinite(v_star[idx]) || !std::isfinite(w_star[idx]) || !std::isfinite(p[idx])) {
+            throw std::runtime_error("Corrector projection exploded. Velocity or pressure field is non-finite.");
+        }
+    }
+
     #ifdef _OPENMP
     int active_threads = omp_get_max_threads();
     #else
