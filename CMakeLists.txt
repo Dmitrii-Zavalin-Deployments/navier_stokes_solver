@@ -114,9 +114,6 @@ target_link_libraries(test_solid_masking
 )
 add_test(NAME SolidMaskingTest COMMAND test_solid_masking)
 
-
-
-
 # ---------------------------------------------------------------------------
 # 4. Python Pybind11 Extension Module Target (`navier_stokes_cpp`)
 # ---------------------------------------------------------------------------
