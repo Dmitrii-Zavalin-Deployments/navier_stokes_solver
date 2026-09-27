@@ -215,108 +215,7 @@ TEST(PressurePoissonSolverCoverage, PureNeumannConfigurationThrowsRuntime) {
 }
 
 // ============================================================================
-// SECTION 3 — Non-finite pressure explosion: RED and BLACK passes
-// ============================================================================
-//
-// The solver guards against non-finite pressure values in both the RED and
-// BLACK Gauss–Seidel passes. When p_new is not finite, it sets has_error and,
-// after the pass, logs a message and throws std::runtime_error.
-//
-// We design two tests:
-//
-//   - NonFinitePressureExplosionRedPass:
-//       RHS is +inf on RED cells ((i + j + k) % 2 == 0), finite elsewhere.
-//       The RED pass encounters non-finite p_new and triggers the error.
-//
-//   - NonFinitePressureExplosionBlackPass:
-//       RHS is +inf on BLACK cells ((i + j + k) % 2 != 0), finite elsewhere.
-//       The RED pass is safe; the BLACK pass then explodes.
-// -----------------------------------------------------------------------------
-
-TEST(PressurePoissonSolverCoverage, NonFinitePressureExplosionRedPass) {
-    GridDimensions dims = make_dims_3x3x3();
-    size_t N = static_cast<size_t>(dims.nx) * dims.ny * dims.nz;
-
-    std::vector<double> p(N, 0.0);
-    std::vector<double> rhs(N, 0.0);
-    std::vector<int> mask = make_full_fluid_mask(dims);
-
-    // We provide a single pressure boundary to satisfy the singularity gate.
-    std::vector<BoundaryCondition> bc_list;
-    bc_list.push_back(make_pressure_bc("x_min"));
-
-    // Set RHS to +inf on RED cells: (i + j + k) % 2 == 0.
-    for (int k = 0; k < dims.nz; ++k) {
-        for (int j = 0; j < dims.ny; ++j) {
-            for (int i = 0; i < dims.nx; ++i) {
-                if ((i + j + k) % 2 == 0) {
-                    int raw_idx = get_flat_index(i, j, k, dims.nx, dims.ny);
-                    if (raw_idx >= 0) {
-                        rhs[static_cast<size_t>(raw_idx)] =
-                            std::numeric_limits<double>::infinity();
-                    }
-                }
-            }
-        }
-    }
-
-    EXPECT_THROW(
-        solve_poisson_red_black_parallel(
-            p, rhs, mask, bc_list,
-            dims.nx, dims.ny, dims.nz,
-            dims.dx, dims.dy, dims.dz,
-            /*max_iters=*/1,
-            /*tol=*/0.0,
-            /*density=*/1.0
-        ),
-        std::runtime_error
-    );
-}
-
-TEST(PressurePoissonSolverCoverage, NonFinitePressureExplosionBlackPass) {
-    GridDimensions dims = make_dims_3x3x3();
-    size_t N = static_cast<size_t>(dims.nx) * dims.ny * dims.nz;
-
-    std::vector<double> p(N, 0.0);
-    std::vector<double> rhs(N, 0.0);
-    std::vector<int> mask = make_full_fluid_mask(dims);
-
-    // Single pressure boundary to satisfy singularity gate.
-    std::vector<BoundaryCondition> bc_list;
-    bc_list.push_back(make_pressure_bc("x_min"));
-
-    // RHS is finite on RED cells and +inf on BLACK cells.
-    for (int k = 0; k < dims.nz; ++k) {
-        for (int j = 0; j < dims.ny; ++j) {
-            for (int i = 0; i < dims.nx; ++i) {
-                int raw_idx = get_flat_index(i, j, k, dims.nx, dims.ny);
-                if (raw_idx < 0) continue;
-                size_t idx = static_cast<size_t>(raw_idx);
-
-                if ((i + j + k) % 2 == 0) {
-                    rhs[idx] = 0.0; // safe for RED pass
-                } else {
-                    rhs[idx] = std::numeric_limits<double>::infinity();
-                }
-            }
-        }
-    }
-
-    EXPECT_THROW(
-        solve_poisson_red_black_parallel(
-            p, rhs, mask, bc_list,
-            dims.nx, dims.ny, dims.nz,
-            dims.dx, dims.dy, dims.dz,
-            /*max_iters=*/1,
-            /*tol=*/0.0,
-            /*density=*/1.0
-        ),
-        std::runtime_error
-    );
-}
-
-// ============================================================================
-// SECTION 4 — Boundary pressure application on y_min, y_max, z_min, z_max
+// SECTION 3 — Boundary pressure application on y_min, y_max, z_min, z_max
 // ============================================================================
 //
 // Inside the iteration loop, the solver synchronizes Dirichlet pressure
@@ -453,4 +352,3 @@ TEST(PressurePoissonSolverCoverage, BoundaryPressureAppliedOnZMaxFace) {
         }
     }
 }
-

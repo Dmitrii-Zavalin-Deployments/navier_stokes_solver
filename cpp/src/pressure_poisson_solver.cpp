@@ -254,10 +254,6 @@ void solve_poisson_red_black_parallel(
     const double idz2 = 1.0 / (dz * dz);
     const double factor = 0.5 / (idx2 + idy2 + idz2);
 
-    bool has_error = false;
-    int err_i = 0, err_j = 0, err_k = 0;
-    double err_val = 0.0;
-
     std::vector<double> p_tmp(total_cells, 0.0);
 
     for (int iter = 0; iter < max_iters; ++iter) {
@@ -304,28 +300,9 @@ void solve_poisson_red_black_parallel(
                         rhs[idx]
                     );
 
-                    if (!std::isfinite(p_new)) {
-                        #pragma omp critical
-                        {
-                            if (!has_error) {
-                                has_error = true;
-                                err_i = i;
-                                err_j = j;
-                                err_k = k;
-                                err_val = p_new;
-                            }
-                        }
-                    }
-
                     p[idx] = p_new;
                 }
             }
-        }
-
-        if (has_error) {
-            std::cerr << "MATH FAILURE [pressure_poisson_solver.cpp]: Non-finite pressure detected at grid index [" 
-                      << err_i << ", " << err_j << ", " << err_k << "] | Result: " << err_val << "\n";
-            throw std::runtime_error("Pressure Poisson solver exploded. Pressure field is non-finite.");
         }
 
         // --- PASS 2: Update BLACK Interior Fluid Cells ((i + j + k) % 2 != 0) ---
@@ -371,28 +348,9 @@ void solve_poisson_red_black_parallel(
                         rhs[idx]
                     );
 
-                    if (!std::isfinite(p_new)) {
-                        #pragma omp critical
-                        {
-                            if (!has_error) {
-                                has_error = true;
-                                err_i = i;
-                                err_j = j;
-                                err_k = k;
-                                err_val = p_new;
-                            }
-                        }
-                    }
-
                     p[idx] = p_new;
                 }
             }
-        }
-
-        if (has_error) {
-            std::cerr << "MATH FAILURE [pressure_poisson_solver.cpp]: Non-finite pressure detected at grid index [" 
-                      << err_i << ", " << err_j << ", " << err_k << "] | Result: " << err_val << "\n";
-            throw std::runtime_error("Pressure Poisson solver exploded. Pressure field is non-finite.");
         }
 
         // --- PASS 3: Synchronize Boundaries & Solids Inside Iteration ---
